@@ -460,7 +460,10 @@ service cloud.firestore {
       // 팀
       match /teams/{teamId} {
         allow read: if true;
-        allow create, update, delete: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId;
+        allow create, delete: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId;
+        allow update: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId
+                      || (request.auth.uid != null
+                          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['joinedMembers', 'status']));
       }
 
       // 슬롯
