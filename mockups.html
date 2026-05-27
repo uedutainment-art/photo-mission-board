@@ -1,0 +1,2634 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Photo Mission Board · 화면 목업 갤러리</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+      background: #f1f5f9;
+      color: #0f172a;
+      line-height: 1.5;
+    }
+    a { color: inherit; }
+
+    /* ===== Top nav ===== */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 22px;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    }
+    .brand { font-weight: 900; letter-spacing: -0.03em; font-size: 16px; }
+    .brand small { color: #64748b; font-weight: 700; font-size: 12px; margin-left: 8px; }
+    .toc { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+    .toc a {
+      text-decoration: none;
+      background: #f1f5f9; color: #475569; font-weight: 800; font-size: 12px;
+      padding: 7px 12px; border-radius: 999px;
+    }
+    .toc a:hover { background: #0f172a; color: white; }
+
+    /* ===== Section ===== */
+    section.scene {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 36px 18px 24px;
+      border-bottom: 1px dashed #cbd5e1;
+    }
+    .scene .label { font-size: 11px; color: #2563eb; font-weight: 900; letter-spacing: 0.12em; }
+    .scene h1 { margin: 6px 0 6px; font-size: clamp(22px, 3vw, 30px); letter-spacing: -0.03em; }
+    .scene .sub { color: #64748b; margin-bottom: 22px; font-size: 14px; }
+
+    /* ===== Phone frame ===== */
+    .phones { display: flex; gap: 22px; justify-content: center; align-items: flex-start; flex-wrap: wrap; }
+    .phone { width: 340px; background: #020617; padding: 8px; border-radius: 36px; box-shadow: 0 18px 50px rgba(15,23,42,.22); }
+    .phone-inner { background: #f8fafc; border-radius: 30px; height: 720px; overflow: hidden; display: flex; flex-direction: column; }
+    .phone-head { padding: 10px 16px 14px; background: rgba(255,255,255,.96); border-bottom: 1px solid #e2e8f0; }
+    .notch { width: 60px; height: 4px; border-radius: 999px; background: #cbd5e1; margin: 0 auto 10px; }
+    .hrow { display: flex; align-items: center; justify-content: space-between; }
+    .back { width: 36px; height: 36px; border-radius: 12px; background: #f1f5f9; display: grid; place-items: center; font-weight: 900; color: #475569; flex: 0 0 auto; }
+    .back.dark { background: #0f172a; color: white; }
+    .back.transparent { background: transparent; }
+    .ptitle { font-weight: 900; font-size: 16px; }
+    .save-btn { background: #0f172a; color: white; font-weight: 900; font-size: 12px; padding: 7px 12px; border-radius: 10px; }
+
+    /* ===== Step bar ===== */
+    .stepbar { display: flex; gap: 8px; padding: 14px 16px 6px; align-items: center; }
+    .stepdot { flex: 1; height: 6px; background: #e2e8f0; border-radius: 999px; }
+    .stepdot.on { background: #0f172a; }
+    .steplabel { font-size: 11px; color: #64748b; font-weight: 700; padding: 0 16px 8px; }
+
+    /* ===== Body / fields ===== */
+    .body { padding: 8px 16px 16px; overflow-y: auto; flex: 1; }
+    .section-title { font-size: 11px; color: #94a3b8; letter-spacing: 0.08em; font-weight: 800; margin: 14px 0 8px; text-transform: uppercase; }
+    .field { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+    .field .label { font-size: 11px; color: #94a3b8; font-weight: 800; letter-spacing: .04em; margin-bottom: 4px; }
+    .field .value { font-size: 15px; font-weight: 700; color: #0f172a; }
+    .field .placeholder { color: #cbd5e1; font-weight: 600; }
+    .field textarea-display { display: block; margin-top: 2px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* ===== Calc card ===== */
+    .calc-card { background: #0f172a; color: white; border-radius: 18px; padding: 18px; margin-top: 12px; }
+    .calc-num { font-size: 34px; font-weight: 950; letter-spacing: -0.04em; margin-bottom: 4px; }
+    .calc-line { font-size: 12px; color: #94a3b8; font-weight: 700; }
+    .calc-formula { font-size: 13px; color: #cbd5e1; margin-top: 10px; padding-top: 10px; border-top: 1px solid #1e293b; }
+    .calc-formula b { color: white; }
+
+    /* ===== Place card ===== */
+    .place-card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+    .pc-row { display: flex; gap: 12px; align-items: flex-start; }
+    .pc-icon { width: 42px; height: 42px; border-radius: 12px; flex: 0 0 auto; }
+    .pc-name { font-weight: 900; font-size: 15px; }
+    .pc-meta { color: #64748b; font-size: 12px; margin-top: 2px; }
+    .pc-tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .tag { font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+    .tag.amber { background: #fef3c7; color: #b45309; }
+    .tag.blue { background: #dbeafe; color: #1d4ed8; }
+    .tag.green { background: #d1fae5; color: #047857; }
+    .tag.slate { background: #f1f5f9; color: #475569; }
+    .pc-edit { color: #94a3b8; font-weight: 900; }
+    .add-btn { width: 100%; background: #0f172a; color: white; border: 0; border-radius: 16px; padding: 14px; font-weight: 900; font-size: 14px; margin-bottom: 12px; cursor: pointer; }
+    .add-btn.ghost { background: white; color: #0f172a; border: 2px dashed #cbd5e1; }
+
+    /* ===== Check card ===== */
+    .check-card { background: #d1fae5; color: #047857; border-radius: 14px; padding: 12px 14px; font-weight: 800; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+    .check-card .formula { font-family: ui-monospace, SFMono-Regular, monospace; background: white; padding: 2px 8px; border-radius: 8px; font-size: 11px; color: #047857; }
+
+    /* ===== Summary / preview ===== */
+    .summary-card { background: #0f172a; color: white; border-radius: 20px; padding: 18px; margin-bottom: 14px; }
+    .summary-card .title-row { font-size: 13px; color: #94a3b8; font-weight: 700; }
+    .summary-card .ev-title { font-size: 22px; font-weight: 950; letter-spacing: -0.03em; margin-top: 4px; }
+    .summary-card .ev-meta { font-size: 12px; color: #cbd5e1; margin-top: 8px; }
+    .breakdown { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; margin-bottom: 14px; }
+    .bd-title { font-weight: 900; font-size: 13px; margin-bottom: 10px; }
+    .bd-strip { display: flex; gap: 4px; border-radius: 10px; overflow: hidden; height: 36px; margin-bottom: 10px; }
+    .bd-strip > div { display: grid; place-items: center; font-size: 10px; color: white; font-weight: 900; }
+    .bd-legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: #475569; font-weight: 700; }
+    .leg-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 5px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; padding: 8px; background: #f1f5f9; border-radius: 14px; margin-bottom: 14px; }
+    .preview-grid div { aspect-ratio: 1/1; background: white; border-radius: 2px; }
+
+    /* ===== Next bar ===== */
+    .next-bar { padding: 12px 16px 16px; border-top: 1px solid #e2e8f0; background: white; }
+    .next-btn { width: 100%; background: #0f172a; color: white; border: 0; border-radius: 16px; padding: 15px; font-weight: 900; font-size: 15px; cursor: pointer; }
+    .next-btn.blue { background: #2563eb; }
+    .next-btn .arrow { margin-left: 6px; }
+
+    /* ===== Modal-style screen (장소 편집) ===== */
+    .upload-zone {
+      aspect-ratio: 16 / 9;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+      border: 2px dashed #cbd5e1;
+      display: grid;
+      place-items: center;
+      color: #94a3b8;
+      font-weight: 800;
+      font-size: 13px;
+      margin-bottom: 14px;
+      position: relative;
+    }
+    .upload-zone.has-image {
+      background: linear-gradient(135deg, #bae6fd, #bbf7d0);
+      border: 0;
+    }
+    .upload-zone .change-btn {
+      position: absolute; right: 10px; bottom: 10px;
+      background: rgba(15, 23, 42, .82); color: white;
+      font-size: 11px; font-weight: 800;
+      padding: 6px 10px; border-radius: 999px;
+    }
+    .input-line { display: flex; align-items: center; gap: 8px; }
+    .stepper { display: flex; align-items: center; gap: 8px; }
+    .stepper button { width: 30px; height: 30px; border: 0; background: #f1f5f9; color: #0f172a; border-radius: 10px; font-weight: 900; font-size: 16px; cursor: pointer; }
+    .stepper .num { min-width: 30px; text-align: center; font-weight: 900; font-size: 18px; }
+    .seg { display: flex; background: #f1f5f9; border-radius: 12px; padding: 3px; gap: 3px; }
+    .seg button {
+      flex: 1; border: 0; background: transparent; padding: 8px 10px;
+      border-radius: 9px; font-size: 12px; font-weight: 800; color: #475569; cursor: pointer;
+    }
+    .seg button.on { background: white; color: #0f172a; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+    .map-preview {
+      aspect-ratio: 16 / 9; border-radius: 14px;
+      background: repeating-linear-gradient(45deg, #e0f2fe, #e0f2fe 8px, #f0f9ff 8px, #f0f9ff 16px);
+      position: relative; display: grid; place-items: center;
+    }
+    .map-preview .pin { font-size: 30px; }
+    .map-preview .url { position: absolute; bottom: 8px; left: 8px; right: 8px; background: rgba(255,255,255,.92); padding: 6px 10px; border-radius: 8px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .danger-btn { width: 100%; background: white; color: #be123c; border: 1px solid #fecdd3; border-radius: 14px; padding: 12px; font-weight: 800; font-size: 13px; margin-top: 10px; cursor: pointer; }
+
+    /* ===== Notes ===== */
+    .notes { max-width: 1100px; margin: 26px auto 0; padding: 20px 24px; background: white; border-radius: 22px; box-shadow: 0 6px 24px rgba(15,23,42,.06); }
+    .notes h3 { margin: 0 0 12px; letter-spacing: -0.02em; font-size: 17px; }
+    .notes ul { padding-left: 18px; color: #475569; line-height: 1.7; margin: 0; font-size: 14px; }
+    .notes li { margin: 4px 0; }
+    .notes li b { color: #0f172a; }
+
+    /* ===== Team (참가자) flow ===== */
+    .welcome-hero { background: linear-gradient(160deg, #0f172a, #1e293b); color: white; border-radius: 24px; padding: 22px; margin-bottom: 14px; }
+    .welcome-eyebrow { font-size: 11px; color: #94a3b8; font-weight: 800; letter-spacing: 0.1em; margin-bottom: 8px; }
+    .team-avatar { width: 60px; height: 60px; border-radius: 20px; background: linear-gradient(135deg, #38bdf8, #34d399); display: grid; place-items: center; font-weight: 900; color: white; font-size: 22px; margin-bottom: 14px; }
+    .team-name-big { font-size: 24px; font-weight: 950; letter-spacing: -0.03em; }
+    .team-event { font-size: 13px; color: #cbd5e1; margin-top: 6px; }
+    .welcome-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #1e293b; }
+    .welcome-stat { text-align: center; }
+    .welcome-stat .n { font-size: 20px; font-weight: 950; color: white; }
+    .welcome-stat .l { font-size: 11px; color: #94a3b8; font-weight: 700; }
+    .start-btn { width: 100%; background: #2563eb; color: white; border: 0; border-radius: 16px; padding: 15px; font-weight: 900; font-size: 15px; cursor: pointer; margin-bottom: 10px; }
+    .help-card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+    .help-card .ic { font-size: 22px; }
+
+    .team-progress-card { background: #0f172a; color: white; border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+    .tp-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .tp-team { font-size: 14px; color: #94a3b8; font-weight: 700; }
+    .tp-pct { font-size: 28px; font-weight: 950; letter-spacing: -0.02em; }
+    .tp-track { height: 6px; background: #1e293b; border-radius: 999px; overflow: hidden; }
+    .tp-fill { height: 100%; background: white; border-radius: 999px; }
+
+    .slot-card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; overflow: hidden; margin-bottom: 12px; cursor: pointer; }
+    .slot-banner { height: 70px; position: relative; }
+    .slot-banner.b1 { background: linear-gradient(135deg, #bae6fd, #bbf7d0); }
+    .slot-banner.b2 { background: linear-gradient(135deg, #fde68a, #fdba74); }
+    .slot-banner.b3 { background: linear-gradient(135deg, #ddd6fe, #fbcfe8); }
+    .slot-banner.done::after { content: "✓"; position: absolute; right: 12px; top: 12px; background: #10b981; color: white; width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; font-weight: 900; font-size: 14px; }
+    .slot-body { padding: 12px 14px; }
+    .slot-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .slot-name { font-weight: 900; font-size: 15px; }
+    .slot-meta { color: #64748b; font-size: 12px; margin-top: 2px; }
+    .slot-progress { display: flex; gap: 4px; margin-top: 10px; align-items: center; }
+    .slot-dot { width: 14px; height: 14px; border-radius: 999px; border: 2px solid #cbd5e1; }
+    .slot-dot.filled { background: #0f172a; border-color: #0f172a; }
+    .slot-dot.rep { background: #facc15; border-color: #facc15; }
+    .slot-count { font-size: 12px; color: #64748b; font-weight: 800; margin-left: 4px; }
+    .slot-arrow { color: #94a3b8; font-weight: 900; font-size: 18px; }
+
+    .detail-banner { aspect-ratio: 16/9; border-radius: 16px; background: linear-gradient(135deg, #bae6fd, #bbf7d0); margin-bottom: 12px; position: relative; }
+    .detail-banner .place-pill { position: absolute; left: 12px; top: 12px; background: rgba(15,23,42,.82); color: white; font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 999px; }
+    .detail-info { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; margin-bottom: 10px; }
+    .detail-info .desc { font-size: 13px; color: #475569; line-height: 1.6; }
+    .detail-info .verify { background: #fef3c7; color: #b45309; border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 800; margin-top: 10px; }
+    .map-btn { width: 100%; background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; color: #0f172a; cursor: pointer; }
+    .progress-bar { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; }
+    .progress-bar .row { display: flex; justify-content: space-between; align-items: center; }
+    .progress-bar .pb-label { font-weight: 900; font-size: 13px; }
+    .progress-bar .pb-meta { font-size: 11px; color: #64748b; }
+    .pb-track { height: 6px; background: #f1f5f9; border-radius: 999px; margin-top: 8px; overflow: hidden; }
+    .pb-fill { height: 100%; background: #0f172a; border-radius: 999px; }
+
+    .photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .photo-cell { aspect-ratio: 1/1; border-radius: 12px; position: relative; overflow: hidden; }
+    .photo-cell.p1 { background: linear-gradient(135deg, #fde68a, #fdba74); }
+    .photo-cell.p2 { background: linear-gradient(135deg, #bae6fd, #bbf7d0); }
+    .photo-cell.p3 { background: linear-gradient(135deg, #c7d2fe, #fbcfe8); }
+    .photo-cell.empty { background: #f1f5f9; border: 2px dashed #cbd5e1; display: grid; place-items: center; color: #94a3b8; font-weight: 900; font-size: 24px; }
+    .photo-cell .star { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; background: #facc15; color: #78350f; border-radius: 999px; display: grid; place-items: center; font-weight: 900; font-size: 14px; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+    .photo-cell .who { position: absolute; left: 6px; bottom: 6px; background: rgba(15,23,42,.82); color: white; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
+    .upload-bigbtn { width: 100%; background: #2563eb; color: white; border: 0; border-radius: 16px; padding: 16px; font-weight: 900; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; margin-bottom: 10px; }
+    .upload-secondary { width: 100%; background: white; color: #0f172a; border: 1px solid #e2e8f0; border-radius: 16px; padding: 13px; font-weight: 800; font-size: 13px; cursor: pointer; }
+    .members-bar { display: flex; align-items: center; gap: 8px; background: #f8fafc; border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; }
+    .members-bar .ic { font-size: 16px; }
+    .members-bar .txt { font-size: 12px; color: #475569; font-weight: 700; }
+    .members-bar .who-list { margin-left: auto; display: flex; gap: -4px; }
+    .members-bar .who-dot { width: 22px; height: 22px; border-radius: 999px; border: 2px solid white; margin-left: -6px; }
+
+    /* ===== Operator Live ===== */
+    .live-head { display: flex; align-items: center; gap: 8px; }
+    .live-dot { width: 8px; height: 8px; background: #ef4444; border-radius: 999px; box-shadow: 0 0 0 4px rgba(239,68,68,.16); animation: livepulse 1.4s ease-out infinite; }
+    @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); } 100% { box-shadow: 0 0 0 10px rgba(239,68,68,0); } }
+    .live-text { font-size: 10px; font-weight: 900; color: #ef4444; letter-spacing: 0.14em; }
+
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .stat-tile { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; }
+    .stat-tile.dark { background: #0f172a; color: white; border-color: #0f172a; }
+    .stat-tile.alert { background: #fef3c7; border-color: #fde68a; }
+    .stat-tile .lab { font-size: 11px; color: #64748b; font-weight: 800; letter-spacing: 0.04em; }
+    .stat-tile.dark .lab { color: #94a3b8; }
+    .stat-tile.alert .lab { color: #b45309; }
+    .stat-tile .n { font-size: 26px; font-weight: 950; letter-spacing: -0.03em; margin-top: 4px; }
+    .stat-tile.alert .n { color: #b45309; }
+
+    .team-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .team-row .dot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+    .team-row .nm { font-size: 12px; font-weight: 800; min-width: 80px; }
+    .team-row .pct { font-size: 11px; color: #64748b; margin-left: auto; font-weight: 800; min-width: 36px; text-align: right; }
+    .team-row .bar { flex: 1; height: 6px; background: #f1f5f9; border-radius: 999px; overflow: hidden; }
+    .team-row .bar > div { height: 100%; background: #0f172a; border-radius: 999px; }
+
+    .upload-stream-item { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    .upload-stream-item:last-child { border-bottom: 0; }
+    .stream-thumb { width: 44px; height: 44px; border-radius: 10px; flex: 0 0 auto; }
+    .stream-meta { flex: 1; min-width: 0; }
+    .stream-name { font-size: 12px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stream-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .stream-time { font-size: 10px; color: #94a3b8; font-weight: 800; }
+
+    /* Bottom nav inside phone */
+    .phone-nav { display: flex; background: white; border-top: 1px solid #e2e8f0; }
+    .phone-nav button { flex: 1; background: transparent; border: 0; padding: 12px 4px; font-weight: 800; font-size: 11px; color: #94a3b8; cursor: pointer; }
+    .phone-nav button.on { color: #0f172a; }
+    .phone-nav button .nico { font-size: 16px; display: block; margin-bottom: 2px; }
+
+    /* Layout toggle */
+    .layout-toggle { display: flex; background: #f1f5f9; border-radius: 12px; padding: 3px; gap: 3px; margin-bottom: 12px; }
+    .layout-toggle button { flex: 1; border: 0; background: transparent; padding: 8px 4px; border-radius: 9px; font-size: 11px; font-weight: 800; color: #475569; cursor: pointer; }
+    .layout-toggle button.on { background: white; color: #0f172a; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+
+    .live-board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; padding: 6px; background: #f1f5f9; border-radius: 14px; margin-bottom: 12px; }
+    .live-board .lb-cell { aspect-ratio: 1/1; border-radius: 2px; position: relative; }
+    .live-board .lb-cell.empty { background: white; }
+    .live-board .lb-cell.unchecked::after { content: ""; position: absolute; right: 1px; top: 1px; width: 5px; height: 5px; background: #f59e0b; border-radius: 999px; }
+    .legend-strip { display: flex; gap: 12px; justify-content: center; font-size: 10px; color: #64748b; font-weight: 700; margin-bottom: 14px; flex-wrap: wrap; }
+    .legend-strip .lg { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-strip .lg .sq { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    .toolrow { display: flex; gap: 8px; }
+    .toolrow button { flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; font-weight: 800; font-size: 12px; color: #0f172a; cursor: pointer; }
+    .toolrow button.primary { background: #0f172a; color: white; border-color: #0f172a; }
+
+    /* Slot review */
+    .review-bar { background: #0f172a; color: white; border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .review-bar .navs { display: flex; gap: 6px; }
+    .review-bar .navs button { background: rgba(255,255,255,.12); color: white; border: 0; width: 32px; height: 32px; border-radius: 10px; font-weight: 900; cursor: pointer; }
+    .review-progress { font-size: 13px; font-weight: 900; }
+    .review-progress .small { font-size: 10px; color: #94a3b8; font-weight: 700; display: block; margin-top: 2px; }
+
+    .review-photo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .review-photo { aspect-ratio: 1/1; border-radius: 12px; position: relative; overflow: hidden; }
+    .review-photo.r1 { background: linear-gradient(135deg, #bae6fd, #bbf7d0); }
+    .review-photo.r2 { background: linear-gradient(135deg, #fde68a, #fdba74); }
+    .review-photo.r3 { background: linear-gradient(135deg, #c7d2fe, #fbcfe8); }
+    .review-photo .star-toggle { position: absolute; right: 6px; top: 6px; width: 28px; height: 28px; background: rgba(255,255,255,.92); color: #facc15; border-radius: 999px; display: grid; place-items: center; font-weight: 900; font-size: 14px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    .review-photo.is-rep .star-toggle { background: #facc15; color: #78350f; }
+    .review-photo .who { position: absolute; left: 6px; bottom: 6px; background: rgba(15,23,42,.82); color: white; font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 6px; }
+    .review-photo .menu { position: absolute; left: 6px; top: 6px; background: rgba(255,255,255,.92); width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; color: #0f172a; font-weight: 900; font-size: 12px; }
+
+    .confirm-toggle { background: white; border: 2px solid #e2e8f0; border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 10px; cursor: pointer; }
+    .confirm-toggle.on { background: #d1fae5; border-color: #10b981; }
+    .confirm-toggle .check-box { width: 28px; height: 28px; border-radius: 10px; background: #f1f5f9; display: grid; place-items: center; font-weight: 900; color: #cbd5e1; flex: 0 0 auto; }
+    .confirm-toggle.on .check-box { background: #10b981; color: white; }
+    .confirm-toggle .label { flex: 1; }
+    .confirm-toggle .label b { font-size: 14px; }
+    .confirm-toggle .label small { display: block; font-size: 11px; color: #64748b; margin-top: 2px; }
+    .confirm-toggle.on .label small { color: #047857; }
+
+    /* ===== Selfie banner & Zoom-out ===== */
+    .selfie-banner {
+      border-radius: 20px;
+      overflow: hidden;
+      background: #0f172a;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .selfie-banner .label-strip {
+      position: absolute; left: 12px; top: 12px; z-index: 2;
+      background: rgba(15,23,42,.7); color: white;
+      font-size: 10px; font-weight: 900; letter-spacing: 0.1em;
+      padding: 5px 10px; border-radius: 999px;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .selfie-banner .label-strip .live-dot { width: 6px; height: 6px; background: #34d399; border-radius: 999px; }
+    .selfie-banner .grid {
+      display: grid; gap: 2px;
+      aspect-ratio: 16 / 10;
+    }
+    .selfie-banner .cell {
+      position: relative;
+    }
+    .selfie-banner .cell.s1 { background: linear-gradient(135deg, #38bdf8, #818cf8); }
+    .selfie-banner .cell.s2 { background: linear-gradient(135deg, #f472b6, #f59e0b); }
+    .selfie-banner .cell.s3 { background: linear-gradient(135deg, #34d399, #22d3ee); }
+    .selfie-banner .cell.s4 { background: linear-gradient(135deg, #fb7185, #fbbf24); }
+    .selfie-banner .cell.s5 { background: linear-gradient(135deg, #a78bfa, #ec4899); }
+    .selfie-banner .cell.s6 { background: linear-gradient(135deg, #60a5fa, #34d399); }
+    .selfie-banner .cell.s7 { background: linear-gradient(135deg, #fcd34d, #fb923c); }
+    .selfie-banner .cell.s8 { background: linear-gradient(135deg, #c084fc, #f472b6); }
+    .selfie-banner .cell.s9 { background: linear-gradient(135deg, #5eead4, #38bdf8); }
+    .selfie-banner .cell.s10 { background: linear-gradient(135deg, #fda4af, #fbbf24); }
+    .selfie-banner .cell.empty {
+      background: #1e293b;
+      display: grid; place-items: center;
+      color: #475569; font-size: 18px;
+    }
+    .selfie-banner .who-tag {
+      position: absolute; left: 6px; bottom: 6px;
+      background: rgba(0,0,0,.5); color: white;
+      font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 5px;
+    }
+    .selfie-meta {
+      background: rgba(255,255,255,.92); backdrop-filter: blur(4px);
+      padding: 12px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .selfie-meta .name { font-weight: 900; font-size: 16px; }
+    .selfie-meta .members { font-size: 11px; color: #64748b; font-weight: 700; margin-top: 2px; }
+    .selfie-meta .pct { background: #0f172a; color: white; font-size: 11px; font-weight: 900; padding: 5px 10px; border-radius: 999px; }
+
+    /* 인원 가변 데모 */
+    .variant-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin: 14px 0 24px; }
+    .variant-card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 14px; }
+    .variant-card .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .variant-card .top .ttl { font-weight: 900; font-size: 14px; }
+    .variant-card .top .tag { background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+    .variant-card .desc { font-size: 12px; color: #64748b; line-height: 1.6; margin-top: 10px; }
+
+    /* 줌아웃 스토리보드 */
+    .zoom-storyboard { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; align-items: center; margin: 20px 0 16px; }
+    .zoom-frame { background: white; border: 1px solid #e2e8f0; border-radius: 18px; overflow: hidden; }
+    .zoom-frame .frame-cap { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; }
+    .zoom-frame .step-name { font-size: 11px; color: #94a3b8; font-weight: 800; letter-spacing: 0.08em; }
+    .zoom-frame .step-title { font-weight: 900; font-size: 13px; margin-top: 2px; }
+    .zoom-frame .canvas {
+      aspect-ratio: 1/1;
+      background: #0f172a;
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Frame 1: one team big */
+    .frame-team-big {
+      width: 100%; height: 100%;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px;
+    }
+    .frame-team-big > div {
+      border-radius: 3px;
+    }
+
+    /* Frame 2: zooming out — that team shrinks, others appear at edges */
+    .frame-shrink {
+      width: 100%; height: 100%;
+      display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); gap: 2px;
+      transform: scale(1);
+    }
+    .frame-shrink > div { border-radius: 2px; }
+    .frame-shrink .focus { outline: 2px solid #facc15; outline-offset: 1px; border-radius: 3px; }
+
+    /* Frame 3: all teams visible */
+    .frame-all {
+      width: 100%; height: 100%;
+      display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); gap: 1px;
+    }
+    .frame-all > div { border-radius: 1px; }
+
+    /* Frame 4: full final */
+    .frame-final {
+      width: 100%; height: 100%;
+      display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(10, 1fr); gap: 1px;
+      position: relative;
+    }
+    .frame-final > div { border-radius: 1px; }
+    .frame-final::after {
+      content: "ALL TEAMS";
+      position: absolute; bottom: 8px; left: 0; right: 0;
+      text-align: center; color: white;
+      font-size: 10px; font-weight: 900; letter-spacing: 0.2em;
+      text-shadow: 0 0 4px rgba(0,0,0,.5);
+    }
+
+    .zoom-arrow {
+      display: grid; place-items: center;
+      font-size: 24px; color: #cbd5e1; font-weight: 900;
+    }
+
+    /* Section row for full-width content */
+    .full-row { max-width: 1100px; margin: 0 auto; }
+
+    /* ===== Crop demo ===== */
+    .crop-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; margin: 18px 0; }
+    .crop-card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; overflow: hidden; }
+    .crop-card .head-strip { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; }
+    .crop-card .num { font-size: 11px; color: #94a3b8; font-weight: 800; letter-spacing: 0.1em; }
+    .crop-card .meth { font-weight: 900; font-size: 13px; margin-top: 2px; line-height: 1.3; }
+    .crop-card .meth small { display: block; font-size: 11px; color: #64748b; font-weight: 600; margin-top: 2px; }
+    .crop-card .result-cell {
+      aspect-ratio: 1/1;
+      position: relative;
+      overflow: hidden;
+      background: #0f172a;
+    }
+    .crop-card .photo {
+      position: absolute;
+      width: 100%; height: 150%;
+      background:
+        radial-gradient(circle at 30% 28%, #fbbf24 0 13%, transparent 14%),
+        radial-gradient(circle at 30% 28%, transparent 13%, rgba(0,0,0,0.08) 14%, transparent 16%),
+        linear-gradient(170deg, #7dd3fc 0%, #fde68a 60%, #fb7185 100%);
+    }
+    /* simulate body / shoulders */
+    .crop-card .photo::after {
+      content: ""; position: absolute;
+      left: 18%; bottom: -2%; right: 18%; height: 28%;
+      background: linear-gradient(180deg, #1e3a8a 0%, #0f172a 100%);
+      border-radius: 50% 50% 0 0 / 36% 36% 0 0;
+    }
+    .crop-card .photo::before {
+      content: ""; position: absolute;
+      left: 22%; top: 20%; width: 16%; height: 16%;
+      background: rgba(255,255,255,.18);
+      border-radius: 999px;
+      filter: blur(2px);
+    }
+    /* Method 1: center crop — shows middle 1:1, face cut at top */
+    .crop-card.m1 .photo { top: -25%; }
+    /* Method 2: manual object-position — moved up to show face */
+    .crop-card.m2 .photo { top: 0; }
+    /* Method 3: face-detected smart crop — face is centered */
+    .crop-card.m3 .photo { top: -10%; transform: scale(1.05); transform-origin: 30% 28%; }
+    /* Method 4: user drag crop — similar to m2 but slightly different framing */
+    .crop-card.m4 .photo { top: -5%; }
+
+    .crop-card .frame-overlay {
+      position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+      pointer-events: none;
+    }
+    .crop-card.m3 .frame-overlay::after {
+      content: "FACE";
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid #facc15;
+      width: 50%; height: 50%;
+      box-sizing: border-box;
+      color: #facc15;
+      font-size: 9px; font-weight: 900; letter-spacing: 0.15em;
+      padding: 3px 6px;
+      display: flex; align-items: flex-end; justify-content: flex-start;
+    }
+    .crop-card.m4 .frame-overlay::after {
+      content: "";
+      position: absolute; left: 6%; top: 6%; right: 6%; bottom: 6%;
+      border: 2px dashed white;
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,.15);
+    }
+    .crop-card.m4 .frame-overlay::before {
+      content: "✋ 끌어서 위치 조정";
+      position: absolute;
+      left: 50%; bottom: 12px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.7);
+      color: white;
+      font-size: 9px; font-weight: 800;
+      padding: 4px 8px; border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .crop-card .desc-strip {
+      padding: 12px 14px;
+      font-size: 11px; color: #475569; line-height: 1.55;
+      border-top: 1px solid #f1f5f9;
+    }
+    .crop-card .pros { color: #047857; font-weight: 800; }
+    .crop-card .cons { color: #b45309; font-weight: 800; }
+    .crop-card .marker { font-size: 10px; padding: 2px 6px; border-radius: 999px; font-weight: 900; display: inline-block; }
+    .crop-card .marker.bad { background: #ffe4e6; color: #be123c; }
+    .crop-card .marker.ok { background: #fef3c7; color: #b45309; }
+    .crop-card .marker.good { background: #d1fae5; color: #047857; }
+    .crop-card .marker.best { background: #0f172a; color: white; }
+
+    .source-photo-row {
+      max-width: 700px; margin: 28px auto 12px;
+      background: white; border-radius: 20px; padding: 18px;
+      border: 1px solid #e2e8f0;
+      text-align: center;
+    }
+    .source-photo-row .photo-orig {
+      width: 200px; height: 300px; margin: 0 auto;
+      border-radius: 14px; position: relative; overflow: hidden;
+      background:
+        radial-gradient(circle at 30% 22%, #fbbf24 0 13%, transparent 14%),
+        linear-gradient(170deg, #7dd3fc 0%, #fde68a 60%, #fb7185 100%);
+      box-shadow: 0 6px 20px rgba(15,23,42,.12);
+    }
+    .source-photo-row .photo-orig::after {
+      content: ""; position: absolute;
+      left: 18%; bottom: -2%; right: 18%; height: 22%;
+      background: linear-gradient(180deg, #1e3a8a 0%, #0f172a 100%);
+      border-radius: 50% 50% 0 0 / 50% 50% 0 0;
+    }
+    .source-photo-row .photo-orig::before {
+      content: ""; position: absolute;
+      left: 22%; top: 14%; width: 16%; height: 12%;
+      background: rgba(255,255,255,.18);
+      border-radius: 999px;
+      filter: blur(2px);
+    }
+    .source-photo-row .lbl {
+      font-size: 11px; color: #94a3b8; font-weight: 800; letter-spacing: 0.08em; margin-top: 12px;
+    }
+    .source-photo-row .desc-line {
+      font-size: 13px; color: #475569; margin-top: 4px;
+    }
+
+    /* ===== Login / Event list ===== */
+    .login-hero { background: #0f172a; color: white; border-radius: 24px; padding: 28px 22px; margin-bottom: 14px; text-align: center; }
+    .login-hero .ic { font-size: 38px; margin-bottom: 14px; }
+    .login-hero h2 { margin: 0; font-size: 22px; letter-spacing: -0.03em; line-height: 1.25; }
+    .login-hero p { color: #94a3b8; font-size: 12px; margin: 10px 0 0; line-height: 1.6; }
+    .google-btn { width: 100%; background: white; color: #0f172a; border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 2px 6px rgba(15,23,42,.06); margin-bottom: 10px; }
+    .google-g { width: 18px; height: 18px; display: inline-grid; place-items: center; background: conic-gradient(from -45deg, #EA4335 0 25%, #FBBC04 25% 50%, #34A853 50% 75%, #4285F4 75% 100%); border-radius: 999px; position: relative; }
+    .google-g::after { content: ""; position: absolute; width: 8px; height: 8px; background: white; border-radius: 999px; }
+    .alt-link { display: block; text-align: center; color: #64748b; font-size: 11px; font-weight: 700; margin-top: 12px; line-height: 1.6; }
+
+    .account-bar { display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px; background: #f1f5f9; border-radius: 999px; margin-bottom: 14px; }
+    .account-bar .avatar { width: 32px; height: 32px; border-radius: 999px; background: linear-gradient(135deg, #fb7185, #fbbf24); flex: 0 0 auto; display:grid; place-items:center; color:white; font-weight:900; font-size:13px; }
+    .account-bar .acc-name { font-size: 12px; font-weight: 800; }
+    .account-bar .acc-em { font-size: 10px; color: #64748b; }
+    .account-bar .signout { margin-left: auto; color: #94a3b8; font-weight: 900; padding-right: 6px; }
+
+    .event-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .event-tabs button { background: #f1f5f9; color: #475569; border: 0; padding: 7px 12px; border-radius: 999px; font-weight: 800; font-size: 12px; cursor: pointer; }
+    .event-tabs button.on { background: #0f172a; color: white; }
+
+    .event-card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; overflow: hidden; margin-bottom: 10px; }
+    .event-card .thumb { height: 90px; position: relative; background: linear-gradient(135deg, #bae6fd, #bbf7d0); }
+    .event-card .thumb.t2 { background: linear-gradient(135deg, #fde68a, #fdba74); }
+    .event-card .thumb.t3 { background: linear-gradient(135deg, #ddd6fe, #fbcfe8); }
+    .event-card .live-badge { position: absolute; right: 10px; top: 10px; background: #ef4444; color: white; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 5px; }
+    .event-card .live-badge .d { width: 5px; height: 5px; background: white; border-radius: 999px; }
+    .event-card .body-row { padding: 12px 14px; }
+    .event-card .ev-ttl { font-weight: 900; font-size: 14px; }
+    .event-card .ev-meta { font-size: 11px; color: #64748b; margin-top: 4px; }
+
+    .new-event-btn { width: 100%; background: #0f172a; color: white; border: 0; border-radius: 16px; padding: 14px; font-weight: 900; font-size: 14px; margin-bottom: 14px; cursor: pointer; }
+
+    /* ===== QR ===== */
+    .qr-box { background: white; padding: 8px; border-radius: 12px; box-shadow: 0 4px 16px rgba(15,23,42,.08); }
+    .qr-pattern { width: 100%; height: 100%; background-image:
+      linear-gradient(#0f172a 100%, transparent 0),
+      linear-gradient(#0f172a 100%, transparent 0),
+      linear-gradient(#0f172a 100%, transparent 0),
+      linear-gradient(#0f172a 100%, transparent 0);
+    }
+    .qr-mock {
+      width: 100%; aspect-ratio: 1/1;
+      background:
+        radial-gradient(circle, #0f172a 1px, transparent 1.5px) 0 0 / 7% 7%,
+        white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+    .qr-mock::before, .qr-mock::after, .qr-mock > .br {
+      content: ""; position: absolute;
+      width: 22%; height: 22%;
+      border: 3px solid #0f172a;
+      background:
+        radial-gradient(circle at center, #0f172a 0 30%, transparent 31%);
+    }
+    .qr-mock::before { top: 6%; left: 6%; }
+    .qr-mock::after { top: 6%; right: 6%; }
+    .qr-mock > .br { bottom: 6%; left: 6%; top: auto; }
+    .qr-mock > .br::after { display: none; }
+
+    .qr-mini { width: 54px; height: 54px; flex: 0 0 auto; padding: 3px; background: white; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .qr-big-wrap { padding: 20px; background: white; border-radius: 20px; max-width: 280px; margin: 0 auto 14px; box-shadow: 0 10px 30px rgba(15,23,42,.08); }
+    .qr-url { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 11px; color: #475569; word-break: break-all; text-align: center; margin-top: 10px; padding: 6px 8px; background: #f8fafc; border-radius: 8px; }
+
+    .team-list-card { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 10px 12px; display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
+    .team-list-card .tnm { font-weight: 900; font-size: 14px; }
+    .team-list-card .tmeta { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .team-list-card .ta { display: flex; gap: 6px; margin-left: auto; }
+    .team-list-card .ta button { width: 32px; height: 32px; border-radius: 10px; background: #f1f5f9; border: 0; font-weight: 900; cursor: pointer; font-size: 13px; }
+
+    .share-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 14px 0; }
+    .share-buttons button { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 8px; font-weight: 800; font-size: 11px; cursor: pointer; text-align: center; line-height: 1.4; }
+    .share-buttons button .si { font-size: 22px; display: block; margin-bottom: 6px; }
+    .share-buttons button.primary { background: #0f172a; color: white; border-color: #0f172a; }
+
+    .print-sheet { background: white; border-radius: 12px; padding: 14px 12px; margin-bottom: 14px; border: 1px solid #e2e8f0; }
+    .print-sheet .sheet-title { font-weight: 900; font-size: 12px; text-align: center; margin-bottom: 10px; letter-spacing: -0.02em; }
+    .print-sheet .qr-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .print-sheet .qr-cell { text-align: center; padding: 6px; border: 1px dashed #e2e8f0; border-radius: 8px; }
+    .print-sheet .qr-cell .team-label { font-size: 10px; font-weight: 900; margin-top: 5px; }
+    .print-sheet .qr-cell .qr-mock { width: 60px; height: 60px; margin: 0 auto; }
+
+    /* ===== Export ===== */
+    .export-preview { background: #0f172a; border-radius: 18px; padding: 14px; margin-bottom: 14px; position: relative; }
+    .export-preview .ep-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+    .export-preview .ep-grid > div { aspect-ratio: 1/1; border-radius: 1px; }
+    .export-preview .ep-meta { display: flex; justify-content: space-between; align-items: center; color: white; padding-top: 6px; border-top: 1px solid #1e293b; }
+    .export-preview .ep-meta .lbl { font-size: 10px; color: #94a3b8; font-weight: 700; }
+    .export-preview .ep-meta .res { font-size: 13px; font-weight: 900; }
+    .export-preview .live-badge-mini { position: absolute; top: 10px; right: 10px; background: rgba(239,68,68,.18); color: #fca5a5; font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 999px; }
+
+    .lock-toggle { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer; }
+    .lock-toggle.on { background: #d1fae5; border-color: #10b981; }
+    .lock-toggle .ic { font-size: 18px; }
+    .lock-toggle .ltt { font-weight: 900; font-size: 13px; }
+    .lock-toggle .lts { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .lock-toggle.on .lts { color: #047857; }
+
+    .dl-card { background: white; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px 14px; display: flex; gap: 12px; align-items: center; cursor: pointer; margin-bottom: 8px; }
+    .dl-card.primary { background: #2563eb; color: white; border-color: #2563eb; }
+    .dl-card .ic { width: 40px; height: 40px; border-radius: 12px; background: #f1f5f9; display: grid; place-items: center; font-size: 18px; flex: 0 0 auto; }
+    .dl-card.primary .ic { background: rgba(255,255,255,.18); }
+    .dl-card .tt { font-weight: 900; font-size: 14px; }
+    .dl-card .ts { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .dl-card.primary .ts { color: #cbd5e1; }
+    .dl-card .arr { margin-left: auto; font-weight: 900; color: #cbd5e1; font-size: 18px; }
+    .dl-card.primary .arr { color: white; }
+
+    .retention-card { background: #fef3c7; border: 1px solid #fde68a; border-radius: 14px; padding: 12px 14px; font-size: 11px; color: #92400e; line-height: 1.7; }
+    .retention-card b { display: block; margin-bottom: 4px; font-size: 12px; }
+
+    .complete-hero { background: linear-gradient(160deg, #0f172a, #1e293b); color: white; border-radius: 20px; padding: 22px; text-align: center; margin-bottom: 12px; }
+    .complete-hero .ic { font-size: 40px; margin-bottom: 10px; }
+    .complete-hero h3 { margin: 0; font-size: 20px; letter-spacing: -0.02em; }
+    .complete-hero p { color: #94a3b8; font-size: 12px; margin: 8px 0 0; line-height: 1.6; }
+
+    /* ===== Public display ===== */
+    .display-frame { background: #020617; border-radius: 24px; padding: 14px; box-shadow: 0 30px 80px rgba(15,23,42,.35); margin: 14px auto 18px; }
+    .display-inner { background: #0f172a; border-radius: 14px; aspect-ratio: 16/9; position: relative; overflow: hidden; }
+    .display-head { position: absolute; top: 0; left: 0; right: 0; padding: 18px 26px; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+    .display-head .ev-tt { color: white; font-weight: 900; font-size: 22px; letter-spacing: -0.02em; }
+    .display-head .ev-st { color: #94a3b8; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; margin-top: 4px; }
+    .live-chip { display: inline-flex; align-items: center; gap: 6px; background: rgba(239,68,68,.16); color: #fca5a5; font-size: 11px; font-weight: 900; padding: 6px 11px; border-radius: 999px; letter-spacing: 0.1em; }
+    .live-chip .d { width: 6px; height: 6px; background: #ef4444; border-radius: 999px; box-shadow: 0 0 0 4px rgba(239,68,68,.22); }
+    .display-body { position: absolute; inset: 80px 26px 80px 26px; display: grid; place-items: center; }
+    .display-board-grid { display: grid; grid-template-columns: repeat(15, 1fr); gap: 2px; width: 100%; max-height: 100%; aspect-ratio: 15/9; }
+    .display-board-grid > div { aspect-ratio: 1/1; border-radius: 1px; }
+    .display-foot { position: absolute; bottom: 0; left: 0; right: 0; padding: 18px 26px; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+    .ds-stat .n { color: white; font-size: 24px; font-weight: 950; letter-spacing: -0.03em; }
+    .ds-stat .l { color: #94a3b8; font-size: 10px; font-weight: 700; margin-top: 2px; letter-spacing: 0.06em; }
+
+    .controller-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; max-width: 1100px; margin: 0 auto; }
+    .controller-card { background: white; border-radius: 18px; padding: 14px; border: 1px solid #e2e8f0; }
+    .controller-card h4 { margin: 0 0 4px; font-size: 14px; letter-spacing: -0.01em; }
+    .controller-card .sub { color: #64748b; font-size: 11px; margin-bottom: 12px; }
+    .ctrl-btn { width: 100%; background: #0f172a; color: white; border: 0; border-radius: 12px; padding: 12px; font-weight: 900; font-size: 13px; margin-bottom: 6px; cursor: pointer; }
+    .ctrl-btn.amber { background: #f59e0b; color: #78350f; }
+    .ctrl-btn.outline { background: white; color: #0f172a; border: 1px solid #e2e8f0; }
+    .ctrl-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .ctrl-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: #f8fafc; border-radius: 8px; font-size: 12px; font-weight: 700; }
+    .ctrl-row .p { font-size: 10px; color: #64748b; font-weight: 700; }
+
+    footer { padding: 30px; text-align: center; color: #94a3b8; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Photo Mission Board <small>· 화면 목업 갤러리</small></div>
+  <nav class="toc">
+    <a href="#scene-event-create">이벤트 생성</a>
+    <a href="#scene-place-edit">장소 편집</a>
+    <a href="#scene-team-flow">팀 참가자 흐름</a>
+    <a href="#scene-operator-live">운영자 Live</a>
+    <a href="#scene-selfie-zoom">셀카 배너 & 줌아웃</a>
+    <a href="#scene-crop-demo">크롭 비교</a>
+    <a href="#scene-login">운영자 로그인</a>
+    <a href="#scene-qr">팀 QR 발급</a>
+    <a href="#scene-export">Export</a>
+    <a href="#scene-public">공개 보드</a>
+  </nav>
+</header>
+
+<!-- ============================================================ -->
+<!-- SCENE 1 — 운영자 · 이벤트 생성 3단계 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-event-create">
+  <div class="label">SCENE 1 · OPERATOR · EVENT CREATION</div>
+  <h1>이벤트 생성 · 3단계 마법사</h1>
+  <div class="sub">기본 정보 → 장소·분배 → 미리보기. 모바일에서 한 손으로 끝납니다.</div>
+
+  <div class="phones">
+
+    <!-- STEP 1 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">새 이벤트</div>
+            <div class="back transparent">✕</div>
+          </div>
+        </div>
+        <div class="stepbar">
+          <div class="stepdot on"></div>
+          <div class="stepdot"></div>
+          <div class="stepdot"></div>
+        </div>
+        <div class="steplabel">STEP 1 / 3 · 기본 정보</div>
+        <div class="body">
+          <div class="section-title">이벤트</div>
+          <div class="field">
+            <div class="label">이벤트 제목</div>
+            <div class="value">2026 Vision Trip</div>
+          </div>
+          <div class="field">
+            <div class="label">행사 일정 (선택)</div>
+            <div class="value">2026.06.21 (토)</div>
+          </div>
+
+          <div class="section-title">콜라주 구조</div>
+          <div class="two-col">
+            <div class="field"><div class="label">가로 칸</div><div class="value">10</div></div>
+            <div class="field"><div class="label">세로 칸</div><div class="value">10</div></div>
+          </div>
+          <div class="field"><div class="label">참여 팀 수</div><div class="value">10팀</div></div>
+
+          <div class="calc-card">
+            <div class="calc-num">100칸</div>
+            <div class="calc-line">총 슬롯 · 자동 계산</div>
+            <div class="calc-formula">10 × 10 칸 = 100칸 ÷ 10팀 = <b>팀당 10장</b></div>
+          </div>
+        </div>
+        <div class="next-bar">
+          <button class="next-btn">다음 · 장소 설정 <span class="arrow">→</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">장소 · 분배</div>
+            <div class="back transparent">✕</div>
+          </div>
+        </div>
+        <div class="stepbar">
+          <div class="stepdot on"></div>
+          <div class="stepdot on"></div>
+          <div class="stepdot"></div>
+        </div>
+        <div class="steplabel">STEP 2 / 3 · 팀당 10장을 어떻게 채울까요?</div>
+        <div class="body">
+          <button class="add-btn">＋ 장소 추가</button>
+
+          <div class="place-card">
+            <div class="pc-row">
+              <div class="pc-icon" style="background:linear-gradient(135deg,#bae6fd,#bbf7d0)"></div>
+              <div style="flex:1;min-width:0;">
+                <div class="pc-name">경포 해변</div>
+                <div class="pc-meta">단체 셀카 인증 · 모든 팀원</div>
+                <div class="pc-tags">
+                  <span class="tag amber">팀당 4장</span>
+                  <span class="tag blue">📍 네이버지도</span>
+                </div>
+              </div>
+              <div class="pc-edit">✎</div>
+            </div>
+          </div>
+
+          <div class="place-card">
+            <div class="pc-row">
+              <div class="pc-icon" style="background:linear-gradient(135deg,#fde68a,#fdba74)"></div>
+              <div style="flex:1;min-width:0;">
+                <div class="pc-name">아르떼뮤지엄 강릉</div>
+                <div class="pc-meta">입장권과 함께 인증</div>
+                <div class="pc-tags">
+                  <span class="tag amber">팀당 3장</span>
+                  <span class="tag blue">📍 구글지도</span>
+                </div>
+              </div>
+              <div class="pc-edit">✎</div>
+            </div>
+          </div>
+
+          <div class="place-card">
+            <div class="pc-row">
+              <div class="pc-icon" style="background:linear-gradient(135deg,#ddd6fe,#fbcfe8)"></div>
+              <div style="flex:1;min-width:0;">
+                <div class="pc-name">허난설헌 공원</div>
+                <div class="pc-meta">팀원 3인 이상 함께</div>
+                <div class="pc-tags">
+                  <span class="tag amber">팀당 3장</span>
+                  <span class="tag blue">📍 다음지도</span>
+                </div>
+              </div>
+              <div class="pc-edit">✎</div>
+            </div>
+          </div>
+
+          <div class="check-card">
+            <span>팀당 분배 합계</span>
+            <span class="formula">4 + 3 + 3 = 10 ✓</span>
+          </div>
+
+          <div class="section-title" style="margin-top:14px;">검증 안내</div>
+          <div style="font-size:12px;color:#64748b;line-height:1.6;">
+            팀당 합계가 <b>10장</b> 이어야 다음 단계로 갈 수 있어요. 부족하면 장소를 추가하거나 장수를 늘리고, 넘치면 줄여주세요.
+          </div>
+        </div>
+        <div class="next-bar">
+          <button class="next-btn">다음 · 미리보기 <span class="arrow">→</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">미리보기</div>
+            <div class="back transparent">✕</div>
+          </div>
+        </div>
+        <div class="stepbar">
+          <div class="stepdot on"></div>
+          <div class="stepdot on"></div>
+          <div class="stepdot on"></div>
+        </div>
+        <div class="steplabel">STEP 3 / 3 · 만들기 직전 마지막 확인</div>
+        <div class="body">
+
+          <div class="summary-card">
+            <div class="title-row">이벤트</div>
+            <div class="ev-title">2026 Vision Trip</div>
+            <div class="ev-meta">10팀 · 100칸 · 3개 장소 · 2026.06.21</div>
+          </div>
+
+          <div class="breakdown">
+            <div class="bd-title">한 팀의 10장 구조</div>
+            <div class="bd-strip">
+              <div style="background:#0284c7; flex:4;">해변 4</div>
+              <div style="background:#d97706; flex:3;">뮤지엄 3</div>
+              <div style="background:#7c3aed; flex:3;">공원 3</div>
+            </div>
+            <div class="bd-legend">
+              <span><span class="leg-dot" style="background:#0284c7"></span>경포 해변</span>
+              <span><span class="leg-dot" style="background:#d97706"></span>아르떼뮤지엄</span>
+              <span><span class="leg-dot" style="background:#7c3aed"></span>허난설헌 공원</span>
+            </div>
+          </div>
+
+          <div class="bd-title" style="margin: 6px 0 6px; font-weight:900; font-size:13px;">최종 보드 (10 × 10)</div>
+          <div class="preview-grid" id="preview-grid">
+            <!-- 100 cells injected by JS to keep markup small -->
+          </div>
+
+          <div style="font-size:12px;color:#64748b;line-height:1.6;">
+            <b>만들기</b>를 누르면 팀 10개와 슬롯 100칸이 자동으로 만들어지고, 팀 링크·QR이 발급됩니다.
+          </div>
+        </div>
+        <div class="next-bar">
+          <button class="next-btn">✓ 이벤트 만들기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h3>이 화면에서 정해진 동작</h3>
+    <ul>
+      <li><b>STEP 1</b> — 그리드와 팀 수를 입력하면 "팀당 몇 장"이 자동 계산되어 큰 카드로 보임. 의도와 다르면 즉시 수정</li>
+      <li><b>STEP 2</b> — 장소는 자유 추가. 합계가 팀당 정원과 맞지 않으면 다음 단계로 못 넘어감</li>
+      <li><b>STEP 3</b> — 한 팀의 분배(색띠) + 전체 콜라주(빈 칸) 미리보기 → 만들기 누르면 팀과 슬롯이 자동 생성</li>
+      <li>장소·팀당 장수·그리드 크기는 이벤트 생성 후에도 <b>참가자 업로드가 시작되기 전까지는 수정 가능</b>. 업로드 시작 후엔 잠금</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 2 — 운영자 · 장소 편집 풀스크린 모달 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-place-edit">
+  <div class="label">SCENE 2 · OPERATOR · PLACE EDIT MODAL</div>
+  <h1>장소 편집 · 풀스크린 모달</h1>
+  <div class="sub">STEP 2의 ✎ 또는 ＋ 장소 추가를 누르면 풀스크린으로 떠서 한 장소의 모든 정보를 한 번에 입력.</div>
+
+  <div class="phones">
+
+    <!-- 새 장소 추가 (빈 상태) -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">✕</div>
+            <div class="ptitle">새 장소</div>
+            <div class="save-btn" style="opacity:.4;">저장</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="section-title">대표 이미지</div>
+          <div class="upload-zone">＋ 사진 추가 또는 드래그</div>
+
+          <div class="section-title">기본 정보</div>
+          <div class="field">
+            <div class="label">장소 이름 *</div>
+            <div class="value placeholder">예: 경포 해변</div>
+          </div>
+          <div class="field">
+            <div class="label">설명 (선택)</div>
+            <div class="value placeholder">참가자 화면에 함께 표시됨</div>
+          </div>
+          <div class="field">
+            <div class="label">인증 조건 (선택)</div>
+            <div class="value placeholder">예: 모든 팀원 함께 / 입장권 인증</div>
+          </div>
+
+          <div class="section-title">팀당 사진 수 *</div>
+          <div class="field">
+            <div class="input-line" style="justify-content:space-between;">
+              <span class="value placeholder">몇 장 찍어 올릴까요?</span>
+              <div class="stepper">
+                <button>−</button>
+                <span class="num">0</span>
+                <button>+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">지도 링크 (선택)</div>
+          <div class="seg" style="margin-bottom:10px;">
+            <button class="on">네이버지도</button>
+            <button>카카오맵</button>
+            <button>구글지도</button>
+          </div>
+          <div class="field">
+            <div class="label">지도 URL</div>
+            <div class="value placeholder">https://naver.me/...</div>
+          </div>
+        </div>
+        <div class="next-bar">
+          <button class="next-btn" style="opacity:.5;">저장 (이름·장수 필수)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 기존 장소 편집 (채워진 상태) -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">✕</div>
+            <div class="ptitle">장소 편집</div>
+            <div class="save-btn">저장</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="section-title">대표 이미지</div>
+          <div class="upload-zone has-image">
+            <span class="change-btn">사진 바꾸기</span>
+          </div>
+
+          <div class="section-title">기본 정보</div>
+          <div class="field">
+            <div class="label">장소 이름 *</div>
+            <div class="value">경포 해변</div>
+          </div>
+          <div class="field">
+            <div class="label">설명</div>
+            <div class="value">강릉의 대표 해변. 단체 셀카와 점프샷을 함께 남겨주세요.</div>
+          </div>
+          <div class="field">
+            <div class="label">인증 조건</div>
+            <div class="value">모든 팀원이 함께 단체 셀카</div>
+          </div>
+
+          <div class="section-title">팀당 사진 수 *</div>
+          <div class="field">
+            <div class="input-line" style="justify-content:space-between;">
+              <span class="value">팀당 사진 수</span>
+              <div class="stepper">
+                <button>−</button>
+                <span class="num">4</span>
+                <button>+</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-title">지도 링크</div>
+          <div class="seg" style="margin-bottom:10px;">
+            <button class="on">네이버지도</button>
+            <button>카카오맵</button>
+            <button>구글지도</button>
+          </div>
+          <div class="map-preview">
+            <span class="pin">📍</span>
+            <div class="url">https://naver.me/5xK2pQa3</div>
+          </div>
+
+          <button class="danger-btn">🗑 이 장소 삭제</button>
+        </div>
+        <div class="next-bar">
+          <button class="next-btn">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h3>이 모달에서 정해진 동작</h3>
+    <ul>
+      <li><b>풀스크린 모달</b> — 운영자가 작은 화면에서도 여유롭게 입력. 닫기(✕)는 항상 좌측 상단</li>
+      <li><b>필수 항목은 이름과 팀당 사진 수만</b> — 나머지는 선택. 필수 미입력 시 저장 버튼 비활성</li>
+      <li><b>지도 링크</b> — 네이버/카카오/구글 중 하나 선택 후 URL 붙여넣기. 미리보기는 단순 핀 + URL 표시 (실제 지도 임베드는 v2)</li>
+      <li><b>대표 이미지</b> — 1장만. 참가자 업로드 화면에서 "어떤 사진을 찍어야 할지" 가이드로 보임</li>
+      <li><b>삭제</b> — 이미 사진이 올라와 있는 장소는 삭제 시도 시 경고 다이얼로그 (사진 함께 삭제됨 안내)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 3 — 팀 참가자 흐름 (모바일) -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-team-flow">
+  <div class="label">SCENE 3 · TEAM PARTICIPANT · MOBILE FLOW</div>
+  <h1>팀 참가자 흐름 · 입장 → 슬롯 → 업로드</h1>
+  <div class="sub">팀원이 받은 링크로 들어와서 사진을 올리는 흐름. 한 팀의 여러 명이 동시에 같은 링크로 접속해 같이 채워나갑니다.</div>
+
+  <div class="phones">
+
+    <!-- 입장 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div style="font-weight:900;font-size:11px;color:#64748b;letter-spacing:.04em;">PHOTO MISSION BOARD</div>
+            <div class="back transparent">···</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="welcome-hero">
+            <div class="welcome-eyebrow">팀 입장 · 링크로 자동 인식</div>
+            <div class="team-avatar">🌊</div>
+            <div class="team-name-big">1팀 · 바다팀</div>
+            <div class="team-event">2026 Vision Trip · 2026.06.21</div>
+
+            <div class="welcome-stats">
+              <div class="welcome-stat">
+                <div class="n">10장</div>
+                <div class="l">우리 팀 사진</div>
+              </div>
+              <div class="welcome-stat">
+                <div class="n">3곳</div>
+                <div class="l">가야 할 장소</div>
+              </div>
+              <div class="welcome-stat">
+                <div class="n">10명</div>
+                <div class="l">함께</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="start-btn">함께 시작하기 →</button>
+
+          <div class="help-card">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div class="ic">📱</div>
+              <div>
+                <b style="font-size:14px;">팀원 모두 같은 링크</b>
+                <div style="font-size:12px;color:#64748b;margin-top:4px;line-height:1.6;">
+                  이 화면에 들어오신 분 모두가 사진을 올리고 볼 수 있어요. 카톡으로 팀원에게 이 페이지 공유하세요.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="help-card">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div class="ic">🎯</div>
+              <div>
+                <b style="font-size:14px;">우리 팀만의 공간</b>
+                <div style="font-size:12px;color:#64748b;margin-top:4px;line-height:1.6;">
+                  다른 팀이 올린 사진은 보이지 않아요. 행사가 끝나면 운영자가 큰 화면에서 모두 함께 공개합니다.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 팀 홈 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div>
+              <div style="font-size:11px;color:#64748b;font-weight:800;">1팀 · 바다팀</div>
+              <div class="ptitle">우리 팀의 장소</div>
+            </div>
+            <div class="back transparent">···</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="team-progress-card">
+            <div class="tp-row">
+              <span class="tp-team">전체 진행률</span>
+              <span class="tp-pct">50%</span>
+            </div>
+            <div class="tp-track">
+              <div class="tp-fill" style="width:50%;"></div>
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:#cbd5e1;">10장 중 5장 업로드 · 대표 5장 선택됨</div>
+          </div>
+
+          <div class="members-bar">
+            <span class="ic">👥</span>
+            <span class="txt">함께 있는 팀원 4명</span>
+            <div class="who-list">
+              <div class="who-dot" style="background:#38bdf8"></div>
+              <div class="who-dot" style="background:#f97316"></div>
+              <div class="who-dot" style="background:#a855f7"></div>
+              <div class="who-dot" style="background:#84cc16"></div>
+            </div>
+          </div>
+
+          <!-- 완료된 장소 -->
+          <div class="slot-card">
+            <div class="slot-banner b1 done"></div>
+            <div class="slot-body">
+              <div class="slot-row">
+                <div>
+                  <div class="slot-name">경포 해변</div>
+                  <div class="slot-meta">단체 셀카 인증</div>
+                </div>
+                <div class="slot-arrow">›</div>
+              </div>
+              <div class="slot-progress">
+                <div class="slot-dot rep"></div>
+                <div class="slot-dot filled"></div>
+                <div class="slot-dot filled"></div>
+                <div class="slot-dot filled"></div>
+                <span class="slot-count">4/4 · 완료</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 진행 중 -->
+          <div class="slot-card">
+            <div class="slot-banner b2"></div>
+            <div class="slot-body">
+              <div class="slot-row">
+                <div>
+                  <div class="slot-name">아르떼뮤지엄</div>
+                  <div class="slot-meta">입장권과 함께</div>
+                </div>
+                <div class="slot-arrow">›</div>
+              </div>
+              <div class="slot-progress">
+                <div class="slot-dot rep"></div>
+                <div class="slot-dot"></div>
+                <div class="slot-dot"></div>
+                <span class="slot-count">1/3</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 미시작 -->
+          <div class="slot-card">
+            <div class="slot-banner b3"></div>
+            <div class="slot-body">
+              <div class="slot-row">
+                <div>
+                  <div class="slot-name">허난설헌 공원</div>
+                  <div class="slot-meta">팀원 3인 이상 함께</div>
+                </div>
+                <div class="slot-arrow">›</div>
+              </div>
+              <div class="slot-progress">
+                <div class="slot-dot"></div>
+                <div class="slot-dot"></div>
+                <div class="slot-dot"></div>
+                <span class="slot-count">0/3</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 장소 상세 / 업로드 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">아르떼뮤지엄</div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="detail-banner" style="background:linear-gradient(135deg,#fde68a,#fdba74);">
+            <span class="place-pill">팀당 3장</span>
+          </div>
+
+          <div class="detail-info">
+            <div class="desc">
+              아르떼뮤지엄 강릉. 빛과 영상이 가득한 몰입형 미디어 아트 전시관.
+            </div>
+            <div class="verify">📌 인증: 입장권과 함께 사진</div>
+          </div>
+
+          <button class="map-btn">📍 구글지도로 위치 보기</button>
+
+          <div class="progress-bar">
+            <div class="row">
+              <div>
+                <div class="pb-label">진행 상황</div>
+                <div class="pb-meta">3장 필요 · 1장 업로드 · 대표 1장 선택됨</div>
+              </div>
+              <div style="font-size:18px;font-weight:950;">1/3</div>
+            </div>
+            <div class="pb-track"><div class="pb-fill" style="width:33%;"></div></div>
+          </div>
+
+          <div class="photo-grid">
+            <div class="photo-cell p1">
+              <span class="star">★</span>
+              <span class="who">민지</span>
+            </div>
+            <div class="photo-cell empty">＋</div>
+            <div class="photo-cell empty">＋</div>
+            <div class="photo-cell empty" style="visibility:hidden;"></div>
+          </div>
+
+          <button class="upload-bigbtn">📷 카메라로 찍어 올리기</button>
+          <button class="upload-secondary">갤러리에서 선택</button>
+
+          <div style="font-size:11px;color:#64748b;text-align:center;margin-top:12px;line-height:1.6;">
+            여러 장 올리고 마음에 드는 한 장에 ★ 표시하면<br>그 사진이 우리 팀 콜라주에 들어가요.
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h3>이 흐름에서 정해진 동작</h3>
+    <ul>
+      <li><b>링크로 자동 인식</b> — 운영자가 보낸 팀 링크에는 토큰이 들어있어, 로그인 없이도 바로 우리 팀으로 인식</li>
+      <li><b>여러 팀원이 같은 링크 공유</b> — 10명이 같은 URL을 카톡에 받아 들어오면 모두 같이 보고 같이 올림. 실시간으로 다른 팀원이 올린 게 즉시 반영</li>
+      <li><b>슬롯 진행 dots</b> — 노란 점(★)은 대표, 검은 점은 일반 업로드, 빈 점은 아직 안 올라옴</li>
+      <li><b>장소 상세의 ★</b> — 사진 셀의 별을 탭하면 그 사진이 대표가 됨. 한 슬롯에 ★는 항상 1개만</li>
+      <li><b>여러 장 업로드 가능</b> — 슬롯 정원(3장)을 넘어도 추가 가능. 대표 1장만 콜라주에 들어가고 나머지는 ZIP 보관용</li>
+      <li><b>다른 팀 사진은 안 보임</b> — 우리 팀 공간은 우리 팀만. 최종 공개는 행사장 빅스크린(공개 보드)에서만 일제히</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 4 — 운영자 Live 모니터링 / 보드 / 검수 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-operator-live">
+  <div class="label">SCENE 4 · OPERATOR · LIVE MONITORING</div>
+  <h1>운영자 Live · Overview → 보드 → 슬롯 검수</h1>
+  <div class="sub">행사 진행 중 운영자가 휴대폰으로 가장 자주 보게 될 세 화면. 하단 탭으로 빠르게 전환.</div>
+
+  <div class="phones">
+
+    <!-- Overview -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div>
+              <div style="font-size:11px;color:#64748b;font-weight:800;">2026 Vision Trip</div>
+              <div class="live-head">
+                <span class="live-dot"></span>
+                <span class="live-text">LIVE</span>
+                <span class="ptitle" style="margin-left:6px;">Overview</span>
+              </div>
+            </div>
+            <div class="back transparent">···</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="stat-grid">
+            <div class="stat-tile dark">
+              <div class="lab">전체 진행률</div>
+              <div class="n">72%</div>
+            </div>
+            <div class="stat-tile alert">
+              <div class="lab">미확인 슬롯</div>
+              <div class="n">6</div>
+            </div>
+            <div class="stat-tile">
+              <div class="lab">총 제출 사진</div>
+              <div class="n">47</div>
+            </div>
+            <div class="stat-tile">
+              <div class="lab">활동 중 팀</div>
+              <div class="n">8 / 10</div>
+            </div>
+          </div>
+
+          <div class="section-title">팀별 진행률</div>
+          <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding:14px;margin-bottom:14px;">
+            <div class="team-row"><span class="dot" style="background:#0284c7"></span><span class="nm">1팀 바다</span><div class="bar"><div style="width:100%"></div></div><span class="pct">100%</span></div>
+            <div class="team-row"><span class="dot" style="background:#7c3aed"></span><span class="nm">2팀 라벤더</span><div class="bar"><div style="width:90%"></div></div><span class="pct">90%</span></div>
+            <div class="team-row"><span class="dot" style="background:#d97706"></span><span class="nm">3팀 단풍</span><div class="bar"><div style="width:80%"></div></div><span class="pct">80%</span></div>
+            <div class="team-row"><span class="dot" style="background:#16a34a"></span><span class="nm">4팀 소나무</span><div class="bar"><div style="width:70%"></div></div><span class="pct">70%</span></div>
+            <div class="team-row"><span class="dot" style="background:#db2777"></span><span class="nm">5팀 동백</span><div class="bar"><div style="width:60%"></div></div><span class="pct">60%</span></div>
+            <div class="team-row" style="margin-bottom:0"><span class="dot" style="background:#0891b2"></span><span class="nm">6팀 파도</span><div class="bar"><div style="width:50%"></div></div><span class="pct">50%</span></div>
+          </div>
+
+          <div class="section-title">최근 업로드</div>
+          <div style="background:white;border:1px solid #e2e8f0;border-radius:14px;padding: 4px 14px;">
+            <div class="upload-stream-item">
+              <div class="stream-thumb" style="background:linear-gradient(135deg,#bae6fd,#bbf7d0)"></div>
+              <div class="stream-meta">
+                <div class="stream-name">3팀 단풍 · 아르떼뮤지엄</div>
+                <div class="stream-sub">민지가 올림 · 대표 변경됨</div>
+              </div>
+              <div class="stream-time">방금</div>
+            </div>
+            <div class="upload-stream-item">
+              <div class="stream-thumb" style="background:linear-gradient(135deg,#fde68a,#fdba74)"></div>
+              <div class="stream-meta">
+                <div class="stream-name">1팀 바다 · 허난설헌 공원</div>
+                <div class="stream-sub">현우가 올림</div>
+              </div>
+              <div class="stream-time">2분</div>
+            </div>
+            <div class="upload-stream-item">
+              <div class="stream-thumb" style="background:linear-gradient(135deg,#ddd6fe,#fbcfe8)"></div>
+              <div class="stream-meta">
+                <div class="stream-name">5팀 동백 · 경포 해변</div>
+                <div class="stream-sub">지영이 올림</div>
+              </div>
+              <div class="stream-time">3분</div>
+            </div>
+            <div class="upload-stream-item">
+              <div class="stream-thumb" style="background:linear-gradient(135deg,#c7d2fe,#a7f3d0)"></div>
+              <div class="stream-meta">
+                <div class="stream-name">2팀 라벤더 · 아르떼뮤지엄</div>
+                <div class="stream-sub">서연이 올림</div>
+              </div>
+              <div class="stream-time">5분</div>
+            </div>
+          </div>
+
+        </div>
+        <div class="phone-nav">
+          <button class="on"><span class="nico">📊</span>Overview</button>
+          <button><span class="nico">▦</span>보드</button>
+          <button><span class="nico">✓</span>검수</button>
+          <button><span class="nico">⬇</span>Export</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live 보드 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div>
+              <div style="font-size:11px;color:#64748b;font-weight:800;">2026 Vision Trip</div>
+              <div class="live-head">
+                <span class="live-dot"></span>
+                <span class="live-text">LIVE</span>
+                <span class="ptitle" style="margin-left:6px;">보드</span>
+              </div>
+            </div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="layout-toggle">
+            <button class="on">랜덤 셔플</button>
+            <button>팀별 그룹</button>
+            <button>미확인 강조</button>
+          </div>
+
+          <div class="live-board" id="live-board"></div>
+
+          <div class="legend-strip">
+            <span class="lg"><span class="sq" style="background:linear-gradient(135deg,#bfdbfe,#bbf7d0)"></span>대표 사진</span>
+            <span class="lg"><span class="sq" style="background:white;border:1px solid #cbd5e1"></span>빈 칸</span>
+            <span class="lg"><span class="sq" style="background:#fef3c7;border:1px solid #fde68a;position:relative"><span style="position:absolute;right:-3px;top:-3px;width:5px;height:5px;background:#f59e0b;border-radius:999px"></span></span>미확인</span>
+          </div>
+
+          <div class="stat-grid" style="margin-bottom:10px;">
+            <div class="stat-tile" style="padding:10px 12px;">
+              <div class="lab">채움률</div>
+              <div class="n" style="font-size:22px;">47/100</div>
+            </div>
+            <div class="stat-tile alert" style="padding:10px 12px;">
+              <div class="lab">미확인</div>
+              <div class="n" style="font-size:22px;">6</div>
+            </div>
+          </div>
+
+          <div class="toolrow">
+            <button>↻ 다시 셔플</button>
+            <button class="primary">미확인 슬롯 → 검수</button>
+          </div>
+
+        </div>
+        <div class="phone-nav">
+          <button><span class="nico">📊</span>Overview</button>
+          <button class="on"><span class="nico">▦</span>보드</button>
+          <button><span class="nico">✓</span>검수</button>
+          <button><span class="nico">⬇</span>Export</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 슬롯 검수 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">슬롯 검수</div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="review-bar">
+            <div>
+              <div class="review-progress">3팀 단풍 · 아르떼뮤지엄</div>
+              <div class="review-progress small">슬롯 12 / 24 · 미확인 중 6개</div>
+            </div>
+            <div class="navs">
+              <button>‹</button>
+              <button>›</button>
+            </div>
+          </div>
+
+          <div class="progress-bar" style="margin-bottom:10px;">
+            <div class="row">
+              <div>
+                <div class="pb-label">제출 현황</div>
+                <div class="pb-meta">3장 필요 · 4장 올라옴 · 대표 1장</div>
+              </div>
+              <div style="font-size:18px;font-weight:950;">3/3 ✓</div>
+            </div>
+          </div>
+
+          <div class="section-title">올라온 사진 (대표 변경 가능)</div>
+          <div class="review-photo-grid">
+            <div class="review-photo r1 is-rep">
+              <span class="menu">⋮</span>
+              <span class="star-toggle">★</span>
+              <span class="who">민지 · 방금</span>
+            </div>
+            <div class="review-photo r2">
+              <span class="menu">⋮</span>
+              <span class="star-toggle">☆</span>
+              <span class="who">현우 · 2분</span>
+            </div>
+            <div class="review-photo r3">
+              <span class="menu">⋮</span>
+              <span class="star-toggle">☆</span>
+              <span class="who">서연 · 5분</span>
+            </div>
+            <div class="review-photo r1">
+              <span class="menu">⋮</span>
+              <span class="star-toggle">☆</span>
+              <span class="who">지호 · 7분</span>
+            </div>
+          </div>
+
+          <div class="confirm-toggle on">
+            <div class="check-box">✓</div>
+            <div class="label">
+              <b>이 슬롯 확인 완료</b>
+              <small>다시 누르면 미확인으로 돌릴 수 있어요</small>
+            </div>
+          </div>
+
+          <div class="toolrow">
+            <button>‹ 이전</button>
+            <button class="primary">다음 미확인 →</button>
+          </div>
+
+        </div>
+        <div class="phone-nav">
+          <button><span class="nico">📊</span>Overview</button>
+          <button><span class="nico">▦</span>보드</button>
+          <button class="on"><span class="nico">✓</span>검수</button>
+          <button><span class="nico">⬇</span>Export</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h3>이 흐름에서 정해진 동작</h3>
+    <ul>
+      <li><b>실시간 반영</b> — 팀이 사진을 올리거나 대표를 바꾸면 Overview의 진행률·최근 업로드, 보드의 셀, 검수 화면의 사진까지 즉시 업데이트 (Firestore 구독)</li>
+      <li><b>레이아웃 토글</b> — 보드에서 "랜덤 셔플 / 팀별 그룹 / 미확인 강조" 3개 모드 전환. <b>미확인 강조</b> 모드는 미확인 슬롯만 노란 점으로 부각 — 운영자가 한눈에 어디부터 봐야 할지 파악</li>
+      <li><b>검수 한 슬롯씩</b> — 슬롯에 들어가면 그 슬롯에 올라온 사진들 모두 보임 (대표는 ★). 운영자가 ★를 다른 사진으로 옮길 수 있음. "확인 완료" 토글 한 번 → 다음 미확인 슬롯으로 자동 이동</li>
+      <li><b>탭 4개 모두 같은 이벤트 컨텍스트</b> — Overview / 보드 / 검수 / Export는 한 이벤트 안에서 빠른 전환. 다른 이벤트로 가려면 상단 ··· 메뉴에서</li>
+      <li><b>다시 셔플</b> — 보드에서 ↻ 누르면 콜라주 배치만 다시 섞임 (이미 올라온 사진은 그대로). Export 전에 마음에 드는 배치를 골라 잠금 가능</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 5 — 셀카 콜라주 배너 + 인원 가변 + 줌아웃 연출 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-selfie-zoom">
+  <div class="label">SCENE 5 · TEAM SELFIE COLLAGE & ZOOM-OUT</div>
+  <h1>셀카 배너 & 줌아웃 연출</h1>
+  <div class="sub">팀원 모두가 셀카를 올리면 팀 홈 상단에 큰 배너로 들어가고, 마지막에 모든 팀이 합쳐지는 연출까지.</div>
+
+  <!-- (1) 큰 배너가 들어간 팀 홈 -->
+  <div class="phones">
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div>
+              <div style="font-size:11px;color:#64748b;font-weight:800;">1팀 · 바다팀</div>
+              <div class="ptitle">우리 팀의 장소</div>
+            </div>
+            <div class="back transparent">···</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <!-- 큰 셀카 배너 -->
+          <div class="selfie-banner">
+            <div class="label-strip">
+              <span class="live-dot"></span>
+              <span>우리 팀 · 6명 함께</span>
+            </div>
+            <div class="grid" style="grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr);">
+              <div class="cell s1"><div class="who-tag">민지</div></div>
+              <div class="cell s2"><div class="who-tag">현우</div></div>
+              <div class="cell s3"><div class="who-tag">서연</div></div>
+              <div class="cell s4"><div class="who-tag">지호</div></div>
+              <div class="cell s5"><div class="who-tag">지영</div></div>
+              <div class="cell s6"><div class="who-tag">민준</div></div>
+            </div>
+            <div class="selfie-meta">
+              <div>
+                <div class="name">1팀 · 바다팀</div>
+                <div class="members">6명 모두 셀카 완료</div>
+              </div>
+              <div class="pct">100%</div>
+            </div>
+          </div>
+
+          <div class="team-progress-card">
+            <div class="tp-row">
+              <span class="tp-team">미션 진행률</span>
+              <span class="tp-pct">50%</span>
+            </div>
+            <div class="tp-track">
+              <div class="tp-fill" style="width:50%;"></div>
+            </div>
+            <div style="margin-top:10px;font-size:12px;color:#cbd5e1;">10장 중 5장 업로드 · 대표 5장 선택됨</div>
+          </div>
+
+          <div class="slot-card">
+            <div class="slot-banner b1 done"></div>
+            <div class="slot-body">
+              <div class="slot-row">
+                <div>
+                  <div class="slot-name">경포 해변</div>
+                  <div class="slot-meta">단체 셀카 인증</div>
+                </div>
+                <div class="slot-arrow">›</div>
+              </div>
+              <div class="slot-progress">
+                <div class="slot-dot rep"></div>
+                <div class="slot-dot filled"></div>
+                <div class="slot-dot filled"></div>
+                <div class="slot-dot filled"></div>
+                <span class="slot-count">4/4 · 완료</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="slot-card">
+            <div class="slot-banner b2"></div>
+            <div class="slot-body">
+              <div class="slot-row">
+                <div>
+                  <div class="slot-name">아르떼뮤지엄</div>
+                  <div class="slot-meta">입장권과 함께</div>
+                </div>
+                <div class="slot-arrow">›</div>
+              </div>
+              <div class="slot-progress">
+                <div class="slot-dot rep"></div>
+                <div class="slot-dot"></div>
+                <div class="slot-dot"></div>
+                <span class="slot-count">1/3</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- (2) 인원 가변 그리드 데모 -->
+  <div class="full-row">
+    <h3 style="margin: 20px 0 6px; font-size: 17px; letter-spacing:-0.02em;">팀원 인원이 다를 때 — 자동 그리드</h3>
+    <p style="color:#64748b; font-size: 14px; margin: 0 0 4px;">셀카 수에 맞춰 그리드가 자동 결정됩니다. 모자란 칸은 어두운 팀 컬러로 채워서 빈 자리도 디자인의 일부.</p>
+
+    <div class="variant-row">
+      <div class="variant-card">
+        <div class="top">
+          <div class="ttl">4명 팀</div>
+          <span class="tag">2 × 2</span>
+        </div>
+        <div class="selfie-banner" style="margin-bottom:0;">
+          <div class="grid" style="grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr);">
+            <div class="cell s1"></div>
+            <div class="cell s2"></div>
+            <div class="cell s3"></div>
+            <div class="cell s4"></div>
+          </div>
+        </div>
+        <div class="desc">사진 적어도 꽉 차 보이는 정사각 구성. 가장 안정적.</div>
+      </div>
+
+      <div class="variant-card">
+        <div class="top">
+          <div class="ttl">6명 팀</div>
+          <span class="tag">3 × 2</span>
+        </div>
+        <div class="selfie-banner" style="margin-bottom:0;">
+          <div class="grid" style="grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); aspect-ratio: 3/2;">
+            <div class="cell s1"></div>
+            <div class="cell s2"></div>
+            <div class="cell s3"></div>
+            <div class="cell s4"></div>
+            <div class="cell s5"></div>
+            <div class="cell s6"></div>
+          </div>
+        </div>
+        <div class="desc">중간 크기 팀. 가로로 길어지는 와이드 배너.</div>
+      </div>
+
+      <div class="variant-card">
+        <div class="top">
+          <div class="ttl">10명 팀</div>
+          <span class="tag">5 × 2</span>
+        </div>
+        <div class="selfie-banner" style="margin-bottom:0;">
+          <div class="grid" style="grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(2, 1fr); aspect-ratio: 5/2;">
+            <div class="cell s1"></div>
+            <div class="cell s2"></div>
+            <div class="cell s3"></div>
+            <div class="cell s4"></div>
+            <div class="cell s5"></div>
+            <div class="cell s6"></div>
+            <div class="cell s7"></div>
+            <div class="cell s8"></div>
+            <div class="cell s9"></div>
+            <div class="cell s10"></div>
+          </div>
+        </div>
+        <div class="desc">대형 팀. 길쭉한 띠 형태가 자연스러움.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- (3) 줌아웃 스토리보드 -->
+  <div class="full-row">
+    <h3 style="margin: 20px 0 6px; font-size: 17px; letter-spacing:-0.02em;">한 팀 → 전체 팀 · 줌아웃 연출 (4프레임)</h3>
+    <p style="color:#64748b; font-size: 14px; margin: 0 0 4px;">행사 마지막 빔프로젝터에서 운영자가 키를 누르면 시작. 한 팀의 모습이 점점 작아지면서 모든 팀의 콜라주가 같은 화면에 나타나는 연출.</p>
+
+    <div class="zoom-storyboard">
+      <!-- Frame 1 -->
+      <div class="zoom-frame">
+        <div class="frame-cap">
+          <div class="step-name">FRAME 1</div>
+          <div class="step-title">한 팀 클로즈업</div>
+        </div>
+        <div class="canvas">
+          <div class="frame-team-big">
+            <div style="background:linear-gradient(135deg,#38bdf8,#818cf8)"></div>
+            <div style="background:linear-gradient(135deg,#f472b6,#f59e0b)"></div>
+            <div style="background:linear-gradient(135deg,#34d399,#22d3ee)"></div>
+            <div style="background:linear-gradient(135deg,#fb7185,#fbbf24)"></div>
+            <div style="background:linear-gradient(135deg,#a78bfa,#ec4899)"></div>
+            <div style="background:linear-gradient(135deg,#60a5fa,#34d399)"></div>
+            <div style="background:linear-gradient(135deg,#fcd34d,#fb923c)"></div>
+            <div style="background:linear-gradient(135deg,#c084fc,#f472b6)"></div>
+            <div style="background:linear-gradient(135deg,#5eead4,#38bdf8)"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Frame 2 -->
+      <div class="zoom-frame">
+        <div class="frame-cap">
+          <div class="step-name">FRAME 2</div>
+          <div class="step-title">줌아웃 시작</div>
+        </div>
+        <div class="canvas">
+          <div class="frame-shrink" id="frame-shrink"></div>
+        </div>
+      </div>
+
+      <!-- Frame 3 -->
+      <div class="zoom-frame">
+        <div class="frame-cap">
+          <div class="step-name">FRAME 3</div>
+          <div class="step-title">전체 팀 등장</div>
+        </div>
+        <div class="canvas">
+          <div class="frame-all" id="frame-all"></div>
+        </div>
+      </div>
+
+      <!-- Frame 4 -->
+      <div class="zoom-frame">
+        <div class="frame-cap">
+          <div class="step-name">FRAME 4</div>
+          <div class="step-title">전체 콜라주 완성</div>
+        </div>
+        <div class="canvas">
+          <div class="frame-final" id="frame-final"></div>
+        </div>
+      </div>
+    </div>
+
+    <p style="color:#64748b; font-size: 13px; margin: 16px 0 0; text-align:center; font-weight:600;">
+      ⟶ 시간 흐름은 약 2~3초. CSS <code style="background:#f1f5f9;padding:2px 6px;border-radius:6px;">transform: scale()</code>과 <code style="background:#f1f5f9;padding:2px 6px;border-radius:6px;">grid-template-columns</code> 보간으로 부드럽게 처리.
+    </p>
+  </div>
+
+  <div class="notes">
+    <h3>이 흐름에서 정해진 동작</h3>
+    <ul>
+      <li><b>운영자 설정 · 첫 입장 모드</b> — "셀카 / 단체사진 / 없음" 3개 중 선택. 기본은 셀카</li>
+      <li><b>셀카 모드</b> — 모든 팀원이 각자 셀카 1장씩 올려야 미션 시작 가능. 한 팀이 들어가면 "다음 단계로 가려면 모두 셀카를 올려주세요" 안내</li>
+      <li><b>그리드 자동 결정</b> — 등록된 팀원 수에 따라 자동 (2×2 / 3×2 / 5×2 등). 정확히 N명을 미리 알 필요 없이 첫 입장한 사람부터 차곡차곡 채워짐</li>
+      <li><b>모자라는 자리</b> — 등록된 팀원이 6명인데 5명만 셀카 올렸으면 마지막 칸은 어두운 팀 컬러로. 빈 자리도 디자인의 일부</li>
+      <li><b>큰 배너는 팀 홈 상단에 고정</b> — 누군가 새로 셀카 올리면 즉시 반영. 행사 내내 팀의 정체성 표시</li>
+      <li><b>줌아웃 연출</b> — 행사 마지막에 빔프로젝터에서 운영자가 키 누르면 시작. 한 팀 → 6개 팀 → 10개 팀 → 전체 콜라주 순으로 약 2-3초간 부드럽게 줌아웃</li>
+      <li><b>한 팀 콜라주의 위상</b> — 별개의 결과물이 아니라 "팀의 사진 중 하나"로 취급. Export 시 ZIP에 포함</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 6 — 사진 크롭 4가지 방법 비교 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-crop-demo">
+  <div class="label">SCENE 6 · CROP METHODS COMPARISON</div>
+  <h1>사진 크롭 처리 · 4가지 방법 비교</h1>
+  <div class="sub">같은 셀카 한 장이 각 방법에서 어떻게 1:1 셀에 들어가는지. 노란 원이 얼굴.</div>
+
+  <div class="source-photo-row">
+    <div class="photo-orig"></div>
+    <div class="lbl">원본 사진</div>
+    <div class="desc-line">3:4 세로 셀카. 얼굴은 위쪽 1/3 지점에 있음.</div>
+  </div>
+
+  <div class="full-row">
+    <div class="crop-row">
+
+      <!-- 1. 자동 중앙 크롭 -->
+      <div class="crop-card m1">
+        <div class="head-strip">
+          <div class="num">METHOD 1</div>
+          <div class="meth">자동 중앙 크롭<small>object-fit: cover</small></div>
+        </div>
+        <div class="result-cell">
+          <div class="photo"></div>
+        </div>
+        <div class="desc-strip">
+          <span class="marker bad">✕ 얼굴 잘림</span>
+          <p style="margin: 8px 0 0;">CSS 한 줄. 사진 중앙만 잘라내서 셀카는 머리/턱이 잘리기 쉬움. <b>코드 작성 0초</b>.</p>
+        </div>
+      </div>
+
+      <!-- 2. 수동 object-position -->
+      <div class="crop-card m2">
+        <div class="head-strip">
+          <div class="num">METHOD 2</div>
+          <div class="meth">수동 위치 조정<small>object-position: 50% 20%</small></div>
+        </div>
+        <div class="result-cell">
+          <div class="photo"></div>
+        </div>
+        <div class="desc-strip">
+          <span class="marker ok">△ 사람 손 필요</span>
+          <p style="margin: 8px 0 0;">사진별로 "어디를 중심으로 보일지" 좌표 저장. <b>운영자/참가자가 슬라이더로 조정</b>.</p>
+        </div>
+      </div>
+
+      <!-- 3. 자동 얼굴 인식 (face-api.js) -->
+      <div class="crop-card m3">
+        <div class="head-strip">
+          <div class="num">METHOD 3</div>
+          <div class="meth">자동 얼굴 인식<small>face-api.js (브라우저)</small></div>
+        </div>
+        <div class="result-cell">
+          <div class="photo"></div>
+          <div class="frame-overlay"></div>
+        </div>
+        <div class="desc-strip">
+          <span class="marker best">★ 셀카 최적</span>
+          <p style="margin: 8px 0 0;">얼굴 좌표를 자동 인식해 중심에 배치. <b>참가자/운영자 손 안 댐</b>. 셀카는 99% 잘 됨.</p>
+        </div>
+      </div>
+
+      <!-- 4. 사용자 드래그 크롭 -->
+      <div class="crop-card m4">
+        <div class="head-strip">
+          <div class="num">METHOD 4</div>
+          <div class="meth">참가자 직접 크롭<small>업로드 시 드래그</small></div>
+        </div>
+        <div class="result-cell">
+          <div class="photo"></div>
+          <div class="frame-overlay"></div>
+        </div>
+        <div class="desc-strip">
+          <span class="marker good">◎ 통제력 최고</span>
+          <p style="margin: 8px 0 0;">업로드 화면에서 1:1 박스를 직접 끌어서 위치 잡기. <b>UX 단계가 늘어남</b>.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="notes">
+    <h3>우리 앱의 권장 조합 (단계별)</h3>
+    <ul>
+      <li><b>v1 (즉시 가능)</b> — <code>object-fit: cover</code> 기본 + 검수 화면에 위치 조정 슬라이더. 모든 사진은 일단 자동 표시되고, 운영자가 보다가 어색한 것만 슬라이더로 보정. METHOD 1 + 2 조합</li>
+      <li><b>v1.5 (셀카 한정 자동화)</b> — 셀카 배너에 face-api.js 적용. 라이브러리 ~1MB, 브라우저에서 돌고 서버 비용 0. 셀카는 사용자가 아무것도 안 해도 얼굴 중심으로 잘림. METHOD 3</li>
+      <li><b>v2 (정성 들이는 행사)</b> — 업로드 시 참가자가 직접 크롭. 모바일 드래그 UI 필요. METHOD 4</li>
+      <li><b>크롭 정보는 메타데이터로 저장</b> — 원본 사진은 절대 자르지 않음. <code>{ x, y, scale }</code> 같은 좌표만 슬롯 문서에 저장. 화면 표시·콜라주 합성 때 그 좌표대로 잘라냄. <b>나중에 액자·영상용으로 원본 받는 요구사항과 자연스럽게 맞물림</b></li>
+      <li><b>모든 사진은 두 가지 버전으로 저장</b> — 원본 1장 + 1:1 1024px 썸네일 1장. 보드/콜라주에는 썸네일 사용 (빠름), Export에는 원본 + 좌표 기반 합성</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 7 — 운영자 시작 / Google 로그인 / 이벤트 목록 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-login">
+  <div class="label">SCENE 7 · OPERATOR · LOGIN & EVENT LIST</div>
+  <h1>운영자 시작 · Google 로그인 → 내 이벤트 목록</h1>
+  <div class="sub">운영자는 Google 계정으로 로그인. 본인이 만든 이벤트만 보임. 팀원은 QR로 들어오므로 이 화면을 볼 일이 없음.</div>
+
+  <div class="phones">
+
+    <!-- 로그인 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div style="font-weight:900;font-size:11px;color:#64748b;letter-spacing:.04em;">PHOTO MISSION BOARD</div>
+            <div class="back transparent">···</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="login-hero">
+            <div class="ic">▦</div>
+            <h2>팀의 순간이 모여<br>하나의 보드가 됩니다</h2>
+            <p>운영자로 이벤트를 만들려면 로그인해주세요.</p>
+          </div>
+
+          <button class="google-btn">
+            <span class="google-g"></span>
+            Google로 로그인
+          </button>
+
+          <div class="alt-link">
+            팀원으로 참여하시나요?<br>운영자가 보낸 <b style="color:#0f172a;">QR을 스캔</b>해주세요.
+          </div>
+
+          <div class="help-card" style="margin-top: 20px;">
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <div class="ic">🔒</div>
+              <div>
+                <b style="font-size:13px;">왜 Google 로그인인가요?</b>
+                <div style="font-size:11px;color:#64748b;margin-top:4px;line-height:1.6;">
+                  비밀번호를 따로 만들지 않아도 되고, 본인 이벤트만 안전하게 관리할 수 있어요.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 이벤트 목록 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="ptitle">내 이벤트</div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="account-bar">
+            <div class="avatar">박</div>
+            <div>
+              <div class="acc-name">박운영</div>
+              <div class="acc-em">park@inno-and.com</div>
+            </div>
+            <div class="signout">⏏</div>
+          </div>
+
+          <button class="new-event-btn">＋ 새 이벤트 만들기</button>
+
+          <div class="event-tabs">
+            <button class="on">진행 중 (1)</button>
+            <button>예정 (1)</button>
+            <button>종료 (3)</button>
+          </div>
+
+          <div class="event-card">
+            <div class="thumb">
+              <span class="live-badge"><span class="d"></span>LIVE</span>
+            </div>
+            <div class="body-row">
+              <div class="ev-ttl">2026 Vision Trip</div>
+              <div class="ev-meta">10팀 · 100칸 · 72% · 지금 진행 중</div>
+            </div>
+          </div>
+
+          <div class="event-tabs" style="margin-top: 18px; opacity:.7;">
+            <button>진행 중</button>
+            <button class="on">예정 (1)</button>
+            <button>종료</button>
+          </div>
+
+          <div class="event-card">
+            <div class="thumb t2"></div>
+            <div class="body-row">
+              <div class="ev-ttl">KRPIA Workshop 2026</div>
+              <div class="ev-meta">8팀 · 64칸 · 2026.09.15 예정</div>
+            </div>
+          </div>
+
+          <div class="event-tabs" style="margin-top: 18px; opacity:.7;">
+            <button>진행 중</button>
+            <button>예정</button>
+            <button class="on">종료 (3)</button>
+          </div>
+
+          <div class="event-card">
+            <div class="thumb t3"></div>
+            <div class="body-row">
+              <div class="ev-ttl">2025 Summer Trip</div>
+              <div class="ev-meta">완성된 콜라주 보기 · 2025.07.10</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h3>이 화면에서 정해진 동작</h3>
+    <ul>
+      <li><b>로그인 방식</b> — Firebase Auth + Google Provider. 별도 비밀번호 관리 X, 본인 계정만 자기 이벤트 보임</li>
+      <li><b>이벤트 분리</b> — 진행 중 / 예정 / 종료 3 탭. 종료된 이벤트는 콜라주 결과를 두고두고 볼 수 있는 보관 모드</li>
+      <li><b>새 이벤트 만들기</b>는 SCENE 1의 3단계 마법사로 연결</li>
+      <li><b>팀원은 이 화면을 안 봄</b> — 운영자가 보낸 QR을 카톡에서 직접 스캔하면 팀 페이지로 자동 진입</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 8 — 팀 QR 발급 / 공유 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-qr">
+  <div class="label">SCENE 8 · OPERATOR · TEAM QR DISTRIBUTION</div>
+  <h1>팀 QR 발급 · 공유 · 일괄 인쇄</h1>
+  <div class="sub">팀 코드 입력 방식은 빼고 QR 단일화. 운영자가 한 화면에서 팀별 QR을 보고 카톡으로 보내거나 인쇄.</div>
+
+  <div class="phones">
+
+    <!-- 팀 목록 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">팀 QR 관리</div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <button class="new-event-btn" style="margin-bottom:10px;">🖨 모든 팀 QR PDF로 다운로드</button>
+
+          <div style="font-size:11px;color:#64748b;margin-bottom:14px;text-align:center;font-weight:700;line-height:1.6;">
+            행사장에 인쇄해 붙이거나, 카톡으로 팀장에게 개별 발송
+          </div>
+
+          <div class="team-list-card">
+            <div class="qr-mini"><div class="qr-mock"><div class="br"></div></div></div>
+            <div>
+              <div class="tnm">1팀 · 바다팀</div>
+              <div class="tmeta">팀원 6명 입장 · 4/10 업로드</div>
+            </div>
+            <div class="ta">
+              <button>📋</button>
+              <button>↗</button>
+            </div>
+          </div>
+
+          <div class="team-list-card">
+            <div class="qr-mini"><div class="qr-mock"><div class="br"></div></div></div>
+            <div>
+              <div class="tnm">2팀 · 라벤더팀</div>
+              <div class="tmeta">팀원 8명 입장 · 5/10 업로드</div>
+            </div>
+            <div class="ta">
+              <button>📋</button>
+              <button>↗</button>
+            </div>
+          </div>
+
+          <div class="team-list-card">
+            <div class="qr-mini"><div class="qr-mock"><div class="br"></div></div></div>
+            <div>
+              <div class="tnm">3팀 · 단풍팀</div>
+              <div class="tmeta">팀원 5명 입장 · 7/10 업로드</div>
+            </div>
+            <div class="ta">
+              <button>📋</button>
+              <button>↗</button>
+            </div>
+          </div>
+
+          <div class="team-list-card">
+            <div class="qr-mini"><div class="qr-mock"><div class="br"></div></div></div>
+            <div>
+              <div class="tnm">4팀 · 소나무팀</div>
+              <div class="tmeta">아직 아무도 입장 안 함</div>
+            </div>
+            <div class="ta">
+              <button>📋</button>
+              <button>↗</button>
+            </div>
+          </div>
+
+          <div style="text-align:center;color:#94a3b8;font-size:11px;font-weight:700;margin-top:8px;">
+            5팀 · 6팀 · 7팀 · 8팀 · 9팀 · 10팀
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 한 팀 QR 풀스크린 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">1팀 · 바다팀</div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body" style="display:flex;flex-direction:column;justify-content:center;">
+
+          <div style="text-align:center; padding: 12px 0;">
+            <div style="font-size:11px;color:#94a3b8;font-weight:800;letter-spacing:0.1em;margin-bottom:8px;">스캔해서 입장</div>
+            <div class="qr-big-wrap">
+              <div class="qr-mock" style="width:240px;height:240px;"><div class="br"></div></div>
+            </div>
+            <div class="qr-url">photomission.app/t/1team-x7k2pQ</div>
+          </div>
+
+          <div class="share-buttons">
+            <button class="primary">
+              <span class="si">💬</span>
+              카톡 공유
+            </button>
+            <button>
+              <span class="si">📷</span>
+              이미지 저장
+            </button>
+            <button>
+              <span class="si">🔗</span>
+              URL 복사
+            </button>
+          </div>
+
+          <div class="help-card" style="margin-top: 6px;">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div class="ic">👥</div>
+              <div>
+                <b style="font-size:12px;">팀원 전원에게 공유</b>
+                <div style="font-size:11px;color:#64748b;margin-top:3px;line-height:1.6;">
+                  이 QR을 스캔한 모든 사람이 1팀 멤버로 입장합니다. 팀장이 단톡방에 한 번만 보내면 끝.
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- 인쇄 시트 미리보기 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">PDF 미리보기</div>
+            <div class="save-btn">다운로드</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div style="font-size:11px;color:#64748b;text-align:center;margin-bottom:10px;font-weight:700;">A4 1장 · 10팀 QR</div>
+
+          <div class="print-sheet">
+            <div class="sheet-title">2026 Vision Trip · 팀별 입장 QR</div>
+            <div class="qr-row">
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">1팀 · 바다</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">2팀 · 라벤더</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">3팀 · 단풍</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">4팀 · 소나무</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">5팀 · 동백</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">6팀 · 파도</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">7팀 · 노을</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">8팀 · 별</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">9팀 · 구름</div></div>
+              <div class="qr-cell"><div class="qr-mock"><div class="br"></div></div><div class="team-label">10팀 · 바람</div></div>
+            </div>
+          </div>
+
+          <div class="retention-card">
+            <b>🖨 인쇄용 시트</b>
+            행사장 입구·테이블에 붙여두면 팀원들이 직접 스캔. 단톡 공유 안 해도 즉시 입장.
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h3>이 흐름에서 정해진 동작</h3>
+    <ul>
+      <li><b>QR 단일화</b> — "팀 코드 입력" 방식 없음. QR을 스캔하면 토큰이 든 URL이 자동으로 열려 팀 페이지로 진입</li>
+      <li><b>3가지 공유 방식</b> — (1) 카톡으로 한 명에게 → 단톡방 공유 / (2) 이미지로 저장 후 단톡방에 사진 / (3) URL 복사해서 어디든 붙여넣기</li>
+      <li><b>일괄 인쇄</b> — A4 한 장에 10팀 QR. 행사장에 미리 붙이거나 팀별 책상 배포</li>
+      <li><b>입장 시 자동 인식</b> — QR URL에 팀 토큰 내장. 로그인·코드 입력 없이 바로 그 팀의 페이지가 열림</li>
+      <li><b>같은 QR을 여러 사람이 스캔해도 OK</b> — 한 팀 = 한 URL, 모두가 같은 팀 페이지를 봄</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 9 — Export -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-export">
+  <div class="label">SCENE 9 · OPERATOR · EXPORT & ARCHIVE</div>
+  <h1>Export · 콜라주 PNG · 원본 ZIP · 보관 안내</h1>
+  <div class="sub">행사 마지막에 결과물을 받고, 시스템 보관 정책을 안내. 큰 파일은 운영자가 따로 보관.</div>
+
+  <div class="phones">
+
+    <!-- Export 메인 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div>
+              <div style="font-size:11px;color:#64748b;font-weight:800;">2026 Vision Trip</div>
+              <div class="ptitle">Export</div>
+            </div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="export-preview">
+            <span class="live-badge-mini">LIVE · 47/100</span>
+            <div class="ep-grid" id="export-grid-mini"></div>
+            <div class="ep-meta">
+              <div>
+                <div class="lbl">현재 레이아웃</div>
+                <div class="res">랜덤 셔플</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="lbl">출력 해상도</div>
+                <div class="res">2400 × 2400</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="layout-toggle" style="margin-bottom:10px;">
+            <button class="on">랜덤 셔플</button>
+            <button>팀별 그룹</button>
+            <button>↻ 다시</button>
+          </div>
+
+          <div class="lock-toggle on">
+            <div class="ic">🔒</div>
+            <div style="flex:1;">
+              <div class="ltt">이 배치로 잠금</div>
+              <div class="lts">잠금 후 다운로드 가능. 다시 셔플하면 잠금 해제</div>
+            </div>
+          </div>
+
+          <div class="section-title">다운로드</div>
+
+          <div class="dl-card primary">
+            <div class="ic">▦</div>
+            <div>
+              <div class="tt">최종 콜라주 PNG</div>
+              <div class="ts">2400×2400 · 약 4MB</div>
+            </div>
+            <div class="arr">↓</div>
+          </div>
+
+          <div class="dl-card">
+            <div class="ic">📦</div>
+            <div>
+              <div class="tt">원본 사진 ZIP</div>
+              <div class="ts">팀별 폴더 · 약 320MB</div>
+            </div>
+            <div class="arr">↓</div>
+          </div>
+
+          <div class="dl-card">
+            <div class="ic">👥</div>
+            <div>
+              <div class="tt">팀 셀카 모음 PNG</div>
+              <div class="ts">10팀 셀카 콜라주</div>
+            </div>
+            <div class="arr">↓</div>
+          </div>
+
+        </div>
+        <div class="phone-nav">
+          <button><span class="nico">📊</span>Overview</button>
+          <button><span class="nico">▦</span>보드</button>
+          <button><span class="nico">✓</span>검수</button>
+          <button class="on"><span class="nico">⬇</span>Export</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 행사 종료 / 보관 안내 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div>
+              <div style="font-size:11px;color:#64748b;font-weight:800;">2026 Vision Trip</div>
+              <div class="ptitle">행사 마무리</div>
+            </div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+
+          <div class="complete-hero">
+            <div class="ic">🎉</div>
+            <h3>모든 슬롯이 채워졌어요</h3>
+            <p>10팀 · 100/100 · 총 312장 업로드<br>대표 100장이 최종 콜라주에 들어갑니다</p>
+          </div>
+
+          <div class="export-preview" style="padding:10px;">
+            <div class="ep-grid" id="export-grid-final"></div>
+          </div>
+
+          <div class="dl-card primary">
+            <div class="ic">▦</div>
+            <div>
+              <div class="tt">최종 콜라주 PNG</div>
+              <div class="ts">지금 받으세요</div>
+            </div>
+            <div class="arr">↓</div>
+          </div>
+
+          <div class="dl-card">
+            <div class="ic">📦</div>
+            <div>
+              <div class="tt">원본 사진 전체 ZIP</div>
+              <div class="ts">320MB · 팀별 폴더로 정리</div>
+            </div>
+            <div class="arr">↓</div>
+          </div>
+
+          <div class="dl-card">
+            <div class="ic">🔗</div>
+            <div>
+              <div class="tt">결과 공유 링크</div>
+              <div class="ts">콜라주를 두고두고 볼 수 있는 URL</div>
+            </div>
+            <div class="arr">↗</div>
+          </div>
+
+          <div class="retention-card" style="margin-top: 8px;">
+            <b>📂 데이터 보관 안내</b>
+            <b style="display:inline; font-size:11px;">원본 사진</b>은 행사 종료 <b style="color:#92400e">60일 후 자동 삭제</b>됩니다. 영구 보관이 필요하면 ZIP을 지금 다운로드해 따로 보관해주세요.
+            <br><br>
+            <b style="display:inline; font-size:11px;">최종 콜라주 PNG와 썸네일</b>은 영구 보관 — 공유 링크로 언제든 다시 볼 수 있어요.
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h3>이 흐름에서 정해진 동작</h3>
+    <ul>
+      <li><b>3종 결과물</b> — (1) 최종 콜라주 PNG (행사장 사진/액자용) (2) 원본 ZIP (영상 제작·인쇄용 큰 파일) (3) 팀 셀카 모음 (팀 정체성)</li>
+      <li><b>잠금 → 다운로드</b> — 라이브로 셔플되는 중엔 다운로드 불가. "이 배치로 잠금"을 누르면 그 시점의 콜라주가 PNG로 생성됨. 잠금 해제하고 다시 셔플 가능</li>
+      <li><b>보관 정책</b> — 원본 사진은 무거우므로 60일 후 자동 삭제. 운영자는 그 안에 ZIP을 받아 알아서 보관. <b>썸네일 + 최종 콜라주 PNG는 영구 보관</b>이라 결과는 두고두고 공유 가능</li>
+      <li><b>공유 링크</b> — 종료된 이벤트에 영구 URL 발급. 사내 공지에 붙이면 직원들이 콜라주를 두고두고 볼 수 있음</li>
+      <li><b>PNG 합성은 클라이언트에서</b> — 운영자 폰의 캔버스가 썸네일들로 큰 PNG를 만들어 다운로드. 서버 비용 0, 그러나 100장 합성에 5-10초 정도. 진행 표시 필요</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 10 — 공개 보드 (빔프로젝터) + 운영자 컨트롤 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-public">
+  <div class="label">SCENE 10 · PUBLIC BOARD · PROJECTOR DISPLAY</div>
+  <h1>공개 보드 · 행사장 빔프로젝터 + 운영자 컨트롤</h1>
+  <div class="sub">행사장 큰 화면 전용. 운영자 UI는 없고, 운영자 휴대폰에서 별도로 컨트롤.</div>
+
+  <div class="display-frame">
+    <div class="display-inner">
+      <div class="display-head">
+        <div>
+          <div class="ev-tt">2026 Vision Trip</div>
+          <div class="ev-st">LIVE PROJECTOR · 1080p</div>
+        </div>
+        <span class="live-chip"><span class="d"></span>LIVE</span>
+      </div>
+
+      <div class="display-body">
+        <div class="display-board-grid" id="display-grid"></div>
+      </div>
+
+      <div class="display-foot">
+        <div class="ds-stat">
+          <div class="n">10팀</div>
+          <div class="l">PARTICIPATING</div>
+        </div>
+        <div class="ds-stat" style="text-align:center;">
+          <div class="n">72%</div>
+          <div class="l">COMPLETE</div>
+        </div>
+        <div class="ds-stat" style="text-align:right;">
+          <div class="n">47/100</div>
+          <div class="l">SLOTS FILLED</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controller-row">
+    <div class="controller-card">
+      <h4>뷰 모드</h4>
+      <div class="sub">지금 빔프로젝터에 뭐가 보이고 있는지</div>
+      <button class="ctrl-btn">전체 보드 (현재)</button>
+      <button class="ctrl-btn outline">한 팀 클로즈업</button>
+      <button class="ctrl-btn outline">줌아웃 연출 ▶</button>
+    </div>
+
+    <div class="controller-card">
+      <h4>자동 슬라이드</h4>
+      <div class="sub">10초마다 팀별 클로즈업 → 전체 순환</div>
+      <button class="ctrl-btn outline">자동 슬라이드 시작</button>
+      <div class="ctrl-list">
+        <div class="ctrl-row"><span>1팀 바다</span><span class="p">8초 표시</span></div>
+        <div class="ctrl-row"><span>2팀 라벤더</span><span class="p">8초 표시</span></div>
+        <div class="ctrl-row"><span>전체 보드</span><span class="p">15초 표시</span></div>
+      </div>
+    </div>
+
+    <div class="controller-card">
+      <h4>마무리 연출</h4>
+      <div class="sub">행사 종료 시 한 번만 트리거</div>
+      <button class="ctrl-btn amber">▶ 줌아웃 피날레</button>
+      <div style="font-size:11px;color:#64748b;line-height:1.6;margin-top:8px;">
+        한 팀 → 전체 팀으로 약 3초간 줌아웃. 음악·박수 타이밍에 맞춰 사용.
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h3>이 흐름에서 정해진 동작</h3>
+    <ul>
+      <li><b>두 화면 분리</b> — 빔프로젝터는 "공개 보드" 페이지만 띄움 (운영자 UI 없음). 운영자 본인은 폰에서 컨트롤 카드로 조작. 두 화면이 같은 Firestore 구독으로 동기화</li>
+      <li><b>3가지 뷰 모드</b> — (1) 전체 보드 (기본) / (2) 한 팀 클로즈업 (팀 정보·셀카·미션 사진) / (3) 줌아웃 연출 (SCENE 5의 4프레임 애니메이션)</li>
+      <li><b>자동 슬라이드</b> — 행사 중 BGM처럼 깔아두기 좋음. 각 팀 8초 + 전체 보드 15초 식으로 순환</li>
+      <li><b>줌아웃 피날레</b> — 행사 종료 시점에 1회용. 운영자가 박수·BGM 타이밍에 맞춰 트리거. 한 팀 → 6팀 → 10팀 → 전체 콜라주로 3초간</li>
+      <li><b>실시간 반영</b> — 새 사진 업로드되면 빔프로젝터에도 즉시 (Firestore onSnapshot). 새로 채워지는 칸은 살짝 페이드인 애니메이션</li>
+      <li><b>인터넷 끊겨도 일정 시간은 캐시로 표시</b> — Firestore offline persistence로 마지막 상태 유지. 5초 이상 끊기면 우측 상단에 ⚠ 표시</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Photo Mission Board · 화면 목업 갤러리 · 클로드와 대화하며 계속 확장 중
+</footer>
+
+<script>
+  // 100칸 미리보기 그리드 자동 생성 (마크업 가볍게 유지)
+  (function(){
+    var pg = document.getElementById('preview-grid');
+    if (!pg) return;
+    for (var i = 0; i < 100; i++) {
+      var d = document.createElement('div');
+      pg.appendChild(d);
+    }
+  })();
+
+  // 라이브 보드 100칸 - 47개 채움, 6개 미확인, 나머지 빈 칸
+  (function(){
+    var lb = document.getElementById('live-board');
+    if (!lb) return;
+    var palettes = [
+      'linear-gradient(135deg, #bfdbfe, #bbf7d0)',
+      'linear-gradient(135deg, #fde68a, #fdba74)',
+      'linear-gradient(135deg, #ddd6fe, #fbcfe8)',
+      'linear-gradient(135deg, #bae6fd, #a7f3d0)',
+      'linear-gradient(135deg, #fbcfe8, #fde68a)',
+      'linear-gradient(135deg, #c7d2fe, #bae6fd)',
+      'linear-gradient(135deg, #fef3c7, #fcd34d)',
+      'linear-gradient(135deg, #d1fae5, #99f6e4)'
+    ];
+    var states = [];
+    for (var i = 0; i < 47; i++) states.push({ filled: true, unchecked: i < 6 });
+    for (var j = 0; j < 53; j++) states.push({ filled: false });
+    var seed = 7;
+    function rng(){ seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    for (var k = states.length - 1; k > 0; k--) {
+      var r = Math.floor(rng() * (k + 1));
+      var t = states[k]; states[k] = states[r]; states[r] = t;
+    }
+    for (var n = 0; n < states.length; n++) {
+      var cell = document.createElement('div');
+      cell.className = 'lb-cell' + (states[n].filled ? '' : ' empty') + (states[n].unchecked ? ' unchecked' : '');
+      if (states[n].filled) cell.style.background = palettes[n % palettes.length];
+      lb.appendChild(cell);
+    }
+  })();
+
+  // 줌아웃 스토리보드 프레임들
+  (function(){
+    var palettes = [
+      'linear-gradient(135deg, #38bdf8, #818cf8)',
+      'linear-gradient(135deg, #f472b6, #f59e0b)',
+      'linear-gradient(135deg, #34d399, #22d3ee)',
+      'linear-gradient(135deg, #fb7185, #fbbf24)',
+      'linear-gradient(135deg, #a78bfa, #ec4899)',
+      'linear-gradient(135deg, #60a5fa, #34d399)',
+      'linear-gradient(135deg, #fcd34d, #fb923c)',
+      'linear-gradient(135deg, #c084fc, #f472b6)',
+      'linear-gradient(135deg, #5eead4, #38bdf8)',
+      'linear-gradient(135deg, #fda4af, #fbbf24)'
+    ];
+    function rngOf(seedStart){
+      var s = seedStart;
+      return function(){ s = (s * 9301 + 49297) % 233280; return s / 233280; };
+    }
+
+    function fillRandomGrid(el, count, rng, opts){
+      opts = opts || {};
+      for (var i = 0; i < count; i++) {
+        var c = document.createElement('div');
+        if (opts.someEmpty && rng() < opts.emptyRatio) {
+          c.style.background = '#1e293b';
+        } else {
+          c.style.background = palettes[Math.floor(rng() * palettes.length)];
+        }
+        if (opts.markFocus && opts.markFocus.indexOf(i) !== -1) c.className = 'focus';
+        el.appendChild(c);
+      }
+    }
+
+    var rngA = rngOf(17);
+    var fs = document.getElementById('frame-shrink');
+    if (fs) fillRandomGrid(fs, 36, rngA, { markFocus: [14, 15, 20, 21] });
+
+    var rngB = rngOf(23);
+    var fa = document.getElementById('frame-all');
+    if (fa) fillRandomGrid(fa, 100, rngB);
+
+    var rngC = rngOf(41);
+    var ff = document.getElementById('frame-final');
+    if (ff) fillRandomGrid(ff, 100, rngC);
+
+    // Export mini (LIVE 상태: 47/100 채움)
+    var rngD = rngOf(53);
+    var em = document.getElementById('export-grid-mini');
+    if (em) {
+      for (var i = 0; i < 100; i++) {
+        var c = document.createElement('div');
+        if (rngD() < 0.47) {
+          c.style.background = palettes[Math.floor(rngD() * palettes.length)];
+        } else {
+          c.style.background = '#1e293b';
+        }
+        em.appendChild(c);
+      }
+    }
+
+    // Export final (100/100 모두 채움, 약간 다른 시드로 다른 모양)
+    var rngE = rngOf(71);
+    var ef = document.getElementById('export-grid-final');
+    if (ef) fillRandomGrid(ef, 100, rngE);
+
+    // Display board (15x9 = 135 cells, wide display, 약 75% 채움)
+    var rngF = rngOf(89);
+    var dg = document.getElementById('display-grid');
+    if (dg) {
+      for (var j = 0; j < 135; j++) {
+        var c = document.createElement('div');
+        if (rngF() < 0.75) {
+          c.style.background = palettes[Math.floor(rngF() * palettes.length)];
+        } else {
+          c.style.background = '#1e293b';
+        }
+        dg.appendChild(c);
+      }
+    }
+  })();
+</script>
+
+</body>
+</html>
