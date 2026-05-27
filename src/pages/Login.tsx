@@ -9,9 +9,7 @@ export function Login() {
   const [localError, setLocalError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state && typeof location.state === "object" && "from" in location.state
-    ? "/events"
-    : "/events";
+  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? "/events";
 
   if (!loading && isOperator) {
     return <Navigate to={from} replace />;
