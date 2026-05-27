@@ -471,8 +471,11 @@ service cloud.firestore {
         allow read: if true;
         // 운영자는 이벤트 생성 시 슬롯 create, 진행 중 검수 update 가능
         allow create, delete: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId;
-        allow update: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId;
-        // 팀원은 자기 팀 슬롯의 representativePhotoId, reviewStatus 외 필드만 (실제로는 photos를 통해 변경)
+        allow update: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId
+                      || (request.auth.uid != null
+                          && request.resource.data.diff(resource.data).changedKeys()
+                            .hasOnly(['submissionCount', 'representativePhotoId']));
+        // 팀원은 사진 업로드/대표 선택 트랜잭션을 통해 submissionCount와 대표 사진만 변경
       }
 
       // 사진
@@ -481,10 +484,14 @@ service cloud.firestore {
         // 익명 사용자도 create 가능 (토큰은 클라이언트가 검증)
         allow create: if request.auth.uid != null
                       && request.resource.data.eventId == eventId;
-        // 본인 업로드만 update/delete (uploaderId 일치) 또는 운영자
-        allow update, delete: if request.auth.uid != null
-                              && (resource.data.uploaderId == request.auth.uid
-                                  || request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId);
+        // 대표 변경은 팀원이 가능, 삭제는 본인 업로드만 또는 운영자
+        allow update: if request.auth.uid != null
+                      && (request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRepresentative'])
+                          || resource.data.uploaderId == request.auth.uid
+                          || request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId);
+        allow delete: if request.auth.uid != null
+                      && (resource.data.uploaderId == request.auth.uid
+                          || request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId);
       }
 
       // 셀카도 동일
