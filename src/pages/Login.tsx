@@ -1,6 +1,36 @@
-import { Link } from "react-router-dom";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../lib/auth";
 
 export function Login() {
+  const { error, isOperator, loading, signInWithGoogle } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state && typeof location.state === "object" && "from" in location.state
+    ? "/events"
+    : "/events";
+
+  if (!loading && isOperator) {
+    return <Navigate to={from} replace />;
+  }
+
+  async function handleGoogleSignIn() {
+    setBusy(true);
+    setLocalError(null);
+
+    try {
+      await signInWithGoogle();
+      navigate("/events", { replace: true });
+    } catch {
+      setLocalError("Google 로그인에 실패했습니다. 팝업 차단이나 Firebase 설정을 확인해주세요.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
       <section className="phone-surface overflow-hidden rounded-[28px] border border-app-border shadow-phone">
@@ -29,15 +59,29 @@ export function Login() {
             </p>
           </section>
 
-          <Link
-            to="/events"
+          <button
+            type="button"
+            onClick={() => {
+              void handleGoogleSignIn();
+            }}
+            disabled={loading || busy}
             className="flex w-full items-center justify-center gap-3 rounded-2xl border border-app-border bg-white px-4 py-4 text-sm font-black shadow-card"
           >
-            <span className="grid h-6 w-6 place-items-center rounded-full border border-app-border text-xs font-black text-app-primary">
-              G
-            </span>
-            Google로 로그인
-          </Link>
+            {busy ? (
+              <Loader2 className="h-5 w-5 animate-spin text-app-primary" aria-hidden="true" />
+            ) : (
+              <span className="grid h-6 w-6 place-items-center rounded-full border border-app-border text-xs font-black text-app-primary">
+                G
+              </span>
+            )}
+            {busy ? "로그인 중" : "Google로 로그인"}
+          </button>
+
+          {(localError || error) && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold leading-6 text-red-700">
+              {localError || error}
+            </div>
+          )}
 
           <p className="text-center text-sm font-bold leading-6 text-app-muted">
             팀원으로 참여하시나요?

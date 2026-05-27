@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import { RequireAuth } from "./components/RequireAuth";
 import { EventBoard } from "./pages/EventBoard";
 import { EventCreate } from "./pages/EventCreate";
 import { EventExport } from "./pages/EventExport";
@@ -20,14 +21,70 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
-      <Route path="/events" element={<Events />} />
-      <Route path="/events/new" element={<EventCreate />} />
-      <Route path="/events/:eventId" element={<EventOverview />} />
-      <Route path="/events/:eventId/teams" element={<EventTeams />} />
-      <Route path="/events/:eventId/teams/:teamId" element={<TeamQRDetail />} />
-      <Route path="/events/:eventId/board" element={<EventBoard />} />
-      <Route path="/events/:eventId/review" element={<EventReview />} />
-      <Route path="/events/:eventId/export" element={<EventExport />} />
+      <Route
+        path="/events"
+        element={
+          <RequireAuth>
+            <Events />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/events/new"
+        element={
+          <RequireAuth>
+            <EventCreate />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/events/:eventId"
+        element={
+          <RequireAuth>
+            <EventOverview />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/events/:eventId/teams"
+        element={
+          <RequireAuth>
+            <EventTeams />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/events/:eventId/teams/:teamId"
+        element={
+          <RequireAuth>
+            <TeamQRDetail />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/events/:eventId/board"
+        element={
+          <RequireAuth>
+            <EventBoard />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/events/:eventId/review"
+        element={
+          <RequireAuth>
+            <EventReview />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/events/:eventId/export"
+        element={
+          <RequireAuth>
+            <EventExport />
+          </RequireAuth>
+        }
+      />
       <Route path="/events/:eventId/public" element={<PublicBoard />} />
       <Route path="/t/:teamToken" element={<TeamEntry />} />
       <Route path="/t/:teamToken/selfie" element={<TeamSelfie />} />
