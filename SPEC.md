@@ -466,7 +466,8 @@ service cloud.firestore {
       // 슬롯
       match /slots/{slotId} {
         allow read: if true;
-        // 운영자는 모든 슬롯 write 가능
+        // 운영자는 이벤트 생성 시 슬롯 create, 진행 중 검수 update 가능
+        allow create, delete: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId;
         allow update: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId;
         // 팀원은 자기 팀 슬롯의 representativePhotoId, reviewStatus 외 필드만 (실제로는 photos를 통해 변경)
       }
