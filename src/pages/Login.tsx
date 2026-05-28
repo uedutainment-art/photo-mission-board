@@ -3,6 +3,37 @@ import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
+function getAuthErrorCode(error: unknown): string | null {
+  if (typeof error !== "object" || error === null || !("code" in error)) {
+    return null;
+  }
+
+  const code = (error as { code?: unknown }).code;
+  return typeof code === "string" ? code : null;
+}
+
+function getGoogleSignInErrorMessage(error: unknown): string {
+  const code = getAuthErrorCode(error);
+
+  if (code === "auth/unauthorized-domain") {
+    return "현재 주소가 Firebase Auth 승인 도메인에 없습니다. Firebase Console에서 localhost 또는 127.0.0.1을 추가해주세요.";
+  }
+
+  if (code === "auth/popup-blocked") {
+    return "로그인 팝업이 차단됐습니다. 팝업을 허용하거나 Chrome에서 열어주세요.";
+  }
+
+  if (code === "auth/popup-closed-by-user") {
+    return "Google 로그인 창이 닫혔습니다. 다시 시도해주세요.";
+  }
+
+  if (code === "auth/operation-not-allowed") {
+    return "Firebase Authentication에서 Google 로그인이 꺼져 있습니다.";
+  }
+
+  return code ? `Google 로그인에 실패했습니다. (${code})` : "Google 로그인에 실패했습니다. 팝업 차단이나 Firebase 설정을 확인해주세요.";
+}
+
 export function Login() {
   const { error, isOperator, loading, signInWithGoogle } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -22,8 +53,9 @@ export function Login() {
     try {
       await signInWithGoogle();
       navigate("/events", { replace: true });
-    } catch {
-      setLocalError("Google 로그인에 실패했습니다. 팝업 차단이나 Firebase 설정을 확인해주세요.");
+    } catch (signInError) {
+      console.error("Google sign-in failed", signInError);
+      setLocalError(getGoogleSignInErrorMessage(signInError));
     } finally {
       setBusy(false);
     }
