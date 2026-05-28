@@ -1,6 +1,8 @@
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "./firebase";
 
+const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+
 export interface UploadedImageResult {
   originalUrl: string;
   thumbUrl: string;
@@ -72,6 +74,10 @@ async function createSquareThumb(file: File, size: number): Promise<{ blob: Blob
 export async function uploadImage(file: File, basePath: string): Promise<UploadedImageResult> {
   if (!file.type.startsWith("image/")) {
     throw new Error("이미지 파일만 업로드할 수 있습니다.");
+  }
+
+  if (file.size > MAX_IMAGE_BYTES) {
+    throw new Error("이미지는 15MB 이하만 업로드할 수 있습니다.");
   }
 
   const originalPath = `${basePath}.jpg`;

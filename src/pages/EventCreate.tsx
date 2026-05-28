@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { PlaceEditModal } from "../components/PlaceEditModal";
 import {
+  createDraftEventId,
   createEvent,
   getPerTeamCount,
   type CreateEventPlaceInput,
@@ -100,6 +101,7 @@ function getStepDescription(step: WizardStep): string {
 export function EventCreate() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const draftEventId = useMemo(() => createDraftEventId(), []);
   const [step, setStep] = useState<WizardStep>(1);
   const [title, setTitle] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
@@ -187,6 +189,7 @@ export function EventCreate() {
 
     try {
       const eventId = await createEvent({
+        eventId: draftEventId,
         ownerId: user.uid,
         title,
         scheduledAt,
@@ -719,6 +722,7 @@ export function EventCreate() {
       {modalOpen && (
         <PlaceEditModal
           initialPlace={editingPlace}
+          eventId={draftEventId}
           onClose={() => {
             setModalOpen(false);
             setEditingPlace(undefined);

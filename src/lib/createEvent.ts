@@ -34,12 +34,14 @@ export interface CreateEventPlaceInput {
   description?: string;
   verifyHint?: string;
   coverUrl?: string;
+  coverStoragePath?: string;
   mapPlatform?: MapPlatform;
   mapUrl?: string;
   perTeamCount: number;
 }
 
 export interface CreateEventInput {
+  eventId?: string;
   ownerId: string;
   title: string;
   subtitle?: string;
@@ -107,6 +109,10 @@ function cleanPlace(place: CreateEventPlaceInput): Place {
     nextPlace.coverUrl = place.coverUrl.trim();
   }
 
+  if (place.coverStoragePath?.trim()) {
+    nextPlace.coverStoragePath = place.coverStoragePath.trim();
+  }
+
   if (place.mapUrl?.trim()) {
     nextPlace.mapPlatform = place.mapPlatform;
     nextPlace.mapUrl = place.mapUrl.trim();
@@ -167,6 +173,10 @@ export function getPerTeamCount(grid: GridSize, teamCount: number): number | nul
   return total / teamCount;
 }
 
+export function createDraftEventId(): string {
+  return doc(collection(db, "events")).id;
+}
+
 export async function createEvent(input: CreateEventInput): Promise<string> {
   const title = input.title.trim();
   const subtitle = input.subtitle?.trim();
@@ -197,7 +207,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
   }
 
   const batch = writeBatch(db);
-  const eventRef = doc(collection(db, "events"));
+  const eventRef = input.eventId ? doc(db, "events", input.eventId) : doc(collection(db, "events"));
   const eventId = eventRef.id;
   const now = serverTimestamp();
   const places = input.places.map(cleanPlace);

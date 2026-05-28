@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
-import { ImagePlus, Minus, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { ImagePlus, Loader2, Minus, Plus, Trash2, X } from "lucide-react";
 import type { CreateEventPlaceInput } from "../lib/createEvent";
+import { uploadImage } from "../lib/storage";
 import type { MapPlatform } from "../lib/types";
 
 interface PlaceEditModalProps {
+  eventId: string;
   initialPlace?: CreateEventPlaceInput;
   onClose: () => void;
   onDelete?: (placeId: string) => void;
@@ -20,7 +22,8 @@ function createPlaceId(): string {
   return `place-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-export function PlaceEditModal({ initialPlace, onClose, onDelete, onSave }: PlaceEditModalProps) {
+export function PlaceEditModal({ eventId, initialPlace, onClose, onDelete, onSave }: PlaceEditModalProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [place, setPlace] = useState<CreateEventPlaceInput>(
     initialPlace ?? {
       id: createPlaceId(),
@@ -28,11 +31,15 @@ export function PlaceEditModal({ initialPlace, onClose, onDelete, onSave }: Plac
       description: "",
       verifyHint: "",
       coverUrl: "",
+      coverStoragePath: "",
       mapPlatform: "naver",
       mapUrl: "",
       perTeamCount: 1,
     },
   );
+  const [draggingImage, setDraggingImage] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialPlace) {
@@ -50,6 +57,42 @@ export function PlaceEditModal({ initialPlace, onClose, onDelete, onSave }: Plac
       ...current,
       ...nextPlace,
     }));
+  }
+
+  async function handleImageFile(file: File | undefined) {
+    if (!file) {
+      return;
+    }
+
+    setUploadingImage(true);
+    setUploadError(null);
+
+    try {
+      const result = await uploadImage(file, `events/${eventId}/places/${place.id}/cover`);
+      updatePlace({
+        coverStoragePath: result.thumbPath,
+        coverUrl: result.thumbUrl,
+      });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "대표 이미지를 업로드하지 못했습니다.");
+    } finally {
+      setUploadingImage(false);
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }
+
+  function handleDrag(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function handleDrop(event: DragEvent<HTMLButtonElement>) {
+    handleDrag(event);
+    setDraggingImage(false);
+    void handleImageFile(event.dataTransfer.files?.[0]);
   }
 
   return (
@@ -84,22 +127,103 @@ export function PlaceEditModal({ initialPlace, onClose, onDelete, onSave }: Plac
           <div className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
             대표 이미지
           </div>
-          <label className="mb-4 block overflow-hidden rounded-2xl border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-100 to-slate-200">
-            <div className="grid aspect-video place-items-center px-5 text-center text-sm font-black text-slate-400">
-              <div>
-                <ImagePlus className="mx-auto mb-2 h-7 w-7" aria-hidden="true" />
-                대표 이미지 URL
-              </div>
-            </div>
+          <div className="mb-4 overflow-hidden rounded-2xl border border-app-border bg-white">
             <input
-              value={place.coverUrl ?? ""}
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
               onChange={(event) => {
-                updatePlace({ coverUrl: event.target.value });
+                void handleImageFile(event.target.files?.[0]);
               }}
-              placeholder="https://..."
-              className="w-full border-t border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none placeholder:text-slate-300"
             />
-          </label>
+            <button
+              type="button"
+              onClick={() => {
+                fileInputRef.current?.click();
+              }}
+              onDragEnter={(event) => {
+                handleDrag(event);
+                setDraggingImage(true);
+              }}
+              onDragOver={handleDrag}
+              onDragLeave={(event) => {
+                handleDrag(event);
+                setDraggingImage(false);
+              }}
+              onDrop={handleDrop}
+              className={
+                draggingImage
+                  ? "block w-full overflow-hidden border-2 border-dashed border-app-primary bg-blue-50"
+                  : "block w-full overflow-hidden border-2 border-dashed border-slate-300 bg-gradient-to-br from-slate-100 to-slate-200"
+              }
+              disabled={uploadingImage}
+            >
+              {place.coverUrl ? (
+                <div className="relative aspect-video">
+                  <img src={place.coverUrl} alt="" className="h-full w-full object-cover" />
+                  <div className="absolute inset-x-0 bottom-0 bg-app-ink/70 px-4 py-3 text-center text-xs font-black text-white">
+                    {uploadingImage ? "업로드 중" : "이미지를 교체하려면 클릭하거나 드롭"}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid aspect-video place-items-center px-5 text-center text-sm font-black text-slate-400">
+                  <div>
+                    {uploadingImage ? (
+                      <Loader2 className="mx-auto mb-2 h-7 w-7 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <ImagePlus className="mx-auto mb-2 h-7 w-7" aria-hidden="true" />
+                    )}
+                    {uploadingImage ? "업로드 중" : "이미지를 끌어다 놓거나 클릭"}
+                  </div>
+                </div>
+              )}
+            </button>
+
+            {place.coverUrl && (
+              <div className="flex gap-2 border-t border-app-border bg-slate-50 p-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                  disabled={uploadingImage}
+                  className="flex-1 rounded-xl bg-app-ink px-3 py-2 text-xs font-black text-white disabled:opacity-50"
+                >
+                  교체
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updatePlace({ coverStoragePath: "", coverUrl: "" });
+                    setUploadError(null);
+                  }}
+                  disabled={uploadingImage}
+                  className="flex-1 rounded-xl border border-app-border bg-white px-3 py-2 text-xs font-black text-app-muted disabled:opacity-50"
+                >
+                  삭제
+                </button>
+              </div>
+            )}
+
+            {uploadError && (
+              <p className="border-t border-red-100 bg-red-50 px-4 py-2 text-xs font-black text-red-700">
+                {uploadError}
+              </p>
+            )}
+
+            <label className="block">
+              <span className="sr-only">대표 이미지 URL</span>
+              <input
+                value={place.coverUrl ?? ""}
+                onChange={(event) => {
+                  updatePlace({ coverStoragePath: "", coverUrl: event.target.value });
+                }}
+                placeholder="외부 이미지 URL도 입력할 수 있어요"
+                className="w-full border-t border-slate-200 bg-white px-4 py-3 text-sm font-bold outline-none placeholder:text-slate-300"
+              />
+            </label>
+          </div>
 
           <div className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
             기본 정보
