@@ -118,7 +118,7 @@ export async function createCollagePng({
     }
 
     const image = await loadImage(photo.thumbUrl);
-    drawImageCover(context, image, x, y, cellWidth, cellHeight);
+    drawImageCover(context, image, x, y, cellWidth, cellHeight, photo.cropMeta);
   }
 
   return canvasToBlob(canvas);
