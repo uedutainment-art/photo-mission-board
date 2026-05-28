@@ -15,6 +15,10 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/events/$(eventId)).data.ownerId == request.auth.uid;
     }
 
+    function isCompletedEvent(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data.status == 'completed';
+    }
+
     function changedOnly(keys) {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly(keys);
     }
@@ -28,13 +32,16 @@ service cloud.firestore {
     }
 
     match /events/{eventId} {
-      allow read: if true;
+      allow get: if signedIn()
+        || resource.data.status == 'completed';
+      allow list: if (signedIn() && resource.data.ownerId == request.auth.uid)
+        || resource.data.status == 'completed';
       allow create: if signedIn()
         && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isEventOwner(eventId);
 
       match /teams/{teamId} {
-        allow read: if true;
+        allow read: if signedIn();
         allow create: if isEventOwnerAfter(eventId);
         allow delete: if isEventOwner(eventId);
         allow update: if isEventOwner(eventId)
@@ -42,7 +49,8 @@ service cloud.firestore {
       }
 
       match /slots/{slotId} {
-        allow read: if true;
+        allow read: if signedIn()
+          || isCompletedEvent(eventId);
         allow create: if isEventOwnerAfter(eventId);
         allow delete: if isEventOwner(eventId);
         allow update: if isEventOwner(eventId)
@@ -50,7 +58,8 @@ service cloud.firestore {
       }
 
       match /photos/{photoId} {
-        allow read: if true;
+        allow read: if signedIn()
+          || isCompletedEvent(eventId);
         allow create: if signedIn()
           && request.resource.data.eventId == eventId;
         allow update: if signedIn()
@@ -67,7 +76,8 @@ service cloud.firestore {
       }
 
       match /selfies/{selfieId} {
-        allow read: if true;
+        allow read: if signedIn()
+          || isCompletedEvent(eventId);
         allow create: if signedIn()
           && request.resource.data.eventId == eventId;
         allow update, delete: if signedIn()

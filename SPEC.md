@@ -259,7 +259,7 @@ events/{eventId}/exports/originals-{ISO}.zip       // 원본 ZIP
 | `/events/:eventId/board` | 라이브 보드 | Google + owner |
 | `/events/:eventId/review` | 슬롯 검수 | Google + owner |
 | `/events/:eventId/export` | Export | Google + owner |
-| `/events/:eventId/public` | 공개 보드 (빔프로젝터용) | 누구나 read |
+| `/events/:eventId/public` | 공개 보드 (빔프로젝터용) | 익명 Auth 자동 |
 | `/t/:teamToken` | 팀 입장 | 토큰만 |
 | `/t/:teamToken/selfie` | 셀카 단계 | 토큰만 |
 | `/t/:teamToken/places` | 장소 목록 | 토큰만 |
@@ -375,6 +375,7 @@ events/{eventId}/exports/originals-{ISO}.zip       // 원본 ZIP
 - 헤더: 이벤트 제목 + LIVE 표시
 - 보드 (rows × cols)
 - 푸터: 팀 수 / 진행률 / 슬롯 채움
+- 화면 진입 시 익명 Auth를 자동 준비해 라이브/드래프트 이벤트 read를 허용한다. 사용자는 별도 로그인 UI를 보지 않는다.
 - 컨트롤은 운영자 폰에서 (Firestore의 `events.publicViewMode` 필드로 동기화)
   - `viewMode: 'board' | 'team-{teamId}' | 'zoom-out-finale'`
 
@@ -459,6 +460,10 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/events/$(eventId)).data.ownerId == request.auth.uid;
     }
 
+    function isCompletedEvent(eventId) {
+      return get(/databases/$(database)/documents/events/$(eventId)).data.status == 'completed';
+    }
+
     function changedOnly(keys) {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly(keys);
     }
@@ -472,16 +477,19 @@ service cloud.firestore {
       }
     }
 
-    // 이벤트: owner만 write, 공개는 read 일부 허용
+    // 이벤트: owner만 write. 비인증 공개 read는 completed 이벤트만 허용.
     match /events/{eventId} {
-      allow read: if true;  // 공개 보드용. 단, 클라이언트가 필요한 것만 노출
+      allow get: if signedIn()
+                 || resource.data.status == 'completed';
+      allow list: if (signedIn() && resource.data.ownerId == request.auth.uid)
+                  || resource.data.status == 'completed';
       allow create: if signedIn()
                     && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isEventOwner(eventId);
 
       // 팀
       match /teams/{teamId} {
-        allow read: if true;
+        allow read: if signedIn();
         allow create: if isEventOwnerAfter(eventId);
         allow delete: if isEventOwner(eventId);
         allow update: if isEventOwner(eventId)
@@ -490,7 +498,8 @@ service cloud.firestore {
 
       // 슬롯
       match /slots/{slotId} {
-        allow read: if true;
+        allow read: if signedIn()
+                    || isCompletedEvent(eventId);
         // 운영자는 이벤트 생성 시 슬롯 create, 진행 중 검수 update 가능
         allow create: if isEventOwnerAfter(eventId);
         allow delete: if isEventOwner(eventId);
@@ -501,7 +510,8 @@ service cloud.firestore {
 
       // 사진
       match /photos/{photoId} {
-        allow read: if true;
+        allow read: if signedIn()
+                    || isCompletedEvent(eventId);
         // 익명 사용자도 create 가능 (토큰은 클라이언트가 검증)
         allow create: if signedIn()
                       && request.resource.data.eventId == eventId;
@@ -517,7 +527,8 @@ service cloud.firestore {
 
       // 셀카도 동일
       match /selfies/{selfieId} {
-        allow read: if true;
+        allow read: if signedIn()
+                    || isCompletedEvent(eventId);
         allow create: if signedIn()
                       && request.resource.data.eventId == eventId;
         allow update, delete: if signedIn()
@@ -531,6 +542,8 @@ service cloud.firestore {
 
 > **참고**: v1은 토큰 unguessability에 의존하는 "약한 보안". 토큰이 새지 않으면 안전.
 > v2엔 Cloud Function으로 토큰 → Custom Token 발급해서 정식 인증 강화.
+
+> **공유 링크**: `/share/:eventId`의 비인증 read는 `events.status == 'completed'`일 때만 열린다. 팀 토큰이 포함된 `teams` 문서는 공개 공유 페이지에서 읽지 않는다.
 
 ### 8.1 Storage Rules
 
@@ -693,6 +706,28 @@ mockups.html과 동일하게 유지:
 - 본문 폰트: system / `Noto Sans KR`
 
 레이아웃: 모바일 우선, 큰 둥근 모서리 (16-24px), 카드 그림자 가볍게, 그라데이션 최소.
+
+---
+
+## 16. 영구 공유 링크 (`/share/:eventId`)
+
+종료된 이벤트를 사내 공지나 메신저에 다시 공유하기 위한 read-only 공개 페이지. 사용자는 Google 로그인이나 팀 QR 없이 링크만으로 볼 수 있다.
+
+### 16.1 공개 조건
+- `events/{eventId}.status === 'completed'` 인 이벤트만 노출한다.
+- `draft`, `live`, `archived` 이벤트는 페이지에서 "종료된 이벤트만 공유 링크로 볼 수 있습니다." 안내를 보여준다.
+- Firestore Rules도 비인증 read를 completed 이벤트로 제한한다.
+
+### 16.2 표시 데이터
+- 이벤트 제목, subtitle, 완성률, 대표 사진 수, 셀카 수
+- `slots` + `photos`의 `representativePhotoId`/`thumbUrl` 기반 최종 콜라주
+- `selfies` 기반 셀카 모음
+- `teams` 문서는 공개 페이지에서 읽지 않는다. 팀 토큰 노출을 피하기 위해 셀카 모음은 안전한 순번 라벨로 그룹핑한다.
+
+### 16.3 동작
+- 모든 화면은 read-only이며 업로드, 대표 변경, 삭제, 다운로드 ZIP 같은 운영 액션은 없다.
+- 대표 사진과 셀카는 저장된 `cropMeta`를 적용해 표시한다.
+- Storage 이미지는 Firestore에 저장된 download URL을 사용한다.
 
 ---
 

@@ -1,42 +1,66 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { PublicFooter } from "../components/PublicFooter";
 import { PublicHeader } from "../components/PublicHeader";
 import { useEventLive, type EventLivePhoto } from "../hooks/useEventLive";
+import { ensureUploaderUser } from "../lib/teamSession";
 
 export function PublicBoard() {
   const { eventId } = useParams();
-  const { error, event, loading, photos, slots } = useEventLive(eventId);
+  const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const { error, event, loading, photos, slots } = useEventLive(authReady ? eventId : undefined);
   const photoById = useMemo(
     () => new Map(photos.map((photo): [string, EventLivePhoto] => [photo.id, photo])),
     [photos],
   );
   const filledSlots = slots.filter((slot) => Boolean(slot.representativePhotoId)).length;
   const progressPercent = slots.length > 0 ? Math.round((filledSlots / slots.length) * 100) : 0;
+  const pageError = authError || error;
+
+  useEffect(() => {
+    let mounted = true;
+
+    void ensureUploaderUser()
+      .then(() => {
+        if (mounted) {
+          setAuthReady(true);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setAuthError("공개 보드 인증을 준비하지 못했습니다.");
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <main className="flex min-h-dvh bg-black text-white">
       <section className="flex min-h-dvh w-full flex-col overflow-hidden bg-black">
-        {loading && (
+        {(!authReady && !authError) || loading ? (
           <div className="grid flex-1 place-items-center">
             <div className="flex items-center gap-3 text-xl font-black text-slate-300">
               <Loader2 className="h-6 w-6 animate-spin text-emerald-300" aria-hidden="true" />
               공개 보드 불러오는 중
             </div>
           </div>
-        )}
+        ) : null}
 
-        {error && !loading && (
+        {pageError && !loading && (
           <div className="grid flex-1 place-items-center px-6 text-center">
             <div>
               <p className="text-2xl font-black text-white">공개 보드를 열 수 없습니다.</p>
-              <p className="mt-3 text-base font-bold text-slate-400">{error}</p>
+              <p className="mt-3 text-base font-bold text-slate-400">{pageError}</p>
             </div>
           </div>
         )}
 
-        {!loading && !error && event && (
+        {authReady && !loading && !pageError && event && (
           <>
             <PublicHeader subtitle={event.subtitle} title={event.title} />
 
