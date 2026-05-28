@@ -23,6 +23,13 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly(keys);
     }
 
+    // Phase 5 의 useTeamSession 이 collectionGroup("teams") + where("token", "==", ...)
+    // 으로 팀을 찾기 위해 필요한 collectionGroup matcher.
+    // 일반 nested matcher 는 collectionGroup query 를 인식하지 못함.
+    match /{path=**}/teams/{teamId} {
+      allow read: if signedIn();
+    }
+
     match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
 
