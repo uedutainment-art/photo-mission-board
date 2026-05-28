@@ -7,10 +7,16 @@ import {
   ExternalLink,
   Loader2,
   Maximize2,
+  Printer,
   Share2,
 } from "lucide-react";
 import { useEventTeams, type TeamWithId } from "../hooks/useEventTeams";
 import { createQrDataUrl, getTeamQrUrl } from "../lib/qr";
+import {
+  createTeamQrSheetPreviewUrl,
+  downloadTeamQrSheetPdf,
+  getQrSheetTeamLabel,
+} from "../lib/qrSheetPdf";
 
 function QrImage({ size, url }: { size: number; url: string }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -41,9 +47,7 @@ function QrImage({ size, url }: { size: number; url: string }) {
 }
 
 function getTeamLabel(team: TeamWithId): string {
-  return team.displayName && team.displayName !== team.name
-    ? `${team.name} · ${team.displayName}`
-    : team.name;
+  return getQrSheetTeamLabel(team);
 }
 
 interface TeamListCardProps {
@@ -110,6 +114,45 @@ export function EventTeams() {
   const { eventId } = useParams();
   const { error, event, loading, teams } = useEventTeams(eventId);
   const [notice, setNotice] = useState<string | null>(null);
+  const [sheetPreviewUrl, setSheetPreviewUrl] = useState<string | null>(null);
+  const [sheetLoading, setSheetLoading] = useState(false);
+  const [sheetError, setSheetError] = useState<string | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+
+  useEffect(() => {
+    if (!event || teams.length === 0) {
+      setSheetPreviewUrl(null);
+      setSheetLoading(false);
+      return undefined;
+    }
+
+    let mounted = true;
+
+    setSheetLoading(true);
+    setSheetError(null);
+
+    void createTeamQrSheetPreviewUrl(event, teams)
+      .then((previewUrl) => {
+        if (mounted) {
+          setSheetPreviewUrl(previewUrl);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setSheetPreviewUrl(null);
+          setSheetError("A4 미리보기를 만들지 못했습니다.");
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setSheetLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [event, teams]);
 
   async function handleCopy(url: string) {
     await navigator.clipboard.writeText(url);
@@ -128,6 +171,25 @@ export function EventTeams() {
     }
 
     await handleCopy(url);
+  }
+
+  async function handleDownloadPdf() {
+    if (!event || teams.length === 0) {
+      return;
+    }
+
+    setDownloadingPdf(true);
+    setNotice(null);
+    setSheetError(null);
+
+    try {
+      await downloadTeamQrSheetPdf(event, teams);
+      setNotice("A4 팀 QR PDF를 저장했습니다.");
+    } catch (downloadError) {
+      setSheetError(downloadError instanceof Error ? downloadError.message : "PDF를 만들지 못했습니다.");
+    } finally {
+      setDownloadingPdf(false);
+    }
   }
 
   return (
@@ -176,16 +238,58 @@ export function EventTeams() {
 
               <button
                 type="button"
-                disabled
-                className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-200 px-4 py-4 text-sm font-black text-slate-500"
+                onClick={() => {
+                  void handleDownloadPdf();
+                }}
+                disabled={downloadingPdf || teams.length === 0}
+                className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
               >
-                <Download className="h-4 w-4" aria-hidden="true" />
-                모든 팀 QR PDF 준비 중
+                {downloadingPdf ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Download className="h-4 w-4" aria-hidden="true" />
+                )}
+                모든 팀 QR PDF 다운로드
               </button>
 
               <p className="mb-4 text-center text-xs font-bold leading-5 text-app-muted">
                 행사장에 인쇄해 붙이거나, 카톡으로 팀장에게 개별 발송하세요.
               </p>
+
+              <section className="mb-4 overflow-hidden rounded-2xl border border-app-border bg-white p-4 shadow-card">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
+                      A4 인쇄 시트
+                    </p>
+                    <h2 className="mt-1 text-sm font-black">{teams.length}팀 QR · 한 장 PDF</h2>
+                  </div>
+                  <div className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-slate-100 text-app-muted">
+                    <Printer className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                </div>
+                <div className="mx-auto mt-4 grid aspect-[210/297] w-full max-w-[220px] place-items-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                  {sheetLoading && (
+                    <Loader2 className="h-5 w-5 animate-spin text-app-primary" aria-hidden="true" />
+                  )}
+                  {!sheetLoading && sheetPreviewUrl && (
+                    <img src={sheetPreviewUrl} alt="A4 팀 QR 인쇄 시트 미리보기" className="h-full w-full object-cover" />
+                  )}
+                  {!sheetLoading && !sheetPreviewUrl && (
+                    <span className="px-4 text-center text-xs font-black text-app-muted">
+                      미리보기 없음
+                    </span>
+                  )}
+                </div>
+                {sheetError && (
+                  <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-black text-red-700">
+                    {sheetError}
+                  </div>
+                )}
+                <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold leading-5 text-app-muted">
+                  행사장 입구나 테이블에 붙여두면 팀원들이 직접 스캔해서 입장할 수 있습니다.
+                </p>
+              </section>
 
               {notice && (
                 <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
