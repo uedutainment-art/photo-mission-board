@@ -7,7 +7,7 @@ import { useEventLive } from "../hooks/useEventLive";
 import { createCollagePng, createSelfieCollagePng, orderSlotsForExport, type ExportLayoutMode } from "../lib/collage";
 import { downloadBlob, safeFilename } from "../lib/download";
 import { db } from "../lib/firebase";
-import { createOriginalsZip, type ZipProgress } from "../lib/zip";
+import { createOriginalsZip, type ZipFailure, type ZipProgress } from "../lib/zip";
 
 type ExportJob = "collage" | "zip" | "selfies" | null;
 
@@ -30,6 +30,7 @@ export function EventExport() {
   const [seed, setSeed] = useState(1);
   const [job, setJob] = useState<ExportJob>(null);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [zipFailures, setZipFailures] = useState<ZipFailure[]>([]);
   const [zipProgress, setZipProgress] = useState<ZipProgress | null>(null);
   const representativeById = useMemo(() => new Map(photos.map((photo) => [photo.id, photo])), [photos]);
   const previewSlots = useMemo(
@@ -56,6 +57,7 @@ export function EventExport() {
   async function runJob(nextJob: ExportJob, task: () => Promise<void>) {
     setJob(nextJob);
     setJobError(null);
+    setZipFailures([]);
     setZipProgress(null);
 
     try {
@@ -90,7 +92,7 @@ export function EventExport() {
     }
 
     await runJob("zip", async () => {
-      const blob = await createOriginalsZip({
+      const result = await createOriginalsZip({
         photos,
         places: event.places,
         selfies,
@@ -98,7 +100,8 @@ export function EventExport() {
         teams,
         onProgress: setZipProgress,
       });
-      downloadBlob(blob, `${filenameBase}-originals.zip`);
+      setZipFailures(result.failures);
+      downloadBlob(result.blob, `${filenameBase}-originals.zip`);
     });
   }
 
@@ -239,6 +242,19 @@ export function EventExport() {
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-app-primary" style={{ width: `${getProgressPercent(zipProgress)}%` }} />
                   </div>
+                </section>
+              )}
+
+              {zipFailures.length > 0 && (
+                <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold leading-6 text-amber-900">
+                  <p className="font-black">일부 원본을 ZIP에 담지 못했습니다.</p>
+                  <ul className="mt-2 space-y-1">
+                    {zipFailures.map((failure) => (
+                      <li key={failure.path} className="break-words text-xs">
+                        {failure.path}: {failure.reason}
+                      </li>
+                    ))}
+                  </ul>
                 </section>
               )}
 

@@ -14,6 +14,22 @@ export interface ZipProgress {
   label: string;
 }
 
+export interface ZipFailure {
+  label: string;
+  path: string;
+  reason: string;
+  url: string;
+}
+
+export interface OriginalsZipResult {
+  blob: Blob;
+  failures: ZipFailure[];
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "파일을 내려받지 못했습니다.";
+}
+
 async function addUrlToZip(zip: JSZip, path: string, url: string): Promise<void> {
   const response = await fetch(url);
 
@@ -22,6 +38,21 @@ async function addUrlToZip(zip: JSZip, path: string, url: string): Promise<void>
   }
 
   zip.file(path, await response.blob());
+}
+
+async function tryAddUrlToZip(
+  zip: JSZip,
+  failures: ZipFailure[],
+  file: { label: string; path: string; url: string },
+): Promise<void> {
+  try {
+    await addUrlToZip(zip, file.path, file.url);
+  } catch (error) {
+    failures.push({
+      ...file,
+      reason: getErrorMessage(error),
+    });
+  }
 }
 
 export async function createOriginalsZip({
@@ -38,8 +69,9 @@ export async function createOriginalsZip({
   slots: EventLiveSlot[];
   teams: EventLiveTeam[];
   onProgress?: (progress: ZipProgress) => void;
-}): Promise<Blob> {
+}): Promise<OriginalsZipResult> {
   const zip = new JSZip();
+  const failures: ZipFailure[] = [];
   const teamById = new Map(teams.map((team): [string, EventLiveTeam] => [team.id, team]));
   const slotById = new Map(slots.map((slot): [string, EventLiveSlot] => [slot.id, slot]));
   const placeById = new Map(places.map((place): [string, Place] => [place.id, place]));
@@ -56,7 +88,11 @@ export async function createOriginalsZip({
 
     current += 1;
     onProgress?.({ current, total, label: filename });
-    await addUrlToZip(zip, `${teamFolder}/${placeFolder}/${filename}`, photo.originalUrl);
+    await tryAddUrlToZip(zip, failures, {
+      label: filename,
+      path: `${teamFolder}/${placeFolder}/${filename}`,
+      url: photo.originalUrl,
+    });
   }
 
   for (const selfie of selfies) {
@@ -66,14 +102,20 @@ export async function createOriginalsZip({
 
     current += 1;
     onProgress?.({ current, total, label: filename });
-    await addUrlToZip(zip, `${teamFolder}/selfies/${filename}`, selfie.originalUrl);
+    await tryAddUrlToZip(zip, failures, {
+      label: filename,
+      path: `${teamFolder}/selfies/${filename}`,
+      url: selfie.originalUrl,
+    });
   }
 
-  return zip.generateAsync({ type: "blob" }, (metadata) => {
+  const blob = await zip.generateAsync({ type: "blob" }, (metadata) => {
     onProgress?.({
       current: Math.round((metadata.percent / 100) * total),
       total,
       label: "ZIP 압축 중",
     });
   });
+
+  return { blob, failures };
 }
