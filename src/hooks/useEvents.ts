@@ -69,7 +69,8 @@ export function useEvents(ownerId: string | null): UseEventsResult {
         setEvents(nextEvents);
         setLoading(false);
       },
-      () => {
+      (snapshotError) => {
+        console.error("Failed to subscribe to events.", snapshotError);
         setError("이벤트 목록을 불러오지 못했습니다.");
         setLoading(false);
       },

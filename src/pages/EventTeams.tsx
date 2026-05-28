@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -118,6 +118,14 @@ export function EventTeams() {
   const [sheetLoading, setSheetLoading] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const noticeTimeoutRef = useRef<number | null>(null);
+
+  function clearNoticeTimeout() {
+    if (noticeTimeoutRef.current !== null) {
+      window.clearTimeout(noticeTimeoutRef.current);
+      noticeTimeoutRef.current = null;
+    }
+  }
 
   useEffect(() => {
     if (!event || teams.length === 0) {
@@ -154,9 +162,16 @@ export function EventTeams() {
     };
   }, [event, teams]);
 
+  useEffect(() => clearNoticeTimeout, []);
+
   async function handleCopy(url: string) {
     await navigator.clipboard.writeText(url);
+    clearNoticeTimeout();
     setNotice("팀 링크를 복사했습니다.");
+    noticeTimeoutRef.current = window.setTimeout(() => {
+      setNotice(null);
+      noticeTimeoutRef.current = null;
+    }, 3000);
   }
 
   async function handleShare(team: TeamWithId, url: string) {
@@ -166,6 +181,7 @@ export function EventTeams() {
         text: "Photo Mission Board 팀 링크입니다.",
         url,
       });
+      clearNoticeTimeout();
       setNotice("공유 창을 열었습니다.");
       return;
     }
@@ -179,11 +195,13 @@ export function EventTeams() {
     }
 
     setDownloadingPdf(true);
+    clearNoticeTimeout();
     setNotice(null);
     setSheetError(null);
 
     try {
       await downloadTeamQrSheetPdf(event, teams);
+      clearNoticeTimeout();
       setNotice("A4 팀 QR PDF를 저장했습니다.");
     } catch (downloadError) {
       setSheetError(downloadError instanceof Error ? downloadError.message : "PDF를 만들지 못했습니다.");
