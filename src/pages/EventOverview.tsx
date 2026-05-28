@@ -137,6 +137,15 @@ export function EventOverview() {
                             <span className="truncate">{getTeamLabel(team)}</span>
                             <span>{progress}%</span>
                           </div>
+                          <div className="mb-1 text-[11px] font-bold">
+                            {team.leader?.name ? (
+                              <span className="text-app-muted">팀장 · {team.leader.name}</span>
+                            ) : (
+                              <Link to={`/events/${eventId}/teams`} className="text-slate-400 underline-offset-2 hover:underline">
+                                팀장 미등록
+                              </Link>
+                            )}
+                          </div>
                           <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                             <div className="h-full rounded-full bg-app-primary" style={{ width: `${progress}%` }} />
                           </div>

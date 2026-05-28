@@ -45,6 +45,7 @@ export function HelpSheet({ event, open, onClose, team, teamLabel }: HelpSheetPr
   const organizerPhone = organizer?.phone;
   const leader = team.leader;
   const leaderPhone = leader?.phone;
+  const showLeaderCard = Boolean(leader && leaderPhone);
   const organizerSmsBody = `[${teamLabel}] 도움이 필요합니다. `;
 
   return (
@@ -92,7 +93,7 @@ export function HelpSheet({ event, open, onClose, team, teamLabel }: HelpSheetPr
             </section>
           )}
 
-          {leaderPhone && (
+          {showLeaderCard && leader && leaderPhone && (
             <section className="rounded-panel border border-app-border bg-white p-4 shadow-card">
               <p className="text-[11px] font-black text-app-muted">우리 팀 팀장</p>
               <h3 className="mt-1 text-base font-black">{leader.name}</h3>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -23,12 +23,7 @@ import { formatKoreanDate } from "../lib/formatDate";
 import { sanitizePhone } from "../lib/phone";
 import type { ContactPreference, MapPlatform, SelfieMode } from "../lib/types";
 
-type WizardStep = 1 | 2 | 3 | 4;
-
-interface TeamLeaderInput {
-  name: string;
-  phone: string;
-}
+type WizardStep = 1 | 2 | 3;
 
 const mapPlatformLabels: Record<MapPlatform, string> = {
   naver: "네이버지도",
@@ -62,10 +57,6 @@ function FieldLabel({ children }: { children: ReactNode }) {
   return <span className="block text-[11px] font-black text-slate-400">{children}</span>;
 }
 
-function createLeaderInputs(teamCount: number, currentLeaders: TeamLeaderInput[] = []): TeamLeaderInput[] {
-  return Array.from({ length: teamCount }, (_, index) => currentLeaders[index] ?? { name: "", phone: "" });
-}
-
 function getStepTitle(step: WizardStep): string {
   if (step === 1) {
     return "새 이벤트";
@@ -73,10 +64,6 @@ function getStepTitle(step: WizardStep): string {
 
   if (step === 2) {
     return "장소 · 분배";
-  }
-
-  if (step === 3) {
-    return "팀장 등록";
   }
 
   return "미리보기";
@@ -89,10 +76,6 @@ function getStepDescription(step: WizardStep): string {
 
   if (step === 2) {
     return "팀당 사진 분배";
-  }
-
-  if (step === 3) {
-    return "비상 연락망";
   }
 
   return "만들기 직전 확인";
@@ -112,7 +95,6 @@ export function EventCreate() {
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
   const [teamCount, setTeamCount] = useState(10);
-  const [teamLeaders, setTeamLeaders] = useState<TeamLeaderInput[]>(() => createLeaderInputs(10));
   const [selfieMode, setSelfieMode] = useState<SelfieMode>("individual");
   const [places, setPlaces] = useState<CreateEventPlaceInput[]>([]);
   const [editingPlace, setEditingPlace] = useState<CreateEventPlaceInput | undefined>();
@@ -133,15 +115,8 @@ export function EventCreate() {
     places.length > 0 &&
     placeTotal === perTeamCount &&
     places.every((place) => place.name.trim().length > 0 && place.perTeamCount > 0);
-  const stepThreeValid = teamLeaders.every(
-    (leader) => leader.name.trim().length > 0 && sanitizePhone(leader.phone).length > 0,
-  );
-  const canCreate = stepOneValid && stepTwoValid && stepThreeValid && !creating;
+  const canCreate = stepOneValid && stepTwoValid && !creating;
   const previewCells = Array.from({ length: Math.min(totalSlots, 144) }, (_, index) => index);
-
-  useEffect(() => {
-    setTeamLeaders((currentLeaders) => createLeaderInputs(teamCount, currentLeaders));
-  }, [teamCount]);
 
   function goBack() {
     if (step > 1) {
@@ -201,11 +176,6 @@ export function EventCreate() {
         },
         grid,
         teamCount,
-        leaders: teamLeaders.map((leader, index) => ({
-          teamIndex: index + 1,
-          name: leader.name,
-          phone: leader.phone,
-        })),
         places,
         selfieMode,
       });
@@ -249,10 +219,9 @@ export function EventCreate() {
           <StepDot active={step >= 1} />
           <StepDot active={step >= 2} />
           <StepDot active={step >= 3} />
-          <StepDot active={step >= 4} />
         </div>
         <div className="px-4 pb-3 text-[11px] font-black text-app-muted">
-          STEP {step} / 4 · {getStepDescription(step)}
+          STEP {step} / 3 · {getStepDescription(step)}
         </div>
 
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4">
@@ -525,74 +494,6 @@ export function EventCreate() {
           {step === 3 && (
             <div>
               <section className="mb-4 rounded-panel bg-app-ink p-5 text-white">
-                <div className="text-xs font-black text-slate-400">비상 연락망</div>
-                <h2 className="mt-1 text-2xl font-black tracking-normal">
-                  팀장 {teamCount}명을 알려주세요
-                </h2>
-                <p className="mt-3 text-xs font-bold leading-5 text-slate-300">
-                  행사 중 운영자가 바로 연락할 수 있도록 각 팀장 이름과 전화번호를 필수로 입력합니다.
-                </p>
-              </section>
-
-              <div className="space-y-3">
-                {teamLeaders.map((leader, index) => (
-                  <section key={index} className="card p-4">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className="grid h-8 w-8 place-items-center rounded-xl bg-app-ink text-xs font-black text-white">
-                        {index + 1}
-                      </span>
-                      <h2 className="text-sm font-black">{index + 1}팀 팀장</h2>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="block rounded-2xl border border-app-border bg-white px-3 py-2.5">
-                        <FieldLabel>이름 *</FieldLabel>
-                        <input
-                          value={leader.name}
-                          onChange={(event) => {
-                            const nextName = event.target.value;
-                            setTeamLeaders((currentLeaders) =>
-                              currentLeaders.map((currentLeader, leaderIndex) =>
-                                leaderIndex === index ? { ...currentLeader, name: nextName } : currentLeader,
-                              ),
-                            );
-                          }}
-                          placeholder="예: 박팀장"
-                          className="mt-1 w-full bg-transparent text-sm font-black outline-none placeholder:text-slate-300"
-                        />
-                      </label>
-                      <label className="block rounded-2xl border border-app-border bg-white px-3 py-2.5">
-                        <FieldLabel>전화 *</FieldLabel>
-                        <input
-                          value={leader.phone}
-                          onChange={(event) => {
-                            const nextPhone = event.target.value;
-                            setTeamLeaders((currentLeaders) =>
-                              currentLeaders.map((currentLeader, leaderIndex) =>
-                                leaderIndex === index ? { ...currentLeader, phone: nextPhone } : currentLeader,
-                              ),
-                            );
-                          }}
-                          inputMode="tel"
-                          placeholder="010-1234-5678"
-                          className="mt-1 w-full bg-transparent text-sm font-black outline-none placeholder:text-slate-300"
-                        />
-                      </label>
-                    </div>
-                  </section>
-                ))}
-              </div>
-
-              {!stepThreeValid && (
-                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800">
-                  모든 팀의 팀장 이름과 전화번호를 입력하면 다음 단계로 갈 수 있습니다.
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 4 && (
-            <div>
-              <section className="mb-4 rounded-panel bg-app-ink p-5 text-white">
                 <div className="text-xs font-black text-slate-400">이벤트</div>
                 <h2 className="mt-1 text-2xl font-black tracking-normal">{title || "새 이벤트"}</h2>
                 <p className="mt-3 text-xs font-bold text-slate-300">
@@ -647,7 +548,7 @@ export function EventCreate() {
 
               <div className="rounded-2xl border border-app-border bg-white px-4 py-3 text-sm font-bold leading-6 text-app-muted">
                 만들기를 누르면 팀 {teamCount}개와 슬롯 {totalSlots}칸이 자동 생성되고, 각 팀에
-                랜덤 토큰이 발급됩니다.
+                랜덤 토큰이 발급됩니다. 팀장 연락처는 생성 직후 팀 QR 관리에서 등록합니다.
               </div>
 
               {createError && (
@@ -682,24 +583,11 @@ export function EventCreate() {
               disabled={!stepTwoValid}
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-app-ink px-4 py-4 text-sm font-black text-white disabled:opacity-40"
             >
-              다음 · 팀장 등록
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </button>
-          )}
-          {step === 3 && (
-            <button
-              type="button"
-              onClick={() => {
-                setStep(4);
-              }}
-              disabled={!stepThreeValid}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-app-ink px-4 py-4 text-sm font-black text-white disabled:opacity-40"
-            >
               다음 · 미리보기
               <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           )}
-          {step === 4 && (
+          {step === 3 && (
             <button
               type="button"
               onClick={() => {

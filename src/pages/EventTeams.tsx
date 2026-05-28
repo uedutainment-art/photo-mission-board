@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
+  AlertCircle,
   ArrowLeft,
   Clipboard,
   Download,
@@ -13,6 +14,8 @@ import {
   Printer,
   Save,
   Share2,
+  User,
+  UserPlus,
   X,
 } from "lucide-react";
 import { useEventTeams, type TeamWithId } from "../hooks/useEventTeams";
@@ -75,6 +78,7 @@ function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamC
   const membersText =
     team.joinedMembers.length > 0 ? `팀원 ${team.joinedMembers.length}명 입장` : "아직 아무도 입장 안 함";
   const leaderPhoneValue = team.leader?.phone;
+  const hasLeader = Boolean(team.leader?.name && team.leader?.phone);
   const contactMessage = `안녕하세요, ${eventTitle} 운영팀입니다.`;
   const canSaveLeader = leaderName.trim().length > 0 && sanitizePhone(leaderPhone).length > 0;
 
@@ -110,20 +114,52 @@ function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamC
 
   return (
     <section className="card p-3">
+      {!hasLeader && (
+        <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 flex-none" aria-hidden="true" />
+            <p className="flex-1 text-xs font-black">팀장 연락처가 아직 없습니다.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingLeader(true);
+              }}
+              className="inline-flex items-center gap-1 rounded-xl bg-amber-200 px-3 py-2 text-xs font-black text-amber-950"
+            >
+              <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
+              팀장 등록하기
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <div className="h-16 w-16 flex-none rounded-2xl border border-app-border bg-white p-1">
           <QrImage size={96} url={url} />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-black">{getTeamLabel(team)}</h2>
+          <div className="flex items-center gap-2">
+            <span
+              className={
+                hasLeader
+                  ? "h-2.5 w-2.5 flex-none rounded-full bg-emerald-500"
+                  : "h-2.5 w-2.5 flex-none rounded-full bg-amber-400"
+              }
+              aria-hidden="true"
+            />
+            <h2 className="truncate text-sm font-black">{getTeamLabel(team)}</h2>
+          </div>
           <p className="mt-1 truncate text-xs font-bold text-app-muted">
             {membersText} · {team.uploadedCount}/{perTeamCount} 업로드
           </p>
-          <p className="mt-1 truncate text-xs font-bold text-app-muted">
-            {team.leader
-              ? `팀장 ${team.leader.name} · ${formatPhone(team.leader.phone)}`
-              : "팀장 미등록"}
-          </p>
+          {team.leader ? (
+            <p className="mt-1 flex items-center gap-1 truncate text-xs font-bold text-app-muted">
+              <User className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
+              <span className="truncate">팀장 {team.leader.name} · {formatPhone(team.leader.phone)}</span>
+            </p>
+          ) : (
+            <p className="mt-1 truncate text-xs font-bold text-amber-700">팀장 미등록</p>
+          )}
         </div>
         <div className="flex max-w-[124px] flex-none flex-wrap justify-end gap-1">
           {leaderPhoneValue && (

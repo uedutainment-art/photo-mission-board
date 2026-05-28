@@ -49,7 +49,7 @@ export interface CreateEventInput {
   organizer: OrganizerContact;
   grid: GridSize;
   teamCount: number;
-  leaders: Array<{
+  leaders?: Array<{
     teamIndex: number;
     name: string;
     role?: string;
@@ -143,7 +143,7 @@ function cleanOrganizer(organizer: OrganizerContact): OrganizerContact {
   return nextOrganizer;
 }
 
-function cleanLeader(leader: CreateEventInput["leaders"][number]): TeamLeader {
+function cleanLeader(leader: NonNullable<CreateEventInput["leaders"]>[number]): TeamLeader {
   const name = leader.name.trim();
   const phone = sanitizePhone(leader.phone);
 
@@ -184,7 +184,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
   const perTeamCount = getPerTeamCount(input.grid, input.teamCount);
   const placeTotal = input.places.reduce((sum, place) => sum + place.perTeamCount, 0);
   const organizer = cleanOrganizer(input.organizer);
-  const leaderByIndex = new Map(input.leaders.map((leader) => [leader.teamIndex, cleanLeader(leader)]));
+  const leaderByIndex = new Map((input.leaders ?? []).map((leader) => [leader.teamIndex, cleanLeader(leader)]));
 
   if (!title) {
     throw new Error("이벤트 제목이 필요합니다.");
@@ -200,10 +200,6 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
 
   if (input.places.length === 0 || input.places.some((place) => !place.name.trim())) {
     throw new Error("장소 이름을 모두 입력해주세요.");
-  }
-
-  if (leaderByIndex.size !== input.teamCount) {
-    throw new Error("모든 팀의 팀장 정보를 입력해주세요.");
   }
 
   const batch = writeBatch(db);
@@ -242,22 +238,21 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     const teamRef = doc(collection(db, "events", eventId, "teams"));
     const leader = leaderByIndex.get(teamIndex);
 
-    if (!leader) {
-      throw new Error(`${teamIndex}팀 팀장 정보를 찾을 수 없습니다.`);
-    }
-
     const teamData: TeamCreateDocument = {
       eventId,
       index: teamIndex,
       name: `${teamIndex}팀`,
       displayName: `${teamIndex}팀`,
-      leader,
       color: TEAM_COLORS[(teamIndex - 1) % TEAM_COLORS.length],
       token: randomToken(),
       status: "idle",
       joinedMembers: [],
       uploadedCount: 0,
     };
+
+    if (leader) {
+      teamData.leader = leader;
+    }
 
     batch.set(teamRef, teamData);
 

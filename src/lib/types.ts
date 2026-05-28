@@ -82,7 +82,7 @@ export interface Team {
   index: number;
   name: string;
   displayName: string;
-  leader: TeamLeader;
+  leader?: TeamLeader;
   color: string;
   token: string;
   status: TeamStatus;
