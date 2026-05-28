@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { PublicFooter } from "../components/PublicFooter";
 import { PublicHeader } from "../components/PublicHeader";
 import { useEventLive, type EventLivePhoto } from "../hooks/useEventLive";
+import { formatKoreanDate } from "../lib/formatDate";
 import { ensureUploaderUser } from "../lib/teamSession";
 
 export function PublicBoard() {
@@ -62,7 +63,10 @@ export function PublicBoard() {
 
         {authReady && !loading && !pageError && event && (
           <>
-            <PublicHeader subtitle={event.subtitle} title={event.title} />
+            <PublicHeader
+              subtitle={formatKoreanDate(event.scheduledAt) || event.subtitle}
+              title={event.title}
+            />
 
             <div className="flex min-h-0 flex-1 items-center justify-center p-4 md:p-6">
               <div

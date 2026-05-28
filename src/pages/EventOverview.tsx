@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Image, Loader2, MessageCircle, Phone, QrCode, Users } from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot, type EventLiveTeam } from "../hooks/useEventLive";
+import { formatKoreanDate } from "../lib/formatDate";
 import { smsHref, telHref } from "../lib/phone";
 import { getTeamLabel } from "../lib/teamLabel";
 
@@ -38,6 +39,7 @@ export function EventOverview() {
   const teamById = new Map(teams.map((team) => [team.id, team]));
   const slotById = new Map(slots.map((slot) => [slot.id, slot]));
   const recentPhotos = photos.slice(0, 6);
+  const eventDateText = event ? formatKoreanDate(event.scheduledAt) || event.subtitle : "";
 
   function getTeamProgress(team: EventLiveTeam): number {
     const teamSlots = slots.filter((slot) => slot.teamId === team.id);
@@ -56,6 +58,9 @@ export function EventOverview() {
             </Link>
             <div className="min-w-0 text-center">
               <p className="truncate text-[11px] font-black text-app-muted">{event?.title ?? "이벤트"}</p>
+              {eventDateText && (
+                <p className="truncate text-[10px] font-bold text-app-muted">{eventDateText}</p>
+              )}
               <h1 className="text-base font-black">
                 <span className="mr-1 inline-block h-2 w-2 rounded-full bg-app-success" />
                 LIVE Overview

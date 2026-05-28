@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Camera, ChevronRight, Loader2, Share2, Target, Users } from "lucide-react";
 import { useTeamSession } from "../hooks/useTeamSession";
+import { formatKoreanDate } from "../lib/formatDate";
 import { getTeamLabel } from "../lib/teamLabel";
 
 function getStartLabel(selfieMode: string): string {
@@ -19,6 +20,7 @@ export function TeamEntry() {
   const { teamToken } = useParams();
   const navigate = useNavigate();
   const { context, error, loading } = useTeamSession(teamToken);
+  const eventDateText = context ? formatKoreanDate(context.event.scheduledAt) || context.event.subtitle : "";
 
   function handleStart() {
     if (!context || !teamToken) {
@@ -79,7 +81,7 @@ export function TeamEntry() {
                 </h1>
                 <p className="mt-2 text-sm font-bold text-slate-300">
                   {context.event.title}
-                  {context.event.subtitle ? ` · ${context.event.subtitle}` : ""}
+                  {eventDateText ? ` · ${eventDateText}` : ""}
                 </p>
 
                 <div className="mt-5 grid grid-cols-3 gap-2 border-t border-slate-700 pt-5">

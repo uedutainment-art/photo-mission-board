@@ -1,4 +1,5 @@
 import { createQrDataUrl, getTeamQrUrl } from "./qr";
+import { formatKoreanDate } from "./formatDate";
 import { getTeamLabel } from "./teamLabel";
 
 const A4_WIDTH_MM = 210;
@@ -10,6 +11,7 @@ const FONT_STACK = '"Noto Sans KR", "Apple SD Gothic Neo", "Segoe UI", sans-seri
 export interface QrSheetEvent {
   title: string;
   subtitle?: string;
+  scheduledAt?: string;
 }
 
 export interface QrSheetTeam {
@@ -228,8 +230,9 @@ export async function createTeamQrSheetDataUrl(
   context.fillStyle = "#f8fafc";
   context.fillRect(0, 0, width, height);
   context.fillStyle = "#0f172a";
+  const subtitle = formatKoreanDate(event.scheduledAt) || event.subtitle || "팀별 입장 QR";
   drawFittedText(context, event.title, marginX, 72 * scale, width - marginX * 2, 44 * scale, 23 * scale, 900, "#0f172a");
-  drawFittedText(context, event.subtitle || "팀별 입장 QR", marginX, 112 * scale, width - marginX * 2 - 210 * scale, 21 * scale, 12 * scale, 800, "#64748b");
+  drawFittedText(context, subtitle, marginX, 112 * scale, width - marginX * 2 - 210 * scale, 21 * scale, 12 * scale, 800, "#64748b");
   drawFittedText(context, `${sortedTeams.length}팀 · A4 1장`, width - marginX, 112 * scale, 190 * scale, 19 * scale, 11 * scale, 900, "#2563eb", "right");
 
   for (const [index, team] of sortedTeams.entries()) {

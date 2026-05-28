@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AccountBar } from "../components/AccountBar";
 import { NotificationSettings } from "../components/NotificationSettings";
 import { useAuth } from "../lib/auth";
+import { formatKoreanDate } from "../lib/formatDate";
 import type { GridSize } from "../lib/types";
 import { filterEvents, type EventFilter, type EventRecord, useEvents } from "../hooks/useEvents";
 
@@ -20,9 +21,9 @@ function getGridTotal(grid: GridSize): number {
 function getEventMeta(event: EventRecord): string {
   const gridTotal = getGridTotal(event.grid);
   const statusText = filterLabels[event.status === "archived" ? "completed" : event.status];
-  const subtitle = event.subtitle ? ` · ${event.subtitle}` : "";
+  const scheduleText = formatKoreanDate(event.scheduledAt) || event.subtitle || "";
 
-  return `${event.teamCount}팀 · ${gridTotal}칸 · ${statusText}${subtitle}`;
+  return `${event.teamCount}팀 · ${gridTotal}칸 · ${statusText}${scheduleText ? ` · ${scheduleText}` : ""}`;
 }
 
 function EventCard({ event }: { event: EventRecord }) {

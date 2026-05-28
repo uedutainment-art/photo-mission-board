@@ -43,6 +43,7 @@ export interface CreateEventInput {
   ownerId: string;
   title: string;
   subtitle?: string;
+  scheduledAt?: string;
   organizer: OrganizerContact;
   grid: GridSize;
   teamCount: number;
@@ -60,6 +61,7 @@ interface EventCreateDocument {
   ownerId: string;
   title: string;
   subtitle?: string;
+  scheduledAt?: string;
   organizer: OrganizerContact;
   status: "draft";
   grid: GridSize;
@@ -168,6 +170,7 @@ export function getPerTeamCount(grid: GridSize, teamCount: number): number | nul
 export async function createEvent(input: CreateEventInput): Promise<string> {
   const title = input.title.trim();
   const subtitle = input.subtitle?.trim();
+  const scheduledAt = input.scheduledAt?.trim();
   const perTeamCount = getPerTeamCount(input.grid, input.teamCount);
   const placeTotal = input.places.reduce((sum, place) => sum + place.perTeamCount, 0);
   const organizer = cleanOrganizer(input.organizer);
@@ -217,6 +220,10 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
 
   if (subtitle) {
     eventData.subtitle = subtitle;
+  }
+
+  if (scheduledAt) {
+    eventData.scheduledAt = scheduledAt;
   }
 
   batch.set(eventRef, eventData);

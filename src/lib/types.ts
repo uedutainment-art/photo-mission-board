@@ -51,6 +51,7 @@ export interface MissionEvent {
   ownerId: string;
   title: string;
   subtitle?: string;
+  scheduledAt?: string;
   organizer: OrganizerContact;
   status: EventStatus;
   grid: GridSize;

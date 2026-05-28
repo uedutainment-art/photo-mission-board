@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { Camera, Image as ImageIcon, Loader2, Lock, Users } from "lucide-react";
 import { useSharedEvent, type SharedPhoto, type SharedSelfie, type SharedSlot } from "../hooks/useSharedEvent";
 import { getCropObjectStyle } from "../lib/crop";
+import { formatKoreanDate } from "../lib/formatDate";
 
 const SELFIE_GROUP_COLORS = [
   "#2563eb",
@@ -83,6 +84,7 @@ export function ShareEvent() {
   const selfieGroups = useMemo(() => groupSelfies(selfies, slots), [selfies, slots]);
   const filledSlots = slots.filter((slot) => Boolean(slot.representativePhotoId)).length;
   const progressPercent = getProgressPercent(filledSlots, slots.length);
+  const eventDateText = event ? formatKoreanDate(event.scheduledAt) || event.subtitle : "";
 
   return (
     <main className="min-h-dvh bg-slate-950 text-white">
@@ -124,8 +126,8 @@ export function ShareEvent() {
                 <h1 className="mt-2 text-3xl font-black tracking-normal text-white md:text-5xl">
                   {event.title}
                 </h1>
-                {event.subtitle && (
-                  <p className="mt-2 text-sm font-bold text-slate-300 md:text-base">{event.subtitle}</p>
+                {eventDateText && (
+                  <p className="mt-2 text-sm font-bold text-slate-300 md:text-base">{eventDateText}</p>
                 )}
               </div>
               <div className="rounded-full bg-emerald-400/15 px-4 py-2 text-xs font-black text-emerald-200">

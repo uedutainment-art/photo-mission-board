@@ -18,6 +18,7 @@ import {
   type CreateEventPlaceInput,
 } from "../lib/createEvent";
 import { useAuth } from "../lib/auth";
+import { formatKoreanDate } from "../lib/formatDate";
 import { sanitizePhone } from "../lib/phone";
 import type { ContactPreference, MapPlatform, SelfieMode } from "../lib/types";
 
@@ -101,7 +102,7 @@ export function EventCreate() {
   const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>(1);
   const [title, setTitle] = useState("");
-  const [subtitle, setSubtitle] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
   const [organizerName, setOrganizerName] = useState("");
   const [organizerRole, setOrganizerRole] = useState("");
   const [organizerPhone, setOrganizerPhone] = useState("");
@@ -188,7 +189,7 @@ export function EventCreate() {
       const eventId = await createEvent({
         ownerId: user.uid,
         title,
-        subtitle,
+        scheduledAt,
         organizer: {
           name: organizerName,
           role: organizerRole,
@@ -272,13 +273,23 @@ export function EventCreate() {
                 <label className="block rounded-2xl border border-app-border bg-white px-4 py-3">
                   <FieldLabel>행사 일정</FieldLabel>
                   <input
-                    value={subtitle}
+                    type="date"
+                    value={scheduledAt}
                     onChange={(event) => {
-                      setSubtitle(event.target.value);
+                      setScheduledAt(event.target.value);
                     }}
-                    placeholder="예: 2026.06.21 (토)"
-                    className="mt-1 w-full bg-transparent text-sm font-bold outline-none placeholder:text-slate-300"
+                    className="mt-1 w-full bg-transparent text-sm font-bold outline-none text-app-ink"
                   />
+                  {!scheduledAt && (
+                    <span className="mt-1 block text-xs font-bold text-slate-300">
+                      날짜를 선택해주세요
+                    </span>
+                  )}
+                  {scheduledAt && (
+                    <span className="mt-1 block text-xs font-black text-app-muted">
+                      {formatKoreanDate(scheduledAt)}
+                    </span>
+                  )}
                 </label>
               </div>
 
@@ -583,7 +594,7 @@ export function EventCreate() {
                 <h2 className="mt-1 text-2xl font-black tracking-normal">{title || "새 이벤트"}</h2>
                 <p className="mt-3 text-xs font-bold text-slate-300">
                   {teamCount}팀 · {totalSlots}칸 · {places.length}개 장소
-                  {subtitle ? ` · ${subtitle}` : ""}
+                  {scheduledAt ? ` · ${formatKoreanDate(scheduledAt)}` : ""}
                 </p>
               </section>
 

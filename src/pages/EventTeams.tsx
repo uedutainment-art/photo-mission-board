@@ -22,6 +22,7 @@ import {
   createTeamQrSheetPreviewUrl,
   downloadTeamQrSheetPdf,
 } from "../lib/qrSheetPdf";
+import { formatKoreanDate } from "../lib/formatDate";
 import { getTeamLabel } from "../lib/teamLabel";
 import { updateTeamLeader } from "../lib/teams";
 
@@ -404,6 +405,11 @@ export function EventTeams() {
                   TEAM QR
                 </p>
                 <h2 className="mt-1 text-2xl font-black tracking-normal">{event.title}</h2>
+                {(formatKoreanDate(event.scheduledAt) || event.subtitle) && (
+                  <p className="mt-2 text-xs font-bold text-slate-300">
+                    {formatKoreanDate(event.scheduledAt) || event.subtitle}
+                  </p>
+                )}
                 <p className="mt-3 text-xs font-bold text-slate-300">
                   {event.teamCount}팀 · 팀당 {event.perTeamCount}장 · QR 자동 발급
                 </p>
