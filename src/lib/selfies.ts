@@ -1,7 +1,8 @@
 import { arrayUnion, collection, doc, serverTimestamp, setDoc, Timestamp, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
+import { detectSelfieFaceCrop } from "./face";
 import { uploadImage } from "./storage";
-import type { CropMeta, TeamMember } from "./types";
+import type { TeamMember } from "./types";
 
 export interface UploadSelfieInput {
   eventId: string;
@@ -11,12 +12,6 @@ export interface UploadSelfieInput {
   file: File;
 }
 
-const defaultCropMeta: CropMeta = {
-  x: 0.5,
-  y: 0.5,
-  scale: 1,
-};
-
 export async function uploadSelfie({
   eventId,
   file,
@@ -25,7 +20,10 @@ export async function uploadSelfie({
   uploaderName,
 }: UploadSelfieInput): Promise<void> {
   const selfieRef = doc(collection(db, "events", eventId, "selfies"));
-  const image = await uploadImage(file, `events/${eventId}/selfies/${selfieRef.id}`);
+  const [faceCrop, image] = await Promise.all([
+    detectSelfieFaceCrop(file),
+    uploadImage(file, `events/${eventId}/selfies/${selfieRef.id}`),
+  ]);
   const cleanName = uploaderName?.trim();
   const selfieData = {
     eventId,
@@ -35,11 +33,12 @@ export async function uploadSelfie({
     thumbPath: image.thumbPath,
     originalUrl: image.originalUrl,
     thumbUrl: image.thumbUrl,
-    cropMeta: defaultCropMeta,
+    cropMeta: faceCrop.cropMeta,
     width: image.width,
     height: image.height,
     bytes: image.bytes,
     uploadedAt: serverTimestamp(),
+    ...(faceCrop.faceDetected ? { faceDetected: faceCrop.faceDetected } : {}),
     ...(cleanName ? { uploaderName: cleanName } : {}),
   };
   const memberData: TeamMember = {

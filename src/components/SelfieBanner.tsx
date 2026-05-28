@@ -1,5 +1,6 @@
 import type { TeamSessionTeam } from "../hooks/useTeamSession";
 import type { SelfieWithId } from "../hooks/useSelfies";
+import { getCropObjectStyle } from "../lib/crop";
 
 interface GridShape {
   cols: number;
@@ -79,9 +80,10 @@ export function SelfieBanner({ currentUploaderId, selfies, team }: SelfieBannerP
               {selfie ? (
                 <>
                   <img
-                    src={selfie.thumbUrl}
+                    src={selfie.originalUrl}
                     alt=""
                     className="h-full w-full object-cover"
+                    style={getCropObjectStyle(selfie.cropMeta)}
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute bottom-1 left-1 max-w-[80%] truncate rounded-full bg-app-ink/75 px-2 py-0.5 text-[10px] font-black">

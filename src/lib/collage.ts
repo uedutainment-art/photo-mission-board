@@ -5,6 +5,7 @@ import type {
   EventLiveSlot,
   EventLiveTeam,
 } from "../hooks/useEventLive";
+import { drawImageCover } from "./crop";
 
 const OUTPUT_SIZE = 2400;
 
@@ -73,32 +74,6 @@ function canvasToBlob(canvas: HTMLCanvasElement, type = "image/png"): Promise<Bl
   });
 }
 
-function drawCover(
-  context: CanvasRenderingContext2D,
-  image: HTMLImageElement,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-): void {
-  const sourceAspect = image.naturalWidth / image.naturalHeight;
-  const targetAspect = width / height;
-  let sourceWidth = image.naturalWidth;
-  let sourceHeight = image.naturalHeight;
-  let sourceX = 0;
-  let sourceY = 0;
-
-  if (sourceAspect > targetAspect) {
-    sourceWidth = sourceHeight * targetAspect;
-    sourceX = (image.naturalWidth - sourceWidth) / 2;
-  } else {
-    sourceHeight = sourceWidth / targetAspect;
-    sourceY = (image.naturalHeight - sourceHeight) / 2;
-  }
-
-  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
-}
-
 export async function createCollagePng({
   event,
   layoutMode,
@@ -143,7 +118,7 @@ export async function createCollagePng({
     }
 
     const image = await loadImage(photo.thumbUrl);
-    drawCover(context, image, x, y, cellWidth, cellHeight);
+    drawImageCover(context, image, x, y, cellWidth, cellHeight);
   }
 
   return canvasToBlob(canvas);
@@ -187,10 +162,10 @@ export async function createSelfieCollagePng({
     const innerHeight = cellHeight / innerRows;
 
     for (const [selfieIndex, selfie] of teamSelfies.entries()) {
-      const image = await loadImage(selfie.thumbUrl);
+      const image = await loadImage(selfie.originalUrl).catch(() => loadImage(selfie.thumbUrl));
       const innerX = x + (selfieIndex % innerCols) * innerWidth;
       const innerY = y + Math.floor(selfieIndex / innerCols) * innerHeight;
-      drawCover(context, image, innerX, innerY, innerWidth, innerHeight);
+      drawImageCover(context, image, innerX, innerY, innerWidth, innerHeight, selfie.cropMeta);
     }
 
     context.fillStyle = "rgba(15, 23, 42, 0.74)";
