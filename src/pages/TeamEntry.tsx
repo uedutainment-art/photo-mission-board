@@ -1,6 +1,7 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Camera, ChevronRight, Loader2, Share2, Target, Users } from "lucide-react";
 import { useTeamSession } from "../hooks/useTeamSession";
+import { getTeamLabel } from "../lib/teamLabel";
 
 function getStartLabel(selfieMode: string): string {
   if (selfieMode === "none") {
@@ -74,7 +75,7 @@ export function TeamEntry() {
                   {context.team.index}
                 </div>
                 <h1 className="text-2xl font-black tracking-normal">
-                  {context.team.name} · {context.team.displayName}
+                  {getTeamLabel(context.team)}
                 </h1>
                 <p className="mt-2 text-sm font-bold text-slate-300">
                   {context.event.title}

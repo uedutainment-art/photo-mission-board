@@ -7,7 +7,8 @@ import { useEventTeams } from "../hooks/useEventTeams";
 import { useSelfies } from "../hooks/useSelfies";
 import { useTeamMission, type SlotWithId } from "../hooks/useTeamMission";
 import { useTeamSession } from "../hooks/useTeamSession";
-import type { Place, Team } from "../lib/types";
+import { getTeamLabel } from "../lib/teamLabel";
+import type { Place } from "../lib/types";
 
 function isSelfieReady(selfieMode: string, selfiesCount: number, hasMySelfie: boolean): boolean {
   if (selfieMode === "none") {
@@ -27,12 +28,6 @@ function getProgressPercent(filled: number, total: number): number {
   }
 
   return Math.round((filled / total) * 100);
-}
-
-function getTeamLabel(team: Pick<Team, "displayName" | "name">): string {
-  return team.displayName && team.displayName !== team.name
-    ? `${team.name} · ${team.displayName}`
-    : team.name;
 }
 
 function getLeaderboardLine(

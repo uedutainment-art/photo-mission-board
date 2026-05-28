@@ -206,12 +206,16 @@ export function EventExport() {
                     setSeed((current) => current + 1);
                     setLayoutMode("random");
                   }}
-                  className="flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-black text-app-muted"
+                  disabled={locked}
+                  className="flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-black text-app-muted disabled:opacity-40"
                 >
                   <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
                   다시
                 </button>
               </div>
+              {locked && (
+                <p className="-mt-2 text-center text-xs font-black text-app-muted">잠금 해제 후 셔플</p>
+              )}
 
               <button
                 type="button"

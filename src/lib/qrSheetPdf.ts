@@ -1,4 +1,5 @@
 import { createQrDataUrl, getTeamQrUrl } from "./qr";
+import { getTeamLabel } from "./teamLabel";
 
 const A4_WIDTH_MM = 210;
 const A4_HEIGHT_MM = 297;
@@ -47,12 +48,6 @@ function getSheetGrid(teamCount: number): SheetGrid {
 
   const cols = Math.ceil(Math.sqrt(teamCount * 0.72));
   return { cols, rows: Math.ceil(teamCount / cols) };
-}
-
-export function getQrSheetTeamLabel(team: Pick<QrSheetTeam, "displayName" | "name">): string {
-  return team.displayName && team.displayName !== team.name
-    ? `${team.name} · ${team.displayName}`
-    : team.name;
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -156,7 +151,7 @@ async function drawTeamCell(
     : Math.min(width - padding * 2, height * 0.58, 214 * scale);
   const qrDataUrl = await createQrDataUrl(url, Math.max(180, Math.round(qrSize * 2)));
   const qrImage = await loadImage(qrDataUrl);
-  const label = getQrSheetTeamLabel(team);
+  const label = getTeamLabel(team);
   const radius = 22 * scale;
 
   context.save();

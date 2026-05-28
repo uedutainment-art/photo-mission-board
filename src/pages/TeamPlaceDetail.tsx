@@ -14,6 +14,7 @@ import { HelpSheet } from "../components/HelpSheet";
 import { useSelfies } from "../hooks/useSelfies";
 import { useTeamMission, type PhotoWithId } from "../hooks/useTeamMission";
 import { useTeamSession } from "../hooks/useTeamSession";
+import { getTeamLabel } from "../lib/teamLabel";
 import {
   deleteMissionPhoto,
   setRepresentativePhoto,
@@ -30,12 +31,6 @@ function getUploaderLabel(photo: PhotoWithId, currentUploaderId: string): string
   }
 
   return photo.uploaderName || "팀원";
-}
-
-function getTeamLabel(team: { displayName?: string; name: string }): string {
-  return team.displayName && team.displayName !== team.name
-    ? `${team.name} · ${team.displayName}`
-    : team.name;
 }
 
 export function TeamPlaceDetail() {

@@ -21,8 +21,8 @@ import { createQrDataUrl, getTeamQrUrl } from "../lib/qr";
 import {
   createTeamQrSheetPreviewUrl,
   downloadTeamQrSheetPdf,
-  getQrSheetTeamLabel,
 } from "../lib/qrSheetPdf";
+import { getTeamLabel } from "../lib/teamLabel";
 import { updateTeamLeader } from "../lib/teams";
 
 function QrImage({ size, url }: { size: number; url: string }) {
@@ -51,10 +51,6 @@ function QrImage({ size, url }: { size: number; url: string }) {
   }
 
   return <img src={dataUrl} alt="" className="h-full w-full rounded-xl bg-white object-contain" />;
-}
-
-function getTeamLabel(team: TeamWithId): string {
-  return getQrSheetTeamLabel(team);
 }
 
 interface TeamListCardProps {

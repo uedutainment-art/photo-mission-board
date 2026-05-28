@@ -205,7 +205,7 @@ export function EventCreate() {
         places,
         selfieMode,
       });
-      navigate(`/events/${eventId}`, { replace: true });
+      navigate(`/events/${eventId}/teams`, { replace: true });
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "이벤트를 만들지 못했습니다.");
     } finally {

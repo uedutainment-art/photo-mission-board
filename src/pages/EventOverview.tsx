@@ -1,8 +1,9 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Image, Loader2, MessageCircle, Phone, Users } from "lucide-react";
+import { ArrowLeft, Image, Loader2, MessageCircle, Phone, QrCode, Users } from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot, type EventLiveTeam } from "../hooks/useEventLive";
 import { smsHref, telHref } from "../lib/phone";
+import { getTeamLabel } from "../lib/teamLabel";
 
 function getPercent(value: number, total: number): number {
   if (total === 0) {
@@ -99,6 +100,22 @@ export function EventOverview() {
                 </section>
               </div>
 
+              <Link
+                to={`/events/${eventId}/teams`}
+                className="card flex items-center gap-3 p-4"
+              >
+                <div className="grid h-11 w-11 flex-none place-items-center rounded-2xl bg-app-ink text-white">
+                  <QrCode className="h-5 w-5" aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-black">팀 QR 관리</h2>
+                  <p className="mt-1 text-xs font-bold text-app-muted">
+                    팀장에게 보낼 QR과 연락처를 바로 확인합니다.
+                  </p>
+                </div>
+                <span className="text-xl font-black">→</span>
+              </Link>
+
               <section className="card p-4">
                 <h2 className="mb-3 text-sm font-black">팀별 진행률</h2>
                 <div className="space-y-3">
@@ -112,7 +129,7 @@ export function EventOverview() {
                         <span className="h-3 w-3 rounded-full" style={{ backgroundColor: team.color }} />
                         <div className="min-w-0">
                           <div className="mb-1 flex items-center justify-between gap-2 text-xs font-black">
-                            <span className="truncate">{team.name} {team.displayName}</span>
+                            <span className="truncate">{getTeamLabel(team)}</span>
                             <span>{progress}%</span>
                           </div>
                           <div className="h-2 overflow-hidden rounded-full bg-slate-100">

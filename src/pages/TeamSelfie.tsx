@@ -7,12 +7,7 @@ import { useSelfies } from "../hooks/useSelfies";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { loadFaceApi } from "../lib/face";
 import { uploadSelfie } from "../lib/selfies";
-
-function getTeamLabel(team: { displayName?: string; name: string }): string {
-  return team.displayName && team.displayName !== team.name
-    ? `${team.name} · ${team.displayName}`
-    : team.name;
-}
+import { getTeamLabel } from "../lib/teamLabel";
 
 export function TeamSelfie() {
   const { teamToken } = useParams();

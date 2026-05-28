@@ -8,14 +8,9 @@ import {
   Share2,
   Users,
 } from "lucide-react";
-import { useEventTeams, type TeamWithId } from "../hooks/useEventTeams";
+import { useEventTeams } from "../hooks/useEventTeams";
 import { createQrDataUrl, downloadTeamQrPng, getTeamQrUrl } from "../lib/qr";
-
-function getTeamLabel(team: TeamWithId): string {
-  return team.displayName && team.displayName !== team.name
-    ? `${team.name} · ${team.displayName}`
-    : team.name;
-}
+import { getTeamLabel } from "../lib/teamLabel";
 
 export function TeamQRDetail() {
   const { eventId, teamId } = useParams();

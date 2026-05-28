@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Check,
@@ -44,10 +44,12 @@ function getFirstReviewSlot(slots: EventLiveSlot[]): EventLiveSlot | undefined {
 
 export function EventReview() {
   const { eventId } = useParams();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { error, event, loading, photos, slots, teams } = useEventLive(eventId);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const selectedSlotId = searchParams.get("slot");
   const selectedSlot = useMemo(() => {
     if (selectedSlotId) {
@@ -89,7 +91,17 @@ export function EventReview() {
 
   function moveNextUnchecked() {
     const nextUnchecked = uncheckedSlots.find((slot) => slot.id !== selectedSlot?.id);
-    moveToSlot(nextUnchecked ?? selectedSlot ?? undefined);
+
+    if (nextUnchecked) {
+      moveToSlot(nextUnchecked);
+      return;
+    }
+
+    setNotice("모든 슬롯 검수 완료");
+
+    if (eventId) {
+      navigate(`/events/${eventId}/board`);
+    }
   }
 
   async function handleRepresentative(photo: EventLivePhoto) {
@@ -130,6 +142,9 @@ export function EventReview() {
 
         if (nextUnchecked) {
           moveToSlot(nextUnchecked);
+        } else {
+          setNotice("모든 슬롯 검수 완료");
+          navigate(`/events/${eventId}/board`);
         }
       }
     } catch (reviewError) {
@@ -164,6 +179,12 @@ export function EventReview() {
           {(error || localError) && (
             <section className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold leading-6 text-red-700">
               {error || localError}
+            </section>
+          )}
+
+          {notice && (
+            <section className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-700">
+              {notice}
             </section>
           )}
 
