@@ -5,6 +5,7 @@ import {
   increment,
   runTransaction,
   serverTimestamp,
+  type DocumentReference,
 } from "firebase/firestore";
 import { deleteObject, ref } from "firebase/storage";
 import { db, storage } from "./firebase";
@@ -35,7 +36,21 @@ const defaultCropMeta: CropMeta = {
   scale: 1,
 };
 
-function chooseTargetSlot(slots: SlotWithId[]): SlotWithId {
+interface SlotCandidate {
+  id: string;
+  indexInPlace: number;
+  ref: DocumentReference;
+  representativePhotoId?: string;
+  submissionCount: number;
+}
+
+interface LatestSlotData {
+  indexInPlace?: number;
+  representativePhotoId?: string;
+  submissionCount?: number;
+}
+
+function chooseTargetSlot(slots: SlotCandidate[]): SlotCandidate {
   const sortedSlots = [...slots].sort((a, b) => {
     if (a.representativePhotoId && !b.representativePhotoId) {
       return 1;
@@ -66,21 +81,38 @@ function getUploadedAt(photo: PhotoWithId): number {
 
 export async function uploadMissionPhoto(input: UploadMissionPhotoInput): Promise<string> {
   const placeSlots = input.slots.filter((slot) => slot.placeId === input.placeId);
-  const targetSlot = chooseTargetSlot(placeSlots);
+
+  if (placeSlots.length === 0) {
+    throw new Error("업로드할 슬롯을 찾을 수 없습니다.");
+  }
+
   const photoRef = doc(collection(db, "events", input.eventId, "photos"));
   const image = await uploadImage(input.file, `events/${input.eventId}/photos/${photoRef.id}`);
   const cleanName = input.uploaderName?.trim();
 
   await runTransaction(db, async (transaction) => {
-    const slotRef = doc(db, "events", input.eventId, "slots", targetSlot.id);
-    const slotSnapshot = await transaction.get(slotRef);
+    const slotCandidates = await Promise.all(
+      placeSlots.map(async (slot): Promise<SlotCandidate> => {
+        const slotRef = doc(db, "events", input.eventId, "slots", slot.id);
+        const slotSnapshot = await transaction.get(slotRef);
 
-    if (!slotSnapshot.exists()) {
-      throw new Error("슬롯을 찾을 수 없습니다.");
-    }
+        if (!slotSnapshot.exists()) {
+          throw new Error("슬롯을 찾을 수 없습니다.");
+        }
 
-    const representativePhotoId = slotSnapshot.data().representativePhotoId as string | undefined;
-    const isRepresentative = !representativePhotoId;
+        const slotData = slotSnapshot.data() as LatestSlotData;
+
+        return {
+          id: slot.id,
+          indexInPlace: slotData.indexInPlace ?? slot.indexInPlace,
+          ref: slotRef,
+          representativePhotoId: slotData.representativePhotoId,
+          submissionCount: slotData.submissionCount ?? slot.submissionCount,
+        };
+      }),
+    );
+    const targetSlot = chooseTargetSlot(slotCandidates);
+    const isRepresentative = !targetSlot.representativePhotoId;
 
     transaction.set(photoRef, {
       eventId: input.eventId,
@@ -100,7 +132,7 @@ export async function uploadMissionPhoto(input: UploadMissionPhotoInput): Promis
       ...(cleanName ? { uploaderName: cleanName } : {}),
     });
 
-    transaction.update(slotRef, {
+    transaction.update(targetSlot.ref, {
       submissionCount: increment(1),
       ...(isRepresentative ? { representativePhotoId: photoRef.id } : {}),
     });
