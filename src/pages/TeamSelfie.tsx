@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, ChevronRight, Loader2, Upload } from "lucide-react";
+import { ArrowLeft, Camera, ChevronRight, HelpCircle, Loader2, Upload } from "lucide-react";
+import { HelpSheet } from "../components/HelpSheet";
 import { SelfieBanner } from "../components/SelfieBanner";
 import { useSelfies } from "../hooks/useSelfies";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { loadFaceApi } from "../lib/face";
 import { uploadSelfie } from "../lib/selfies";
+
+function getTeamLabel(team: { displayName?: string; name: string }): string {
+  return team.displayName && team.displayName !== team.name
+    ? `${team.name} · ${team.displayName}`
+    : team.name;
+}
 
 export function TeamSelfie() {
   const { teamToken } = useParams();
@@ -16,6 +23,7 @@ export function TeamSelfie() {
     context?.eventId,
     context?.teamId,
   );
+  const [helpOpen, setHelpOpen] = useState(false);
   const [uploaderName, setUploaderName] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -28,6 +36,8 @@ export function TeamSelfie() {
     context?.event.selfieMode === "group" ? groupPhotoReady : hasMySelfie;
   const showUpload =
     context?.event.selfieMode === "group" ? !groupPhotoReady : !hasMySelfie;
+  const teamLabel = context ? getTeamLabel(context.team) : "팀";
+  const hasHelpContact = Boolean(context?.event.organizer?.phone || context?.team.leader?.phone);
 
   useEffect(() => {
     void loadFaceApi().catch((error: unknown) => {
@@ -81,7 +91,18 @@ export function TeamSelfie() {
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
             <h1 className="text-base font-black">셀카 단계</h1>
-            <div className="h-10 w-10" />
+            {hasHelpContact ? (
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="grid h-10 w-10 place-items-center rounded-xl bg-app-ink text-white"
+                aria-label="도움 요청"
+              >
+                <HelpCircle className="h-5 w-5" aria-hidden="true" />
+              </button>
+            ) : (
+              <div className="h-10 w-10" />
+            )}
           </div>
         </header>
 
@@ -195,6 +216,16 @@ export function TeamSelfie() {
           )}
         </div>
       </section>
+
+      {context && (
+        <HelpSheet
+          event={context.event}
+          open={helpOpen}
+          team={context.team}
+          teamLabel={teamLabel}
+          onClose={() => setHelpOpen(false)}
+        />
+      )}
     </main>
   );
 }

@@ -3,12 +3,14 @@ import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Camera,
+  HelpCircle,
   ImagePlus,
   Loader2,
   MapPin,
   Star,
   Trash2,
 } from "lucide-react";
+import { HelpSheet } from "../components/HelpSheet";
 import { useSelfies } from "../hooks/useSelfies";
 import { useTeamMission, type PhotoWithId } from "../hooks/useTeamMission";
 import { useTeamSession } from "../hooks/useTeamSession";
@@ -30,6 +32,12 @@ function getUploaderLabel(photo: PhotoWithId, currentUploaderId: string): string
   return photo.uploaderName || "팀원";
 }
 
+function getTeamLabel(team: { displayName?: string; name: string }): string {
+  return team.displayName && team.displayName !== team.name
+    ? `${team.name} · ${team.displayName}`
+    : team.name;
+}
+
 export function TeamPlaceDetail() {
   const { placeId, teamToken } = useParams();
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +50,7 @@ export function TeamPlaceDetail() {
   );
   const [uploaderName, setUploaderName] = useState("");
   const [busyPhotoId, setBusyPhotoId] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const place = context?.event.places.find((candidate) => candidate.id === placeId);
@@ -58,6 +67,8 @@ export function TeamPlaceDetail() {
     [photos, placeSlotIds],
   );
   const representativeCount = placeSlots.filter((slot) => Boolean(slot.representativePhotoId)).length;
+  const teamLabel = context ? getTeamLabel(context.team) : "팀";
+  const hasHelpContact = Boolean(context?.event.organizer?.phone || context?.team.leader?.phone);
   const hasMySelfie = selfies.some((selfie) => selfie.uploaderId === context?.uploaderId);
   const selfieReady =
     !context ||
@@ -153,7 +164,18 @@ export function TeamPlaceDetail() {
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
             <h1 className="truncate text-base font-black">{place?.name || "장소 상세"}</h1>
-            <div className="h-10 w-10" />
+            {hasHelpContact ? (
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="grid h-10 w-10 place-items-center rounded-xl bg-app-ink text-white"
+                aria-label="도움 요청"
+              >
+                <HelpCircle className="h-5 w-5" aria-hidden="true" />
+              </button>
+            ) : (
+              <div className="h-10 w-10" />
+            )}
           </div>
         </header>
 
@@ -392,6 +414,16 @@ export function TeamPlaceDetail() {
           )}
         </div>
       </section>
+
+      {context && (
+        <HelpSheet
+          event={context.event}
+          open={helpOpen}
+          team={context.team}
+          teamLabel={teamLabel}
+          onClose={() => setHelpOpen(false)}
+        />
+      )}
     </main>
   );
 }
