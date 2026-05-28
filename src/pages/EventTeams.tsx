@@ -7,16 +7,23 @@ import {
   ExternalLink,
   Loader2,
   Maximize2,
+  MessageCircle,
+  Pencil,
+  Phone,
   Printer,
+  Save,
   Share2,
+  X,
 } from "lucide-react";
 import { useEventTeams, type TeamWithId } from "../hooks/useEventTeams";
+import { formatPhone, sanitizePhone, smsHref, telHref } from "../lib/phone";
 import { createQrDataUrl, getTeamQrUrl } from "../lib/qr";
 import {
   createTeamQrSheetPreviewUrl,
   downloadTeamQrSheetPdf,
   getQrSheetTeamLabel,
 } from "../lib/qrSheetPdf";
+import { updateTeamLeader } from "../lib/teams";
 
 function QrImage({ size, url }: { size: number; url: string }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -52,60 +59,210 @@ function getTeamLabel(team: TeamWithId): string {
 
 interface TeamListCardProps {
   eventId: string;
+  eventTitle: string;
   perTeamCount: number;
   team: TeamWithId;
   onCopy: (url: string) => Promise<void>;
+  onNotice: (message: string) => void;
   onShare: (team: TeamWithId, url: string) => Promise<void>;
 }
 
-function TeamListCard({ eventId, onCopy, onShare, perTeamCount, team }: TeamListCardProps) {
+function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamCount, team }: TeamListCardProps) {
   const url = getTeamQrUrl(team.token);
+  const [editingLeader, setEditingLeader] = useState(false);
+  const [leaderName, setLeaderName] = useState(team.leader?.name ?? "");
+  const [leaderPhone, setLeaderPhone] = useState(team.leader?.phone ?? "");
+  const [leaderRole, setLeaderRole] = useState(team.leader?.role ?? "");
+  const [leaderError, setLeaderError] = useState<string | null>(null);
+  const [savingLeader, setSavingLeader] = useState(false);
   const membersText =
     team.joinedMembers.length > 0 ? `팀원 ${team.joinedMembers.length}명 입장` : "아직 아무도 입장 안 함";
+  const leaderPhoneValue = team.leader?.phone;
+  const contactMessage = `안녕하세요, ${eventTitle} 운영팀입니다.`;
+  const canSaveLeader = leaderName.trim().length > 0 && sanitizePhone(leaderPhone).length > 0;
+
+  useEffect(() => {
+    setLeaderName(team.leader?.name ?? "");
+    setLeaderPhone(team.leader?.phone ?? "");
+    setLeaderRole(team.leader?.role ?? "");
+    setLeaderError(null);
+  }, [team.leader?.name, team.leader?.phone, team.leader?.role]);
+
+  async function handleLeaderSave() {
+    if (!canSaveLeader) {
+      return;
+    }
+
+    setSavingLeader(true);
+    setLeaderError(null);
+
+    try {
+      await updateTeamLeader(eventId, team.id, {
+        name: leaderName,
+        phone: leaderPhone,
+        role: leaderRole,
+      });
+      setEditingLeader(false);
+      onNotice("팀장 연락처를 저장했습니다.");
+    } catch (saveError) {
+      setLeaderError(saveError instanceof Error ? saveError.message : "팀장 연락처를 저장하지 못했습니다.");
+    } finally {
+      setSavingLeader(false);
+    }
+  }
 
   return (
-    <section className="card flex items-center gap-3 p-3">
-      <div className="h-16 w-16 flex-none rounded-2xl border border-app-border bg-white p-1">
-        <QrImage size={96} url={url} />
+    <section className="card p-3">
+      <div className="flex items-center gap-3">
+        <div className="h-16 w-16 flex-none rounded-2xl border border-app-border bg-white p-1">
+          <QrImage size={96} url={url} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-black">{getTeamLabel(team)}</h2>
+          <p className="mt-1 truncate text-xs font-bold text-app-muted">
+            {membersText} · {team.uploadedCount}/{perTeamCount} 업로드
+          </p>
+          <p className="mt-1 truncate text-xs font-bold text-app-muted">
+            {team.leader
+              ? `팀장 ${team.leader.name} · ${formatPhone(team.leader.phone)}`
+              : "팀장 미등록"}
+          </p>
+        </div>
+        <div className="flex max-w-[124px] flex-none flex-wrap justify-end gap-1">
+          {leaderPhoneValue && (
+            <>
+              <a
+                href={telHref(leaderPhoneValue)}
+                className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
+                aria-label={`${team.name} 팀장 전화`}
+                title="팀장 전화"
+              >
+                <Phone className="h-4 w-4" aria-hidden="true" />
+              </a>
+              <a
+                href={smsHref(leaderPhoneValue, contactMessage)}
+                className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
+                aria-label={`${team.name} 팀장 문자`}
+                title="팀장 문자"
+              >
+                <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setEditingLeader((current) => !current);
+            }}
+            className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
+            aria-label={`${team.name} 팀장 편집`}
+            title="팀장 편집"
+          >
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void onCopy(url);
+            }}
+            className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
+            aria-label={`${team.name} URL 복사`}
+            title="URL 복사"
+          >
+            <Clipboard className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void onShare(team, url);
+            }}
+            className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
+            aria-label={`${team.name} 공유`}
+            title="공유"
+          >
+            <Share2 className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <Link
+            to={`/events/${eventId}/teams/${team.id}`}
+            className="grid h-9 w-9 place-items-center rounded-xl bg-app-ink text-white"
+            aria-label={`${team.name} QR 상세`}
+            title="QR 상세"
+          >
+            <Maximize2 className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <h2 className="truncate text-sm font-black">{getTeamLabel(team)}</h2>
-        <p className="mt-1 truncate text-xs font-bold text-app-muted">
-          {membersText} · {team.uploadedCount}/{perTeamCount} 업로드
-        </p>
-      </div>
-      <div className="flex flex-none gap-1">
-        <button
-          type="button"
-          onClick={() => {
-            void onCopy(url);
-          }}
-          className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
-          aria-label={`${team.name} URL 복사`}
-          title="URL 복사"
-        >
-          <Clipboard className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void onShare(team, url);
-          }}
-          className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
-          aria-label={`${team.name} 공유`}
-          title="공유"
-        >
-          <Share2 className="h-4 w-4" aria-hidden="true" />
-        </button>
-        <Link
-          to={`/events/${eventId}/teams/${team.id}`}
-          className="grid h-9 w-9 place-items-center rounded-xl bg-app-ink text-white"
-          aria-label={`${team.name} QR 상세`}
-          title="QR 상세"
-        >
-          <Maximize2 className="h-4 w-4" aria-hidden="true" />
-        </Link>
-      </div>
+
+      {editingLeader && (
+        <div className="mt-3 rounded-2xl border border-app-border bg-slate-50 p-3">
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
+            <label className="block text-xs font-black text-app-muted">
+              이름 *
+              <input
+                value={leaderName}
+                onChange={(event) => setLeaderName(event.target.value)}
+                placeholder="예: 박팀장"
+                className="mt-1 w-full rounded-xl border border-app-border bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-app-primary"
+              />
+            </label>
+            <label className="block text-xs font-black text-app-muted">
+              전화번호 *
+              <input
+                value={leaderPhone}
+                onChange={(event) => setLeaderPhone(event.target.value)}
+                placeholder="010-1234-5678"
+                inputMode="tel"
+                className="mt-1 w-full rounded-xl border border-app-border bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-app-primary"
+              />
+            </label>
+            <label className="block text-xs font-black text-app-muted sm:col-span-2">
+              역할
+              <input
+                value={leaderRole}
+                onChange={(event) => setLeaderRole(event.target.value)}
+                placeholder="예: 1팀 모임 안내"
+                className="mt-1 w-full rounded-xl border border-app-border bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-app-primary"
+              />
+            </label>
+          </div>
+          {leaderError && (
+            <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-700">
+              {leaderError}
+            </p>
+          )}
+          <div className="mt-3 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingLeader(false);
+                setLeaderName(team.leader?.name ?? "");
+                setLeaderPhone(team.leader?.phone ?? "");
+                setLeaderRole(team.leader?.role ?? "");
+                setLeaderError(null);
+              }}
+              className="flex items-center gap-1 rounded-xl border border-app-border bg-white px-3 py-2 text-xs font-black text-app-muted"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void handleLeaderSave();
+              }}
+              disabled={!canSaveLeader || savingLeader}
+              className="flex items-center gap-1 rounded-xl bg-app-ink px-3 py-2 text-xs font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              {savingLeader ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Save className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              저장
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -164,14 +321,18 @@ export function EventTeams() {
 
   useEffect(() => clearNoticeTimeout, []);
 
-  async function handleCopy(url: string) {
-    await navigator.clipboard.writeText(url);
+  function showNotice(message: string) {
     clearNoticeTimeout();
-    setNotice("팀 링크를 복사했습니다.");
+    setNotice(message);
     noticeTimeoutRef.current = window.setTimeout(() => {
       setNotice(null);
       noticeTimeoutRef.current = null;
     }, 3000);
+  }
+
+  async function handleCopy(url: string) {
+    await navigator.clipboard.writeText(url);
+    showNotice("팀 링크를 복사했습니다.");
   }
 
   async function handleShare(team: TeamWithId, url: string) {
@@ -181,8 +342,7 @@ export function EventTeams() {
         text: "Photo Mission Board 팀 링크입니다.",
         url,
       });
-      clearNoticeTimeout();
-      setNotice("공유 창을 열었습니다.");
+      showNotice("공유 창을 열었습니다.");
       return;
     }
 
@@ -201,8 +361,7 @@ export function EventTeams() {
 
     try {
       await downloadTeamQrSheetPdf(event, teams);
-      clearNoticeTimeout();
-      setNotice("A4 팀 QR PDF를 저장했습니다.");
+      showNotice("A4 팀 QR PDF를 저장했습니다.");
     } catch (downloadError) {
       setSheetError(downloadError instanceof Error ? downloadError.message : "PDF를 만들지 못했습니다.");
     } finally {
@@ -320,9 +479,11 @@ export function EventTeams() {
                   <TeamListCard
                     key={team.id}
                     eventId={eventId}
+                    eventTitle={event.title}
                     perTeamCount={event.perTeamCount}
                     team={team}
                     onCopy={handleCopy}
+                    onNotice={showNotice}
                     onShare={handleShare}
                   />
                 ))}

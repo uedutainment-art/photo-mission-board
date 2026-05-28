@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Loader2, Star } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  MessageCircle,
+  Phone,
+  Star,
+} from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot } from "../hooks/useEventLive";
+import { formatPhone, smsHref, telHref } from "../lib/phone";
 import { setSlotReviewStatus } from "../lib/live";
 import { setRepresentativePhoto } from "../lib/upload";
 
@@ -60,6 +70,8 @@ export function EventReview() {
     (slot) => slot.reviewStatus === "unchecked" && slot.representativePhotoId,
   );
   const teamById = new Map(teams.map((team) => [team.id, team]));
+  const selectedTeam = selectedSlot ? teamById.get(selectedSlot.teamId) : undefined;
+  const selectedLeaderPhone = selectedTeam?.leader?.phone;
 
   useEffect(() => {
     if (!selectedSlotId && selectedSlot) {
@@ -170,13 +182,38 @@ export function EventReview() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-black">
-                      {teamById.get(selectedSlot.teamId)?.name ?? "팀"} · {getPlaceName(selectedSlot, event.places)}
+                      {selectedTeam?.name ?? "팀"} · {getPlaceName(selectedSlot, event.places)}
                     </p>
                     <p className="mt-1 text-xs font-bold text-app-muted">
                       슬롯 {selectedIndex + 1} / {slots.length} · 미확인 {uncheckedSlots.length}개
                     </p>
+                    {selectedTeam?.leader && (
+                      <p className="mt-1 truncate text-xs font-bold text-app-muted">
+                        팀장 {selectedTeam.leader.name} · {formatPhone(selectedTeam.leader.phone)}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {selectedLeaderPhone && (
+                      <>
+                        <a
+                          href={telHref(selectedLeaderPhone)}
+                          className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
+                          aria-label={`${selectedTeam?.name ?? "팀"} 팀장 전화`}
+                          title="팀장 전화"
+                        >
+                          <Phone className="h-4 w-4" aria-hidden="true" />
+                        </a>
+                        <a
+                          href={smsHref(selectedLeaderPhone, `안녕하세요, ${event.title} 운영팀입니다.`)}
+                          className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
+                          aria-label={`${selectedTeam?.name ?? "팀"} 팀장 문자`}
+                          title="팀장 문자"
+                        >
+                          <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                        </a>
+                      </>
+                    )}
                     <button
                       type="button"
                       onClick={() => {

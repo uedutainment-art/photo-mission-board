@@ -1,7 +1,8 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Image, Loader2, Users } from "lucide-react";
+import { ArrowLeft, Image, Loader2, MessageCircle, Phone, Users } from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot, type EventLiveTeam } from "../hooks/useEventLive";
+import { smsHref, telHref } from "../lib/phone";
 
 function getPercent(value: number, total: number): number {
   if (total === 0) {
@@ -103,6 +104,8 @@ export function EventOverview() {
                 <div className="space-y-3">
                   {teams.map((team) => {
                     const progress = getTeamProgress(team);
+                    const leaderPhone = team.leader?.phone;
+                    const contactMessage = `안녕하세요, ${event.title} 운영팀입니다.`;
 
                     return (
                       <div key={team.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
@@ -116,7 +119,28 @@ export function EventOverview() {
                             <div className="h-full rounded-full bg-app-primary" style={{ width: `${progress}%` }} />
                           </div>
                         </div>
-                        <Users className="h-4 w-4 text-app-muted" aria-hidden="true" />
+                        {leaderPhone ? (
+                          <div className="flex gap-1">
+                            <a
+                              href={telHref(leaderPhone)}
+                              className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100 text-app-muted"
+                              aria-label={`${team.name} 팀장 전화`}
+                              title="팀장 전화"
+                            >
+                              <Phone className="h-4 w-4" aria-hidden="true" />
+                            </a>
+                            <a
+                              href={smsHref(leaderPhone, contactMessage)}
+                              className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100 text-app-muted"
+                              aria-label={`${team.name} 팀장 문자`}
+                              title="팀장 문자"
+                            >
+                              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                            </a>
+                          </div>
+                        ) : (
+                          <Users className="h-4 w-4 text-app-muted" aria-hidden="true" />
+                        )}
                       </div>
                     );
                   })}
