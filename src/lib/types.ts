@@ -7,6 +7,20 @@ export type PublicViewMode = "board";
 export type ReviewStatus = "unchecked" | "checked";
 export type TeamStatus = "idle" | "joined" | "active" | "completed";
 export type MapPlatform = "naver" | "kakao" | "google";
+export type ContactPreference = "sms-first" | "call-first";
+
+export interface OrganizerContact {
+  name: string;
+  role?: string;
+  phone: string;
+  contactPreference?: ContactPreference;
+}
+
+export interface TeamLeader {
+  name: string;
+  role?: string;
+  phone: string;
+}
 
 export interface UserProfile {
   uid: string;
@@ -37,6 +51,7 @@ export interface MissionEvent {
   ownerId: string;
   title: string;
   subtitle?: string;
+  organizer: OrganizerContact;
   status: EventStatus;
   grid: GridSize;
   teamCount: number;
@@ -45,6 +60,7 @@ export interface MissionEvent {
   selfieMode: SelfieMode;
   layoutMode: LayoutMode;
   publicViewMode?: PublicViewMode;
+  showLeaderboard?: boolean;
   layoutLockedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -65,6 +81,7 @@ export interface Team {
   index: number;
   name: string;
   displayName: string;
+  leader: TeamLeader;
   color: string;
   token: string;
   status: TeamStatus;

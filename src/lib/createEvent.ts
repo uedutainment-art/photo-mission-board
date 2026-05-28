@@ -1,6 +1,17 @@
 import { collection, doc, serverTimestamp, writeBatch, type FieldValue } from "firebase/firestore";
 import { db } from "./firebase";
-import type { GridSize, MapPlatform, Place, SelfieMode, Slot, Team } from "./types";
+import { sanitizePhone } from "./phone";
+import type {
+  ContactPreference,
+  GridSize,
+  MapPlatform,
+  OrganizerContact,
+  Place,
+  SelfieMode,
+  Slot,
+  Team,
+  TeamLeader,
+} from "./types";
 
 const TEAM_COLORS = [
   "#0284c7",
@@ -32,8 +43,15 @@ export interface CreateEventInput {
   ownerId: string;
   title: string;
   subtitle?: string;
+  organizer: OrganizerContact;
   grid: GridSize;
   teamCount: number;
+  leaders: Array<{
+    teamIndex: number;
+    name: string;
+    role?: string;
+    phone: string;
+  }>;
   places: CreateEventPlaceInput[];
   selfieMode: SelfieMode;
 }
@@ -42,6 +60,7 @@ interface EventCreateDocument {
   ownerId: string;
   title: string;
   subtitle?: string;
+  organizer: OrganizerContact;
   status: "draft";
   grid: GridSize;
   teamCount: number;
@@ -50,6 +69,7 @@ interface EventCreateDocument {
   selfieMode: SelfieMode;
   layoutMode: "random";
   publicViewMode: "board";
+  showLeaderboard: boolean;
   createdAt: FieldValue;
   updatedAt: FieldValue;
 }
@@ -93,6 +113,48 @@ function cleanPlace(place: CreateEventPlaceInput): Place {
   return nextPlace;
 }
 
+function cleanOrganizer(organizer: OrganizerContact): OrganizerContact {
+  const name = organizer.name.trim();
+  const phone = sanitizePhone(organizer.phone);
+  const contactPreference: ContactPreference = organizer.contactPreference ?? "sms-first";
+
+  if (!name || !phone) {
+    throw new Error("운영팀 이름과 전화번호가 필요합니다.");
+  }
+
+  const nextOrganizer: OrganizerContact = {
+    name,
+    phone,
+    contactPreference,
+  };
+
+  if (organizer.role?.trim()) {
+    nextOrganizer.role = organizer.role.trim();
+  }
+
+  return nextOrganizer;
+}
+
+function cleanLeader(leader: CreateEventInput["leaders"][number]): TeamLeader {
+  const name = leader.name.trim();
+  const phone = sanitizePhone(leader.phone);
+
+  if (!name || !phone) {
+    throw new Error(`${leader.teamIndex}팀 팀장 이름과 전화번호가 필요합니다.`);
+  }
+
+  const nextLeader: TeamLeader = {
+    name,
+    phone,
+  };
+
+  if (leader.role?.trim()) {
+    nextLeader.role = leader.role.trim();
+  }
+
+  return nextLeader;
+}
+
 export function getPerTeamCount(grid: GridSize, teamCount: number): number | null {
   const total = grid.rows * grid.cols;
 
@@ -108,6 +170,8 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
   const subtitle = input.subtitle?.trim();
   const perTeamCount = getPerTeamCount(input.grid, input.teamCount);
   const placeTotal = input.places.reduce((sum, place) => sum + place.perTeamCount, 0);
+  const organizer = cleanOrganizer(input.organizer);
+  const leaderByIndex = new Map(input.leaders.map((leader) => [leader.teamIndex, cleanLeader(leader)]));
 
   if (!title) {
     throw new Error("이벤트 제목이 필요합니다.");
@@ -125,6 +189,10 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     throw new Error("장소 이름을 모두 입력해주세요.");
   }
 
+  if (leaderByIndex.size !== input.teamCount) {
+    throw new Error("모든 팀의 팀장 정보를 입력해주세요.");
+  }
+
   const batch = writeBatch(db);
   const eventRef = doc(collection(db, "events"));
   const eventId = eventRef.id;
@@ -133,6 +201,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
   const eventData: EventCreateDocument = {
     ownerId: input.ownerId,
     title,
+    organizer,
     status: "draft",
     grid: input.grid,
     teamCount: input.teamCount,
@@ -141,6 +210,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     selfieMode: input.selfieMode,
     layoutMode: "random",
     publicViewMode: "board",
+    showLeaderboard: true,
     createdAt: now,
     updatedAt: now,
   };
@@ -153,11 +223,18 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
 
   for (let teamIndex = 1; teamIndex <= input.teamCount; teamIndex += 1) {
     const teamRef = doc(collection(db, "events", eventId, "teams"));
+    const leader = leaderByIndex.get(teamIndex);
+
+    if (!leader) {
+      throw new Error(`${teamIndex}팀 팀장 정보를 찾을 수 없습니다.`);
+    }
+
     const teamData: TeamCreateDocument = {
       eventId,
       index: teamIndex,
       name: `${teamIndex}팀`,
       displayName: `${teamIndex}팀`,
+      leader,
       color: TEAM_COLORS[(teamIndex - 1) % TEAM_COLORS.length],
       token: randomToken(),
       status: "idle",
