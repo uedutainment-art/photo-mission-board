@@ -49,6 +49,7 @@ interface EventCreateDocument {
   places: Place[];
   selfieMode: SelfieMode;
   layoutMode: "random";
+  publicViewMode: "board";
   createdAt: FieldValue;
   updatedAt: FieldValue;
 }
@@ -139,6 +140,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     places,
     selfieMode: input.selfieMode,
     layoutMode: "random",
+    publicViewMode: "board",
     createdAt: now,
     updatedAt: now,
   };

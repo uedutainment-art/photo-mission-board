@@ -128,6 +128,7 @@ events/{eventId}/notifications/{notifId}     // 운영자 푸시용 (v1.5)
   places: Place[]              // 인라인 배열 (보통 3-10개)
   selfieMode: 'individual' | 'group' | 'none'
   layoutMode: 'random' | 'team' | 'manual'
+  publicViewMode?: 'board'       // v1.5에서 team/zoom 모드 확장
   layoutLockedAt?: Timestamp   // Export 잠금 시점
   createdAt: Timestamp
   updatedAt: Timestamp

@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, RotateCw } from "lucide-react";
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { ArrowLeft, ExternalLink, Loader2, Monitor, RotateCw } from "lucide-react";
 import { BoardCell } from "../components/BoardCell";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot } from "../hooks/useEventLive";
+import { db } from "../lib/firebase";
 
 type BoardMode = "random" | "team" | "unchecked";
 
@@ -56,6 +58,8 @@ export function EventBoard() {
   const navigate = useNavigate();
   const { error, event, loading, photos, slots } = useEventLive(eventId);
   const [mode, setMode] = useState<BoardMode>("random");
+  const [publicError, setPublicError] = useState<string | null>(null);
+  const [publicSaving, setPublicSaving] = useState(false);
   const [seed, setSeed] = useState(1);
   const photoById = useMemo(
     () => new Map(photos.map((photo): [string, EventLivePhoto] => [photo.id, photo])),
@@ -66,6 +70,27 @@ export function EventBoard() {
   const uncheckedSlots = slots.filter(
     (slot) => slot.reviewStatus === "unchecked" && Boolean(slot.representativePhotoId),
   ).length;
+  const publicViewMode = event?.publicViewMode ?? "board";
+
+  async function savePublicViewMode() {
+    if (!eventId) {
+      return;
+    }
+
+    setPublicSaving(true);
+    setPublicError(null);
+
+    try {
+      await updateDoc(doc(db, "events", eventId), {
+        publicViewMode: "board",
+        updatedAt: serverTimestamp(),
+      });
+    } catch {
+      setPublicError("공개 보드 모드를 저장하지 못했습니다.");
+    } finally {
+      setPublicSaving(false);
+    }
+  }
 
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
@@ -122,6 +147,47 @@ export function EventBoard() {
                   </button>
                 ))}
               </div>
+
+              <section className="card space-y-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black text-app-muted">공개 화면</p>
+                    <h2 className="mt-1 text-base font-black">빔프로젝터 보드</h2>
+                  </div>
+                  <Monitor className="h-5 w-5 text-app-primary" aria-hidden="true" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.open(`/events/${eventId}/public`, "_blank", "noopener,noreferrer");
+                  }}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-3 text-sm font-black text-white"
+                >
+                  <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  공개 보드 열기
+                </button>
+
+                <div className="rounded-2xl border border-app-border bg-slate-50 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-black text-app-muted">뷰 모드 변경</p>
+                      <p className="mt-1 text-sm font-black">{publicViewMode === "board" ? "전체 보드" : publicViewMode}</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={publicSaving || event.publicViewMode === "board"}
+                      onClick={() => {
+                        void savePublicViewMode();
+                      }}
+                      className="rounded-xl bg-app-ink px-3 py-2 text-xs font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
+                    >
+                      {publicSaving ? "저장 중" : event.publicViewMode === "board" ? "적용됨" : "보드로 설정"}
+                    </button>
+                  </div>
+                  {publicError && <p className="mt-2 text-xs font-bold text-red-600">{publicError}</p>}
+                </div>
+              </section>
 
               <div
                 className="grid gap-0.5 rounded-2xl bg-slate-200 p-2"

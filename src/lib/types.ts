@@ -3,6 +3,7 @@ import type { Timestamp } from "firebase/firestore";
 export type EventStatus = "draft" | "live" | "completed" | "archived";
 export type SelfieMode = "individual" | "group" | "none";
 export type LayoutMode = "random" | "team" | "manual";
+export type PublicViewMode = "board";
 export type ReviewStatus = "unchecked" | "checked";
 export type TeamStatus = "idle" | "joined" | "active" | "completed";
 export type MapPlatform = "naver" | "kakao" | "google";
@@ -43,6 +44,7 @@ export interface MissionEvent {
   places: Place[];
   selfieMode: SelfieMode;
   layoutMode: LayoutMode;
+  publicViewMode?: PublicViewMode;
   layoutLockedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
