@@ -67,7 +67,9 @@ photo-mission-board/
 2. 위치: Firestore와 동일하게 (`asia-northeast3`)
 
 ### 1.6 (선택) Cloud Messaging
-v1.5에서 푸시 알림을 쓸 때 필요. 일단 건너뛰어도 됨.
+v1.5에서 푸시 알림을 쓸 때 필요. 일단 건너뛰어도 됨. 실제 행사에서 푸시 알림을 쓰려면 Firebase Console > Project settings > Cloud Messaging > Web Push certificates에서 Generate key pair를 눌러 VAPID 키를 발급한 뒤, Public key를 `.env`의 `VITE_FIREBASE_VAPID_KEY`에 넣고 다시 빌드/배포한다.
+
+배포 전에는 Google Cloud Console > APIs & Services > Credentials에서 Firebase Web API Key의 Application restrictions를 Websites로 바꾸고, HTTP referrers에 운영 도메인(`https://photo-mission-board-prod.web.app/*`, 필요 시 Firebase Hosting 커스텀 도메인)과 로컬 개발 주소(`http://localhost:5173/*`, `http://127.0.0.1:5173/*`)만 허용한다. API restrictions는 Firebase Auth/Identity Toolkit 등 현재 앱에서 실제로 쓰는 API로 제한한다.
 
 ---
 
@@ -83,6 +85,7 @@ VITE_FIREBASE_STORAGE_BUCKET=photo-mission-board-prod.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=1234567890
 VITE_FIREBASE_APP_ID=1:1234567890:web:abc123def456
 VITE_FIREBASE_MEASUREMENT_ID=G-XXXX
+VITE_FIREBASE_VAPID_KEY=...
 
 # 배포 후 변경
 VITE_PUBLIC_HOST=http://localhost:5173

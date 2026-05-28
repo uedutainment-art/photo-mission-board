@@ -7,7 +7,9 @@ import { firebaseApp } from "./lib/firebase";
 import { registerPwaShell } from "./lib/pwa";
 
 void firebaseApp;
-registerPwaShell();
+if (import.meta.env.PROD) {
+  registerPwaShell();
+}
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
