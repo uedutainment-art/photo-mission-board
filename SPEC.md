@@ -445,37 +445,53 @@ runTransaction(db, async (tx) => {
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isEventOwner(eventId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/events/$(eventId)).data.ownerId == request.auth.uid;
+    }
+
+    function isEventOwnerAfter(eventId) {
+      return signedIn()
+        && getAfter(/databases/$(database)/documents/events/$(eventId)).data.ownerId == request.auth.uid;
+    }
+
+    function changedOnly(keys) {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(keys);
+    }
 
     // 사용자: 본인만 read/write
     match /users/{uid} {
-      allow read, write: if request.auth.uid == uid;
+      allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
     // 이벤트: owner만 write, 공개는 read 일부 허용
     match /events/{eventId} {
       allow read: if true;  // 공개 보드용. 단, 클라이언트가 필요한 것만 노출
-      allow create: if request.auth.uid != null
+      allow create: if signedIn()
                     && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if request.auth.uid == resource.data.ownerId;
+      allow update, delete: if isEventOwner(eventId);
 
       // 팀
       match /teams/{teamId} {
         allow read: if true;
-        allow create, delete: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId;
-        allow update: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId
-                      || (request.auth.uid != null
-                          && request.resource.data.diff(resource.data).changedKeys().hasOnly(['joinedMembers', 'status']));
+        allow create: if isEventOwnerAfter(eventId);
+        allow delete: if isEventOwner(eventId);
+        allow update: if isEventOwner(eventId)
+                      || (signedIn() && changedOnly(['joinedMembers', 'status']));
       }
 
       // 슬롯
       match /slots/{slotId} {
         allow read: if true;
         // 운영자는 이벤트 생성 시 슬롯 create, 진행 중 검수 update 가능
-        allow create, delete: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId;
-        allow update: if request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId
-                      || (request.auth.uid != null
-                          && request.resource.data.diff(resource.data).changedKeys()
-                            .hasOnly(['submissionCount', 'representativePhotoId']));
+        allow create: if isEventOwnerAfter(eventId);
+        allow delete: if isEventOwner(eventId);
+        allow update: if isEventOwner(eventId)
+                      || (signedIn() && changedOnly(['submissionCount', 'representativePhotoId']));
         // 팀원은 사진 업로드/대표 선택 트랜잭션을 통해 submissionCount와 대표 사진만 변경
       }
 
@@ -483,25 +499,26 @@ service cloud.firestore {
       match /photos/{photoId} {
         allow read: if true;
         // 익명 사용자도 create 가능 (토큰은 클라이언트가 검증)
-        allow create: if request.auth.uid != null
+        allow create: if signedIn()
                       && request.resource.data.eventId == eventId;
         // 대표 변경은 팀원이 가능, 삭제는 본인 업로드만 또는 운영자
-        allow update: if request.auth.uid != null
-                      && (request.resource.data.diff(resource.data).changedKeys().hasOnly(['isRepresentative'])
+        allow update: if signedIn()
+                      && (changedOnly(['isRepresentative'])
                           || resource.data.uploaderId == request.auth.uid
-                          || request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId);
-        allow delete: if request.auth.uid != null
+                          || isEventOwner(eventId));
+        allow delete: if signedIn()
                       && (resource.data.uploaderId == request.auth.uid
-                          || request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId);
+                          || isEventOwner(eventId));
       }
 
       // 셀카도 동일
       match /selfies/{selfieId} {
         allow read: if true;
-        allow create: if request.auth.uid != null;
-        allow update, delete: if request.auth.uid != null
+        allow create: if signedIn()
+                      && request.resource.data.eventId == eventId;
+        allow update, delete: if signedIn()
                               && (resource.data.uploaderId == request.auth.uid
-                                  || request.auth.uid == get(/databases/$(database)/documents/events/$(eventId)).data.ownerId);
+                                  || isEventOwner(eventId));
       }
     }
   }
@@ -517,11 +534,20 @@ service cloud.firestore {
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validUpload() {
+      return request.resource != null
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/zip');
+    }
+
     match /events/{eventId}/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth.uid != null
-                   && request.resource.size < 15 * 1024 * 1024  // 15MB
-                   && request.resource.contentType.matches('image/.*|application/zip|image/png');
+      allow create, update: if signedIn() && validUpload();
+      allow delete: if signedIn();
     }
   }
 }
