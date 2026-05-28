@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, Grid2X2, Loader2, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AccountBar } from "../components/AccountBar";
+import { NotificationSettings } from "../components/NotificationSettings";
 import { useAuth } from "../lib/auth";
 import type { GridSize } from "../lib/types";
 import { filterEvents, type EventFilter, type EventRecord, useEvents } from "../hooks/useEvents";
@@ -95,6 +96,8 @@ export function Events() {
 
         <div className="flex flex-1 flex-col gap-4 bg-slate-50 p-4">
           <AccountBar busy={signingOut} user={user} onSignOut={handleSignOut} />
+
+          <NotificationSettings user={user} />
 
           <Link
             to="/events/new"

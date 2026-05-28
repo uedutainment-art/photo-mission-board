@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Photo Mission Board">
+  <rect width="512" height="512" fill="#0f172a"/>
+  <rect x="76" y="76" width="360" height="360" rx="56" fill="#f8fafc"/>
+  <g fill="#2563eb">
+    <rect x="112" y="112" width="84" height="84" rx="20"/>
+    <rect x="214" y="112" width="84" height="84" rx="20"/>
+    <rect x="316" y="112" width="84" height="84" rx="20"/>
+  </g>
+  <g fill="#10b981">
+    <rect x="112" y="214" width="84" height="84" rx="20"/>
+    <rect x="214" y="214" width="84" height="84" rx="20"/>
+    <rect x="316" y="214" width="84" height="84" rx="20"/>
+  </g>
+  <g fill="#f59e0b">
+    <rect x="112" y="316" width="84" height="84" rx="20"/>
+    <rect x="214" y="316" width="84" height="84" rx="20"/>
+    <rect x="316" y="316" width="84" height="84" rx="20"/>
+  </g>
+</svg>

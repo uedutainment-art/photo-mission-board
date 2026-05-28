@@ -4,8 +4,10 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 import { firebaseApp } from "./lib/firebase";
+import { registerPwaShell } from "./lib/pwa";
 
 void firebaseApp;
+registerPwaShell();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

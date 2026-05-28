@@ -466,6 +466,10 @@ service cloud.firestore {
     // 사용자: 본인만 read/write
     match /users/{uid} {
       allow read, write: if signedIn() && request.auth.uid == uid;
+
+      match /fcmTokens/{tokenId} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
     }
 
     // 이벤트: owner만 write, 공개는 read 일부 허용
@@ -647,6 +651,7 @@ VITE_FIREBASE_STORAGE_BUCKET=
 VITE_FIREBASE_MESSAGING_SENDER_ID=
 VITE_FIREBASE_APP_ID=
 VITE_FIREBASE_MEASUREMENT_ID=
+VITE_FIREBASE_VAPID_KEY=
 
 VITE_PUBLIC_HOST=https://photomission.app   # QR URL 생성용
 ```
