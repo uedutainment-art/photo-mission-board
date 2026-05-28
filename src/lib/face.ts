@@ -46,7 +46,7 @@ function loadImage(file: File): Promise<{ dispose: () => void; image: HTMLImageE
   });
 }
 
-function loadFaceApi(): Promise<FaceApiModule> {
+export function loadFaceApi(): Promise<FaceApiModule> {
   if (!faceApiPromise) {
     faceApiPromise = (async () => {
       await import("@tensorflow/tfjs");

@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Camera, ChevronRight, Loader2, Upload } from "lucide-react";
 import { SelfieBanner } from "../components/SelfieBanner";
 import { useSelfies } from "../hooks/useSelfies";
 import { useTeamSession } from "../hooks/useTeamSession";
+import { loadFaceApi } from "../lib/face";
 import { uploadSelfie } from "../lib/selfies";
 
 export function TeamSelfie() {
@@ -27,6 +28,12 @@ export function TeamSelfie() {
     context?.event.selfieMode === "group" ? groupPhotoReady : hasMySelfie;
   const showUpload =
     context?.event.selfieMode === "group" ? !groupPhotoReady : !hasMySelfie;
+
+  useEffect(() => {
+    void loadFaceApi().catch((error: unknown) => {
+      console.warn("Face model preload failed; upload will use fallback crop.", error);
+    });
+  }, []);
 
   async function handleFile(file: File | undefined) {
     if (!file || !context) {
