@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
@@ -59,15 +58,6 @@ async function ensureUserDocument(user: User): Promise<void> {
   });
 }
 
-function getFirebaseErrorCode(error: unknown): string | null {
-  if (typeof error !== "object" || error === null || !("code" in error)) {
-    return null;
-  }
-
-  const code = (error as { code?: unknown }).code;
-  return typeof code === "string" ? code : null;
-}
-
 export function useAuth(): AuthState {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [loading, setLoading] = useState(true);
@@ -96,17 +86,8 @@ export function useAuth(): AuthState {
       isOperator: Boolean(user && !user.isAnonymous),
       signInWithGoogle: async () => {
         setError(null);
-        try {
-          const credential = await signInWithPopup(auth, googleProvider);
-          await ensureUserDocument(credential.user);
-        } catch (signInError) {
-          if (getFirebaseErrorCode(signInError) === "auth/popup-blocked") {
-            await signInWithRedirect(auth, googleProvider);
-            return;
-          }
-
-          throw signInError;
-        }
+        const credential = await signInWithPopup(auth, googleProvider);
+        await ensureUserDocument(credential.user);
       },
       signOut: async () => {
         setError(null);
