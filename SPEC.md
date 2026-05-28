@@ -120,7 +120,8 @@ events/{eventId}/notifications/{notifId}     // 운영자 푸시용 (v1.5)
 {
   ownerId: string              // users.uid
   title: string                // "2026 Vision Trip"
-  subtitle?: string            // "2026.06.21 (토)"
+  subtitle?: string            // 기존 이벤트 호환용 보조 문구
+  scheduledAt?: string         // ISO date "2026-06-21"; formatKoreanDate로 "2026.06.21 (일)" 표시
   status: 'draft' | 'live' | 'completed' | 'archived'
   grid: { rows: number; cols: number }   // 예: { rows: 10, cols: 10 }
   teamCount: number            // 예: 10
@@ -739,14 +740,16 @@ mockups.html과 동일하게 유지:
 
 - `events/{eventId}.organizer`: 운영팀 연락처. `name`, `phone` 필수, `role`, `contactPreference` 선택. 전화번호는 저장 직전 `sanitizePhone()` 으로 정리한다.
 - `events/{eventId}.showLeaderboard`: 참가자 진행 화면의 순위/평균 문구 표시 여부. 기본값은 `true`.
-- `events/{eventId}/teams/{teamId}.leader`: 팀장 연락처. `name`, `phone` 필수, `role` 선택. 기존 이벤트에 값이 없을 수 있으므로 UI는 옵셔널 체이닝으로 graceful degradation 한다.
+- `events/{eventId}/teams/{teamId}.leader`: 팀장 연락처. 등록 후에는 `name`, `phone` 필수, `role` 선택. 새 이벤트는 팀장 없이 생성될 수 있으므로 UI는 옵셔널 체이닝으로 graceful degradation 한다.
 - 표시는 `formatPhone()` 으로 `010-1234-5678` 형태를 우선 사용하고, 이동은 `telHref()` / `smsHref()` 헬퍼를 사용한다.
 
 ### 17.2 입력 흐름
 
 - 이벤트 생성 마법사 STEP 1의 이벤트 섹션 아래에서 운영팀 이름, 역할, 전화번호, 문자 우선/전화 우선 선호를 입력한다. 이름과 전화번호가 비어 있으면 다음 단계로 갈 수 없다.
-- 이벤트 생성 마법사는 총 4단계이며 STEP 3에서 팀 수만큼 팀장 이름/전화번호를 입력한다. 모든 팀의 필수 연락처가 채워져야 미리보기/생성이 가능하다.
-- 이벤트 생성 시 `createEvent()` 는 운영팀/팀장 전화번호를 sanitize한 뒤 `events` 문서와 `teams` 문서에 함께 저장한다.
+- 행사 일정은 STEP 1에서 `type="date"` picker로 입력하고 `events.scheduledAt`에 ISO 문자열로 저장한다. 표시는 `formatKoreanDate()`로 한국어 날짜 문자열을 만든다.
+- 이벤트 생성 마법사는 총 3단계이다: STEP 1 기본 정보/운영팀 연락처, STEP 2 장소·분배, STEP 3 미리보기.
+- 팀장 등록은 이벤트 생성 후 `/events/:eventId/teams`에서 진행한다. 미등록 팀은 노란 안내 띠와 “팀장 등록하기” 버튼으로 강조한다.
+- 이벤트 생성 시 `createEvent()` 는 운영팀 전화번호를 sanitize해 `events` 문서에 저장하고, 팀장 정보는 사후 편집 시 `teams/{teamId}.leader`에 저장한다.
 
 ### 17.3 도움 시트
 
@@ -760,6 +763,12 @@ mockups.html과 동일하게 유지:
 - Overview 팀별 진행률 행 우측에 팀장 전화/문자 아이콘을 노출한다.
 - Teams QR 관리 카드에는 팀장 이름/전화 표시, 전화/문자 아이콘, 인라인 팀장 연락처 편집을 제공한다.
 - Review 슬롯 헤더에는 해당 슬롯의 팀장 연락처와 전화/문자 아이콘을 노출한다.
+
+### 17.5 장소 이미지 업로드
+
+- 장소 편집 모달의 대표 이미지 영역은 클릭 업로드와 드래그앤드롭을 모두 지원한다.
+- 업로드 파일은 `image/*`, 15MB 이하만 허용한다. 원본과 1024 썸네일을 Storage에 올리고, 장소의 `coverUrl`에는 썸네일 download URL을 저장한다.
+- 외부 이미지 URL 입력도 유지한다. 사용자가 URL을 직접 입력하면 업로드된 `coverStoragePath`와 무관하게 해당 URL을 우선 사용한다.
 
 ---
 
