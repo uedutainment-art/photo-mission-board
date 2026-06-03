@@ -709,6 +709,89 @@
     .ctrl-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: #f8fafc; border-radius: 8px; font-size: 12px; font-weight: 700; }
     .ctrl-row .p { font-size: 10px; color: #64748b; font-weight: 700; }
 
+    /* ===== Scene 11 · D tone gradual enhancements ===== */
+    .d-tone-board { max-width: 1100px; margin: 0 auto 20px; display: grid; grid-template-columns: 1.05fr .95fr; gap: 18px; align-items: stretch; }
+    .d-tone-hero { background: #0f172a; color: white; border-radius: 24px; padding: 24px; overflow: hidden; position: relative; min-height: 320px; }
+    .d-tone-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, rgba(37,99,235,.24), transparent 45%), linear-gradient(165deg, rgba(16,185,129,.18), transparent 58%); }
+    .d-tone-hero > * { position: relative; z-index: 1; }
+    .d-tone-kicker { color: #93c5fd; font-size: 11px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
+    .d-tone-title { margin-top: 8px; max-width: 560px; font-size: 34px; line-height: 1.08; font-weight: 950; letter-spacing: -.04em; }
+    .d-tone-desc { max-width: 520px; color: #cbd5e1; font-size: 13px; line-height: 1.7; margin-top: 12px; font-weight: 700; }
+    .d-palette { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+    .d-swatch { width: 54px; height: 54px; border-radius: 16px; border: 1px solid rgba(255,255,255,.18); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08); }
+    .d-swatch.slate { background: #0f172a; }
+    .d-swatch.blue { background: #2563eb; }
+    .d-swatch.green { background: #10b981; }
+    .d-swatch.amber { background: #f59e0b; }
+    .d-swatch.pink { background: #db2777; }
+    .d-tone-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .d-principle { background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 15px; box-shadow: 0 6px 24px rgba(15,23,42,.06); min-height: 150px; }
+    .d-principle .num { color: #2563eb; font-size: 11px; font-weight: 950; letter-spacing: .12em; }
+    .d-principle .ttl { margin-top: 4px; font-size: 14px; font-weight: 950; letter-spacing: -.02em; }
+    .d-principle .txt { margin-top: 7px; color: #64748b; font-size: 11px; line-height: 1.6; font-weight: 700; }
+    .d-principle.wide { grid-column: 1 / -1; min-height: auto; }
+    .d-mini-motion { margin-top: 12px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+    .d-mini-motion span { aspect-ratio: 1/1; border-radius: 5px; background: #e2e8f0; animation: dRevealCell 1.8s ease-in-out infinite; }
+    .d-mini-motion span:nth-child(2) { animation-delay: .08s; background: #bfdbfe; }
+    .d-mini-motion span:nth-child(3) { animation-delay: .16s; background: #bbf7d0; }
+    .d-mini-motion span:nth-child(4) { animation-delay: .24s; background: #fde68a; }
+    .d-mini-motion span:nth-child(5) { animation-delay: .32s; background: #fbcfe8; }
+    .d-mini-motion span:nth-child(6) { animation-delay: .4s; background: #c7d2fe; }
+    @keyframes dRevealCell {
+      0%, 72%, 100% { transform: translateY(0) scale(1); box-shadow: none; }
+      20% { transform: translateY(-4px) scale(1.04); box-shadow: 0 8px 18px rgba(37,99,235,.22); }
+    }
+    .d-team-head { margin: -8px -16px 14px; padding: 12px 16px 18px; color: white; background: linear-gradient(135deg, #0f172a 0%, #2563eb 58%, #10b981 100%); }
+    .d-team-head .ey { color: rgba(255,255,255,.68); font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+    .d-team-head .nm { margin-top: 5px; font-size: 22px; font-weight: 950; letter-spacing: -.04em; }
+    .d-team-head .copy { margin-top: 4px; color: rgba(255,255,255,.86); font-size: 12px; font-weight: 800; }
+    .d-location-pill { display: flex; gap: 9px; align-items: flex-start; margin: 10px 0 12px; padding: 11px 12px; border-radius: 14px; background: white; border: 1px solid #e2e8f0; }
+    .d-location-pill .pin { width: 28px; height: 28px; border-radius: 10px; display: grid; place-items: center; background: #dbeafe; color: #1d4ed8; font-weight: 950; flex: 0 0 auto; }
+    .d-location-pill b { display: block; font-size: 12px; }
+    .d-location-pill span { display: block; color: #64748b; font-size: 10px; font-weight: 700; line-height: 1.5; margin-top: 2px; }
+    .d-fullbleed-card { min-height: 170px; border-radius: 18px; overflow: hidden; position: relative; margin-bottom: 12px; background: linear-gradient(140deg, #bae6fd 0%, #bbf7d0 48%, #fde68a 100%); border: 1px solid rgba(15,23,42,.06); box-shadow: 0 10px 28px rgba(15,23,42,.12); }
+    .d-fullbleed-card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 30% 28%, rgba(255,255,255,.42) 0 9%, transparent 10%), linear-gradient(180deg, transparent 20%, rgba(15,23,42,.72) 100%); }
+    .d-fullbleed-meta { position: absolute; left: 12px; right: 12px; bottom: 12px; color: white; display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+    .d-fullbleed-meta b { display: block; font-size: 17px; letter-spacing: -.03em; }
+    .d-fullbleed-meta small { display: block; color: rgba(255,255,255,.76); font-weight: 800; margin-top: 2px; }
+    .d-star { width: 34px; height: 34px; border-radius: 999px; background: #facc15; color: #78350f; display: grid; place-items: center; font-weight: 950; box-shadow: 0 6px 16px rgba(0,0,0,.18); flex: 0 0 auto; }
+    .d-dot-row { display: flex; gap: 6px; align-items: center; margin-top: 9px; }
+    .d-dot-row span { width: 15px; height: 15px; border-radius: 999px; border: 2px solid #cbd5e1; background: white; }
+    .d-dot-row span.on { border-color: #0f172a; background: #0f172a; }
+    .d-dot-row span.rep { border-color: #facc15; background: #facc15; animation: dDotSpring 1.6s ease-in-out infinite; }
+    @keyframes dDotSpring {
+      0%, 70%, 100% { transform: scale(1); }
+      20% { transform: scale(1.24); }
+      36% { transform: scale(.96); }
+    }
+    .d-copy-card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 16px; margin-bottom: 12px; }
+    .d-copy-card .hello { font-size: 23px; line-height: 1.15; font-weight: 950; letter-spacing: -.04em; }
+    .d-copy-card .hint { color: #64748b; font-size: 12px; font-weight: 750; margin-top: 8px; line-height: 1.6; }
+    .d-copy-card .action-row { display: flex; gap: 8px; margin-top: 13px; }
+    .d-copy-card .action-row button { flex: 1; border: 0; border-radius: 12px; padding: 10px 6px; font-size: 11px; font-weight: 900; background: #f1f5f9; color: #475569; }
+    .d-copy-card .action-row button.on { background: #0f172a; color: white; }
+    .d-reveal-panel { background: #0f172a; border-radius: 18px; padding: 14px; color: white; margin-bottom: 12px; }
+    .d-reveal-panel .cap { color: #94a3b8; font-size: 10px; font-weight: 900; letter-spacing: .12em; }
+    .d-reveal-panel .line { margin-top: 5px; font-size: 14px; font-weight: 900; }
+    .d-reveal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 12px; }
+    .d-reveal-grid div { aspect-ratio: 1/1; border-radius: 5px; background: #1e293b; animation: dRevealPhoto .8s ease-out infinite alternate; }
+    .d-reveal-grid div:nth-child(2n) { background: linear-gradient(135deg, #93c5fd, #86efac); animation-delay: .08s; }
+    .d-reveal-grid div:nth-child(3n) { background: linear-gradient(135deg, #fde68a, #f9a8d4); animation-delay: .16s; }
+    @keyframes dRevealPhoto {
+      from { opacity: .55; transform: translateY(6px) scale(.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .d-map-strip { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 12px; display: grid; grid-template-columns: 42px 1fr; gap: 10px; align-items: center; }
+    .d-map-thumb { height: 42px; border-radius: 12px; background: repeating-linear-gradient(45deg, #e0f2fe, #e0f2fe 7px, #f8fafc 7px, #f8fafc 14px); display: grid; place-items: center; color: #2563eb; font-weight: 950; }
+    .d-map-strip b { font-size: 12px; }
+    .d-map-strip span { display: block; font-size: 10px; color: #64748b; font-weight: 700; line-height: 1.5; margin-top: 2px; }
+    @media (max-width: 760px) {
+      .d-tone-board { grid-template-columns: 1fr; }
+      .d-tone-grid { grid-template-columns: 1fr; }
+      .d-tone-title { font-size: 28px; }
+      .d-principle { min-height: auto; }
+    }
+
     footer { padding: 30px; text-align: center; color: #94a3b8; font-size: 12px; }
   </style>
 </head>
@@ -727,6 +810,7 @@
     <a href="#scene-qr">팀 QR 발급</a>
     <a href="#scene-export">Export</a>
     <a href="#scene-public">공개 보드</a>
+    <a href="#scene-d-tone">D 톤 강화</a>
   </nav>
 </header>
 
@@ -2498,6 +2582,213 @@
       <li><b>줌아웃 피날레</b> — 행사 종료 시점에 1회용. 운영자가 박수·BGM 타이밍에 맞춰 트리거. 한 팀 → 6팀 → 10팀 → 전체 콜라주로 3초간</li>
       <li><b>실시간 반영</b> — 새 사진 업로드되면 빔프로젝터에도 즉시 (Firestore onSnapshot). 새로 채워지는 칸은 살짝 페이드인 애니메이션</li>
       <li><b>인터넷 끊겨도 일정 시간은 캐시로 표시</b> — Firestore offline persistence로 마지막 상태 유지. 5초 이상 끊기면 우측 상단에 ⚠ 표시</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SCENE 11 — D 톤 점진 강화 무드보드 -->
+<!-- ============================================================ -->
+<section class="scene" id="scene-d-tone">
+  <div class="label">SCENE 11 · DESIGN SYSTEM · D TONE ENHANCEMENT</div>
+  <h1>D 톤 강화 · 행사 후 점진 적용 무드보드</h1>
+  <div class="sub">현재 슬레이트 베이스는 유지. 팀 컬러, 사진, 문장, 모션, 위치 맥락만 더 또렷하게 올리는 안전한 개선안.</div>
+
+  <div class="d-tone-board">
+    <div class="d-tone-hero">
+      <div class="d-tone-kicker">SAFE EVOLUTION</div>
+      <div class="d-tone-title">차분한 운영 화면 안에 팀의 소유감과 현장감을 한 단계 더 넣기</div>
+      <div class="d-tone-desc">
+        새 톤으로 갈아엎지 않고, 이미 구축된 shadcn/슬레이트 기반 위에 행사다운 디테일만 쌓는다. 정보 화면은 여전히 읽기 쉽고, 참가자 화면은 더 개인적이고 사진 중심적으로 보인다.
+      </div>
+      <div class="d-palette">
+        <div class="d-swatch slate" title="Slate ink"></div>
+        <div class="d-swatch blue" title="Primary blue"></div>
+        <div class="d-swatch green" title="Team green"></div>
+        <div class="d-swatch amber" title="Highlight amber"></div>
+        <div class="d-swatch pink" title="Team pink"></div>
+      </div>
+    </div>
+
+    <div class="d-tone-grid">
+      <div class="d-principle">
+        <div class="num">01</div>
+        <div class="ttl">팀 컬러 헤더 확장</div>
+        <div class="txt">얇은 띠 대신 헤더 전체를 팀 컬러 그라데이션으로 확장. 같은 구조라도 1팀과 3팀이 자기 화면처럼 느껴진다.</div>
+      </div>
+      <div class="d-principle">
+        <div class="num">02</div>
+        <div class="ttl">사진 풀블리드</div>
+        <div class="txt">미션 카드의 상단 배너를 사진 자체로 채우고, 별·진행 dots·장소 메타를 사진 위에 올린다.</div>
+      </div>
+      <div class="d-principle">
+        <div class="num">03</div>
+        <div class="ttl">마이크로 카피</div>
+        <div class="txt">사전식 제목 대신 "안녕하세요", "지금 어디서 찍을까요?"처럼 팀원이 행동하기 쉬운 문장으로 바꾼다.</div>
+      </div>
+      <div class="d-principle">
+        <div class="num">04</div>
+        <div class="ttl">모션 시그니처</div>
+        <div class="txt">업로드 직후 또는 Export 잠금 직후 0.6-0.8초 reveal 한 곳만. 화면 전체가 아니라 기억나는 순간 하나.</div>
+        <div class="d-mini-motion">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="d-principle wide">
+        <div class="num">05</div>
+        <div class="ttl">위치 정보 한 줄</div>
+        <div class="txt">"팀당 3장" 같은 시스템 메타보다 "지하철 5호선 종각역 4번 출구"처럼 행사 운영자가 실제로 안내할 문장을 노출한다.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="phones">
+
+    <!-- 팀 컬러 헤더 + 마이크로 카피 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">팀 홈 V2</div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="d-team-head">
+            <div class="ey">3TEAM · LAVENDER</div>
+            <div class="nm">안녕하세요, 라벤더팀</div>
+            <div class="copy">함께 있어요. 지금 어디서 찍을까요?</div>
+          </div>
+
+          <div class="d-copy-card">
+            <div class="hello">오늘 우리 팀의 첫 장면을 골라볼까요?</div>
+            <div class="hint">미션을 완료하면 콜라주에 바로 반영됩니다. 대표 사진은 나중에 바꿀 수 있어요.</div>
+            <div class="action-row">
+              <button class="on">가까운 장소</button>
+              <button>남은 장소</button>
+              <button>완료</button>
+            </div>
+          </div>
+
+          <div class="d-location-pill">
+            <div class="pin">⌖</div>
+            <div>
+              <b>지금 추천: 종각역 4번 출구</b>
+              <span>도보 3분 · 팀원 전원이 같이 나온 사진이면 인정</span>
+            </div>
+          </div>
+
+          <div class="help-card">
+            <div style="font-size:12px;color:#64748b;font-weight:800;line-height:1.7;">
+              기존 D 톤의 흰 카드와 슬레이트 텍스트는 유지하고, 헤더만 팀 컬러로 넓혀 소유감을 만든다.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 사진 풀블리드 카드 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">미션 V2</div>
+            <div class="save-btn">업로드</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="section-title">PHOTO FIRST LAYOUT</div>
+
+          <div class="d-fullbleed-card">
+            <div class="d-fullbleed-meta">
+              <div>
+                <b>광화문 광장</b>
+                <small>팀원 3명 이상 · 2/3 제출</small>
+                <div class="d-dot-row">
+                  <span class="rep"></span><span class="on"></span><span></span>
+                </div>
+              </div>
+              <div class="d-star">★</div>
+            </div>
+          </div>
+
+          <div class="d-fullbleed-card" style="background:linear-gradient(140deg,#c7d2fe 0%,#fbcfe8 48%,#fde68a 100%);">
+            <div class="d-fullbleed-meta">
+              <div>
+                <b>북촌 골목</b>
+                <small>인증 문구 포함 · 1/3 제출</small>
+                <div class="d-dot-row">
+                  <span class="on"></span><span></span><span></span>
+                </div>
+              </div>
+              <div class="d-star">★</div>
+            </div>
+          </div>
+
+          <button class="upload-bigbtn">사진 추가하기</button>
+          <button class="upload-secondary">대표 사진 다시 고르기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 모션 시그니처 + 위치 정보 -->
+    <div class="phone">
+      <div class="phone-inner">
+        <div class="phone-head">
+          <div class="notch"></div>
+          <div class="hrow">
+            <div class="back">←</div>
+            <div class="ptitle">완성 순간 V2</div>
+            <div class="back transparent">⋮</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="d-reveal-panel">
+            <div class="cap">0.8S REVEAL SIGNATURE</div>
+            <div class="line">사진들이 자기 자리로 들어오며 보드가 완성되는 순간</div>
+            <div class="d-reveal-grid">
+              <div></div><div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div><div></div>
+              <div></div><div></div><div></div><div></div><div></div>
+            </div>
+          </div>
+
+          <div class="d-map-strip">
+            <div class="d-map-thumb">⌖</div>
+            <div>
+              <b>다음 촬영 장소</b>
+              <span>서울시청 별관 1층 로비 · 진행 스태프 앞에서 팀명 말하기</span>
+            </div>
+          </div>
+
+          <div class="d-copy-card" style="margin-top:12px;">
+            <div class="hello">좋아요. 이제 마지막 한 장만 남았어요.</div>
+            <div class="hint">남은 장소는 가까운 순서로 보여줍니다. 길을 잃으면 운영자에게 이 화면을 보여주세요.</div>
+          </div>
+
+          <div class="retention-card" style="background:#dbeafe;border-color:#bfdbfe;color:#1e40af;">
+            <b>적용 원칙</b>
+            모션은 한 화면에 하나만. 나머지는 정적인 슬레이트 UI로 두어 행사 현장에서 읽기 쉽게 유지.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="notes">
+    <h3>이 흐름에서 정해진 동작</h3>
+    <ul>
+      <li><b>팀 컬러 헤더 확장</b> — 참가자 화면의 얇은 컬러 띠를 헤더 전체 배경으로 키워 팀 소유감을 만든다. 운영자 화면은 기존 슬레이트 유지.</li>
+      <li><b>사진 풀블리드</b> — 미션 카드는 사진을 먼저 보이게 하고 별·진행 dots·장소 메타만 오버레이한다. 정보는 줄이고 행동은 선명하게.</li>
+      <li><b>마이크로 카피</b> — "이벤트 목록", "장소 상세" 같은 기능명보다 "안녕하세요", "지금 어디서 찍을까요?" 같은 행사 현장 문장을 우선한다.</li>
+      <li><b>모션 시그니처</b> — 업로드 직후 또는 Export 잠금 직후 한 번만 0.6-0.8초 reveal. 앱 전체 애니메이션이 아니라 기억나는 순간 하나를 만든다.</li>
+      <li><b>위치 정보</b> — 시스템 숫자만 보여주지 않고 실제 이동에 필요한 한 줄을 추가한다. 예: "지하철 5호선 종각역 4번 출구".</li>
     </ul>
   </div>
 </section>
