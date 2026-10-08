@@ -225,6 +225,15 @@ export interface FamilySubmission extends StoredImage {
   updatedAt: Timestamp;
 }
 
+export interface SongRequest {
+  eventId: string;
+  songTitle: string;
+  artist: string;
+  story?: string;
+  requesterId: string;
+  submittedAt: Timestamp;
+}
+
 export interface FaceDetectionBox {
   x: number;
   y: number;
