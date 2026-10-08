@@ -1,5 +1,9 @@
 # Photo Mission Board
 
+## Firebase Functions
+
+참가 코드 검증과 그룹당 1표 제한은 `functions/`의 callable functions가 담당한다. Firebase 프로젝트는 Functions 배포가 가능한 Blaze 요금제여야 하며, 루트 배포 전에 `cd functions && npm install`을 한 번 실행한다. 전체 배포는 `firebase deploy --only functions,firestore:rules,storage,hosting`으로 진행한다. 참가자 클라이언트가 Firestore에 콘테스트 투표를 직접 쓰는 경로는 보안 규칙에서 차단한다.
+
 > 팀별 참여형 콜라주 이벤트 웹 앱. 여러 팀이 미션 사진을 올려 하나의 콜라주를 만든다.
 
 회사 워크샵, Vision Trip, 사내 행사 등에서 사용. Padlet 대체.

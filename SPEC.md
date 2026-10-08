@@ -818,3 +818,60 @@ mockups.html과 동일하게 유지:
 > **이 문서가 정답이 아니라 약속이다.**
 > 구현 중 더 좋은 방법이 보이면 SPEC을 업데이트하고 그에 맞춰 코드 변경.
 > 큰 결정이 바뀌면 mockups.html에도 SCENE 업데이트.
+
+---
+
+## 19. 범용 행사 모듈과 사진 콘테스트
+
+가족, 팀, 개인을 별도 제품으로 만들지 않는다. 이벤트의 참가 단위 명칭과 인증 방법을 설정하고, 필요한 모듈을 조합하여 행사 프리셋으로 제공한다.
+
+### 19.1 이벤트 프리셋과 모듈
+
+- `events.preset`: `photo-mission`, `family-photo-contest`, `custom` 중 하나다.
+- `events.participantConfig`: 참가 단위의 `unitType`, `accessMethod`, 화면 명칭 `labels`를 저장한다.
+- `events.modules`: `guide`, `songRequest`, `photoMission`, `photoContest`, `voting`, `archive` 활성 여부를 저장한다.
+- 가족 사진 콘테스트는 전용 제품이 아니라 그룹 참가 단위, 코드 인증, 사진 콘테스트, 그룹별 투표를 조합한 프리셋이다.
+
+### 19.2 독립 상태
+
+- `events.submission.status`: `waiting`, `open`, `closed`로 사진 접수를 제어한다.
+- `events.voting.status`: `draft`, `open`, `closed`로 투표를 제어한다.
+- `events.results.status`: `hidden`, `published`로 참가자 결과 공개를 제어한다.
+- 접수, 투표, 결과 상태는 서로 독립적이며 운영자가 현장에서 직접 전환한다.
+
+### 19.3 참가 인증
+
+- 공통 행사 홈은 `/e/:eventId`이며 코드 인증은 `/e/:eventId/join`에서 진행한다.
+- 참가 코드는 `accessCodes` 하위 컬렉션에 해시와 운영자 표시용 코드를 저장하고 일반 참가자는 읽을 수 없다.
+- callable function이 코드를 검증한 뒤 `participantSessions/{uid}`에 이벤트와 참가 단위를 기록한다.
+- 기존 팀 QR도 callable function을 통해 같은 참가 세션을 만든다.
+
+### 19.4 사진 제출과 갤러리
+
+- `familySubmissions/{teamId}` 문서 하나가 참가 단위의 현재 대표사진이다. 새 사진 등록은 같은 문서를 교체한다.
+- 제목은 30자 이하이며 `submission.status == open`일 때만 참가자가 등록·교체할 수 있다.
+- 전체 갤러리는 행사 ID와 참가 단위 ID로 계산한 고정 순서를 사용해 새로고침 후에도 순서가 바뀌지 않는다.
+- 운영자가 숨긴 사진은 갤러리와 투표 대상에서 제외한다.
+
+### 19.5 서버 강제 그룹 투표
+
+- 그룹 투표 문서 ID는 `team_{voterTeamId}`로 고정한다. 같은 그룹이 여러 기기로 접속해도 문서 하나만 교체된다.
+- `castContestVote` 함수는 참가 세션, 투표 상태, 대상 제출, 숨김 상태, 자기 그룹 선택 금지를 트랜잭션에서 검사한다.
+- 콘테스트 투표 컬렉션 직접 쓰기는 Firestore Rules에서 차단한다.
+- 참가자는 자기 투표 문서만 읽고, 전체 투표는 운영자 또는 결과 공개 후에만 읽을 수 있다.
+
+### 19.6 운영과 결과
+
+- `/events/:eventId/contest`에서 접수 시작·마감, 투표 시작·마감, 사진 숨김, 미투표 확인, 개별 투표 초기화를 수행한다.
+- 운영자는 상위 3개 참가 단위를 확인하고 동점 추첨 결과에 따라 순위를 직접 지정한다.
+- 결과 공개 전에는 득표수와 순위를 참가자에게 표시하지 않는다.
+- 기본 상품 금액은 1등 50,000원, 2등 30,000원, 3등 20,000원 상당이며 상품 종류는 확정하지 않는다.
+- 원본 ZIP과 집계 CSV를 운영 화면에서 내려받을 수 있다.
+
+### 19.7 공통 행사 홈
+
+- 행사 안내: `/e/:eventId/guide`
+- 신청곡: `/e/:eventId/songs`
+- 사진 콘테스트: 코드 인증 후 `/t/:teamToken/contest`
+- 행사 후 기록: `/e/:eventId/archive`
+- 각 모듈은 독립 실행 또는 외부 행사 홈페이지에서 직접 링크하여 사용할 수 있다.
