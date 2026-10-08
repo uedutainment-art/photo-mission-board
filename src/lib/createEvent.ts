@@ -5,11 +5,14 @@ import { sanitizePhone } from "./phone";
 import type {
   ContactPreference,
   EventUseMode,
+  EventModules,
+  EventPreset,
   ExternalEventReference,
   GridSize,
   MapPlatform,
   OrganizerContact,
   OutputMode,
+  ParticipantConfig,
   Place,
   SelfieMode,
   Slot,
@@ -66,6 +69,9 @@ export interface CreateEventInput {
   places: CreateEventPlaceInput[];
   selfieMode: SelfieMode;
   voting?: VotingSettings;
+  preset?: EventPreset;
+  participantConfig?: ParticipantConfig;
+  modules?: EventModules;
 }
 
 interface EventCreateDocument {
@@ -84,6 +90,19 @@ interface EventCreateDocument {
   places: Place[];
   selfieMode: SelfieMode;
   voting: VotingSettings;
+  preset: EventPreset;
+  participantConfig: ParticipantConfig;
+  modules: EventModules;
+  submission: {
+    status: "waiting";
+    limit: number;
+    titleRequired: boolean;
+    allowReplacement: boolean;
+  };
+  results: {
+    status: "hidden";
+    winnerCount: number;
+  };
   layoutMode: "random";
   publicViewMode: "board";
   showLeaderboard: boolean;
@@ -101,6 +120,17 @@ function randomToken(length = 32): string {
   crypto.getRandomValues(values);
 
   return Array.from(values, (value) => TOKEN_CHARS[value % TOKEN_CHARS.length]).join("");
+}
+
+function randomAccessCode(): string {
+  const values = new Uint32Array(3);
+  crypto.getRandomValues(values);
+  return Array.from(values, (value) => String(value % 100).padStart(2, "0")).join("");
+}
+
+async function hashAccessCode(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function cleanPlace(place: CreateEventPlaceInput): Place {
@@ -230,6 +260,25 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     target: "representatives",
     unit: "participant",
   };
+  const preset = input.preset ?? "photo-mission";
+  const participantConfig: ParticipantConfig = input.participantConfig ?? {
+    unitType: "group",
+    accessMethod: "unique-link",
+    labels: {
+      singular: "팀",
+      plural: "참가 팀",
+      leader: "팀장",
+      code: "팀 코드",
+    },
+  };
+  const modules: EventModules = input.modules ?? {
+    guide: true,
+    songRequest: false,
+    photoMission: true,
+    photoContest: false,
+    voting: Boolean(voting.enabled),
+    archive: true,
+  };
 
   if (!title) {
     throw new Error("이벤트 제목이 필요합니다.");
@@ -277,6 +326,19 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
       status: voting.enabled ? voting.status : "off",
       unit: voting.unit ?? "participant",
     },
+    preset,
+    participantConfig,
+    modules,
+    submission: {
+      status: "waiting",
+      limit: preset === "family-photo-contest" ? 1 : Math.max(1, slotsPerTeam),
+      titleRequired: preset === "family-photo-contest",
+      allowReplacement: true,
+    },
+    results: {
+      status: "hidden",
+      winnerCount: 3,
+    },
     layoutMode: "random",
     publicViewMode: "board",
     showLeaderboard: true,
@@ -302,11 +364,12 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     const teamRef = doc(collection(db, "events", eventId, "teams"));
     const leader = leaderByIndex.get(teamIndex);
 
+    const unitLabel = participantConfig.labels.singular;
     const teamData: TeamCreateDocument = {
       eventId,
       index: teamIndex,
-      name: `${teamIndex}팀`,
-      displayName: `${teamIndex}팀`,
+      name: `${teamIndex}${unitLabel}`,
+      displayName: `${teamIndex}${unitLabel}`,
       color: TEAM_COLORS[(teamIndex - 1) % TEAM_COLORS.length],
       token: randomToken(),
       status: "idle",
@@ -319,6 +382,18 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     }
 
     batch.set(teamRef, teamData);
+
+    if (participantConfig.accessMethod === "code") {
+      const accessCode = randomAccessCode();
+      const codeHash = await hashAccessCode(accessCode);
+      batch.set(doc(db, "events", eventId, "accessCodes", teamRef.id), {
+        eventId,
+        teamId: teamRef.id,
+        codeHash,
+        displayCode: accessCode,
+        createdAt: now,
+      });
+    }
 
     let teamSlotOffset = 0;
 

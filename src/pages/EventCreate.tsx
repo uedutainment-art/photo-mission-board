@@ -25,6 +25,7 @@ import { sanitizePhone } from "../lib/phone";
 import type {
   ContactPreference,
   EventUseMode,
+  EventPreset,
   MapPlatform,
   OutputMode,
   SelfieMode,
@@ -55,6 +56,12 @@ const useModeLabels: Record<EventUseMode, string> = {
 const outputModeLabels: Record<OutputMode, string> = {
   collage: "자동 콜라주",
   collection: "사진 수집",
+};
+
+const presetLabels: Record<EventPreset, string> = {
+  "photo-mission": "팀 사진 미션",
+  "family-photo-contest": "가족 사진 콘테스트",
+  custom: "직접 구성",
 };
 
 const votingTargetLabels: Record<VotingTarget, string> = {
@@ -133,6 +140,7 @@ export function EventCreate() {
   const [externalUrl, setExternalUrl] = useState("");
   const [externalBrandName, setExternalBrandName] = useState("");
   const [outputMode, setOutputMode] = useState<OutputMode>("collage");
+  const [preset, setPreset] = useState<EventPreset>("photo-mission");
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
   const [teamCount, setTeamCount] = useState(10);
@@ -167,6 +175,31 @@ export function EventCreate() {
   function applyFitOption(option: CollageFitOption) {
     setCols(option.grid.cols);
     setRows(option.grid.rows);
+  }
+
+  function applyPreset(nextPreset: EventPreset) {
+    setPreset(nextPreset);
+
+    if (nextPreset === "family-photo-contest") {
+      setOutputMode("collection");
+      setSelfieMode("none");
+      setVotingEnabled(true);
+      setVotingTarget("representatives");
+      setVotingResultMode("popular");
+      setVotingUnit("team");
+      setPlaces((current) => current.length > 0 ? current : [{
+        id: "family-photo",
+        name: "가족 대표사진",
+        description: "오늘 우리 가족의 즐거운 순간을 사진으로 남겨주세요.",
+        perTeamCount: 1,
+      }]);
+      return;
+    }
+
+    if (nextPreset === "photo-mission") {
+      setOutputMode("collage");
+      setSelfieMode("individual");
+    }
   }
 
   function goBack() {
@@ -246,6 +279,36 @@ export function EventCreate() {
           resultMode: votingResultMode,
           unit: votingUnit,
         },
+        preset,
+        participantConfig: preset === "family-photo-contest"
+          ? {
+              unitType: "group",
+              accessMethod: "code",
+              labels: {
+                singular: "가족",
+                plural: "참가 가족",
+                leader: "가족 대표",
+                code: "가족 코드",
+              },
+            }
+          : {
+              unitType: "group",
+              accessMethod: "unique-link",
+              labels: {
+                singular: "팀",
+                plural: "참가 팀",
+                leader: "팀장",
+                code: "팀 코드",
+              },
+            },
+        modules: {
+          guide: true,
+          songRequest: preset === "family-photo-contest",
+          photoMission: preset !== "family-photo-contest",
+          photoContest: preset === "family-photo-contest",
+          voting: votingEnabled,
+          archive: true,
+        },
       });
       navigate(`/events/${eventId}/teams`, { replace: true });
     } catch (error) {
@@ -295,6 +358,25 @@ export function EventCreate() {
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4">
           {step === 1 && (
             <div>
+              <div className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                행사 프리셋
+              </div>
+              <div className="mb-5 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
+                {(Object.keys(presetLabels) as EventPreset[]).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => applyPreset(option)}
+                    className={
+                      preset === option
+                        ? "rounded-xl bg-white px-2 py-2 text-[11px] font-black shadow-sm"
+                        : "rounded-xl px-2 py-2 text-[11px] font-black text-app-muted"
+                    }
+                  >
+                    {presetLabels[option]}
+                  </button>
+                ))}
+              </div>
               <div className="mb-2 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
                 이벤트
               </div>

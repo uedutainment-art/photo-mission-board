@@ -14,6 +14,54 @@ export type VotingStatus = "off" | "draft" | "open" | "closed";
 export type VotingTarget = "all" | "representatives" | "checked";
 export type VotingResultMode = "team-balanced" | "popular";
 export type VotingUnit = "participant" | "team";
+export type EventPreset = "photo-mission" | "family-photo-contest" | "custom";
+export type ParticipantUnitType = "individual" | "group";
+export type ModuleStatus = "waiting" | "open" | "closed";
+export type ResultStatus = "hidden" | "published";
+
+export interface ParticipantLabels {
+  singular: string;
+  plural: string;
+  leader: string;
+  code: string;
+}
+
+export interface ParticipantConfig {
+  unitType: ParticipantUnitType;
+  labels: ParticipantLabels;
+  accessMethod: "code" | "unique-link" | "external";
+}
+
+export interface EventModules {
+  guide: boolean;
+  songRequest: boolean;
+  photoMission: boolean;
+  photoContest: boolean;
+  voting: boolean;
+  archive: boolean;
+}
+
+export interface SubmissionSettings {
+  status: ModuleStatus;
+  limit: number;
+  titleRequired: boolean;
+  allowReplacement: boolean;
+  openedAt?: Timestamp;
+  closedAt?: Timestamp;
+}
+
+export interface ContestWinner {
+  rank: 1 | 2 | 3;
+  teamId: string;
+  prizeAmount: number;
+}
+
+export interface ResultSettings {
+  status: ResultStatus;
+  winnerCount: number;
+  winners?: ContestWinner[];
+  publishedAt?: Timestamp;
+}
 
 export interface OrganizerContact {
   name: string;
@@ -83,6 +131,11 @@ export interface MissionEvent {
   places: Place[];
   selfieMode: SelfieMode;
   voting?: VotingSettings;
+  preset?: EventPreset;
+  participantConfig?: ParticipantConfig;
+  modules?: EventModules;
+  submission?: SubmissionSettings;
+  results?: ResultSettings;
   layoutMode: LayoutMode;
   publicViewMode?: PublicViewMode;
   showLeaderboard?: boolean;
@@ -163,6 +216,13 @@ export interface PhotoVote {
   voterTeamId?: string;
   unit?: VotingUnit;
   createdAt: Timestamp;
+}
+
+export interface FamilySubmission extends StoredImage {
+  title: string;
+  hidden: boolean;
+  submittedAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
 export interface FaceDetectionBox {

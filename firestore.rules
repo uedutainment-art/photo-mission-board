@@ -55,6 +55,17 @@ service cloud.firestore {
           || (signedIn() && changedOnly(['joinedMembers', 'status']));
       }
 
+      match /accessCodes/{codeId} {
+        allow read, update, delete: if isEventOwner(eventId);
+        allow create: if isEventOwnerAfter(eventId);
+      }
+
+      match /participantSessions/{sessionId} {
+        allow read: if signedIn()
+          && (sessionId == request.auth.uid || isEventOwner(eventId));
+        allow write: if false;
+      }
+
       match /slots/{slotId} {
         allow read: if signedIn()
           || isCompletedEvent(eventId);
