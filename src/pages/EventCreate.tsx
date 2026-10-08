@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { PlaceEditModal } from "../components/PlaceEditModal";
+import { getCollageFit, type CollageFitOption } from "../lib/collageGrid";
 import {
   createDraftEventId,
   createEvent,
@@ -21,7 +22,15 @@ import {
 import { useAuth } from "../lib/auth";
 import { formatKoreanDate } from "../lib/formatDate";
 import { sanitizePhone } from "../lib/phone";
-import type { ContactPreference, MapPlatform, SelfieMode } from "../lib/types";
+import type {
+  ContactPreference,
+  EventUseMode,
+  MapPlatform,
+  OutputMode,
+  SelfieMode,
+  VotingResultMode,
+  VotingTarget,
+} from "../lib/types";
 
 type WizardStep = 1 | 2 | 3;
 
@@ -35,6 +44,27 @@ const selfieModeLabels: Record<SelfieMode, string> = {
   individual: "셀카",
   group: "단체사진",
   none: "없음",
+};
+
+const useModeLabels: Record<EventUseMode, string> = {
+  standalone: "이 앱만 사용",
+  attached: "다른 행사에 붙이기",
+};
+
+const outputModeLabels: Record<OutputMode, string> = {
+  collage: "자동 콜라주",
+  collection: "사진 수집",
+};
+
+const votingTargetLabels: Record<VotingTarget, string> = {
+  all: "모든 사진",
+  representatives: "대표 사진",
+  checked: "검수 완료",
+};
+
+const votingResultModeLabels: Record<VotingResultMode, string> = {
+  "team-balanced": "팀별 상위",
+  popular: "전체 인기순",
 };
 
 const placeColors = ["#0284c7", "#d97706", "#7c3aed", "#16a34a", "#db2777", "#0891b2"];
@@ -92,10 +122,18 @@ export function EventCreate() {
   const [organizerRole, setOrganizerRole] = useState("");
   const [organizerPhone, setOrganizerPhone] = useState("");
   const [contactPreference, setContactPreference] = useState<ContactPreference>("sms-first");
+  const [useMode, setUseMode] = useState<EventUseMode>("standalone");
+  const [externalTitle, setExternalTitle] = useState("");
+  const [externalUrl, setExternalUrl] = useState("");
+  const [externalBrandName, setExternalBrandName] = useState("");
+  const [outputMode, setOutputMode] = useState<OutputMode>("collage");
   const [rows, setRows] = useState(10);
   const [cols, setCols] = useState(10);
   const [teamCount, setTeamCount] = useState(10);
   const [selfieMode, setSelfieMode] = useState<SelfieMode>("individual");
+  const [votingEnabled, setVotingEnabled] = useState(false);
+  const [votingTarget, setVotingTarget] = useState<VotingTarget>("representatives");
+  const [votingResultMode, setVotingResultMode] = useState<VotingResultMode>("team-balanced");
   const [places, setPlaces] = useState<CreateEventPlaceInput[]>([]);
   const [editingPlace, setEditingPlace] = useState<CreateEventPlaceInput | undefined>();
   const [modalOpen, setModalOpen] = useState(false);
@@ -103,20 +141,26 @@ export function EventCreate() {
   const [createError, setCreateError] = useState<string | null>(null);
   const grid = useMemo(() => ({ rows, cols }), [cols, rows]);
   const totalSlots = rows * cols;
+  const collageFit = useMemo(() => getCollageFit(grid, teamCount), [grid, teamCount]);
   const perTeamCount = getPerTeamCount(grid, teamCount);
   const placeTotal = places.reduce((sum, place) => sum + place.perTeamCount, 0);
+  const effectivePerTeamCount = outputMode === "collage" ? perTeamCount : placeTotal;
   const stepOneValid =
     title.trim().length > 0 &&
     organizerName.trim().length > 0 &&
     sanitizePhone(organizerPhone).length > 0 &&
-    perTeamCount !== null;
+    (outputMode === "collection" || perTeamCount !== null);
   const stepTwoValid =
-    perTeamCount !== null &&
     places.length > 0 &&
-    placeTotal === perTeamCount &&
-    places.every((place) => place.name.trim().length > 0 && place.perTeamCount > 0);
+    places.every((place) => place.name.trim().length > 0 && place.perTeamCount > 0) &&
+    (outputMode === "collection" || (perTeamCount !== null && placeTotal === perTeamCount));
   const canCreate = stepOneValid && stepTwoValid && !creating;
   const previewCells = Array.from({ length: Math.min(totalSlots, 144) }, (_, index) => index);
+
+  function applyFitOption(option: CollageFitOption) {
+    setCols(option.grid.cols);
+    setRows(option.grid.rows);
+  }
 
   function goBack() {
     if (step > 1) {
@@ -174,10 +218,26 @@ export function EventCreate() {
           phone: organizerPhone,
           contactPreference,
         },
+        useMode,
+        externalEvent:
+          useMode === "attached"
+            ? {
+                brandName: externalBrandName,
+                title: externalTitle,
+                url: externalUrl,
+              }
+            : undefined,
+        outputMode,
         grid,
         teamCount,
         places,
         selfieMode,
+        voting: {
+          enabled: votingEnabled,
+          status: votingEnabled ? "draft" : "off",
+          target: votingTarget,
+          resultMode: votingResultMode,
+        },
       });
       navigate(`/events/${eventId}/teams`, { replace: true });
     } catch (error) {
@@ -266,6 +326,68 @@ export function EventCreate() {
               </div>
 
               <div className="mb-2 mt-5 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                사용 방식
+              </div>
+              <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
+                {(Object.keys(useModeLabels) as EventUseMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => {
+                      setUseMode(mode);
+                    }}
+                    className={
+                      useMode === mode
+                        ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm"
+                        : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"
+                    }
+                  >
+                    {useModeLabels[mode]}
+                  </button>
+                ))}
+              </div>
+              {useMode === "attached" && (
+                <div className="mt-3 space-y-3">
+                  <label className="block rounded-2xl border border-app-border bg-white px-4 py-3">
+                    <FieldLabel>연결할 행사명</FieldLabel>
+                    <input
+                      value={externalTitle}
+                      onChange={(event) => {
+                        setExternalTitle(event.target.value);
+                      }}
+                      placeholder="예: 춘천 국제태권도대회"
+                      className="mt-1 w-full bg-transparent text-sm font-black outline-none placeholder:text-slate-300"
+                    />
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block rounded-2xl border border-app-border bg-white px-4 py-3">
+                      <FieldLabel>브랜드/주최</FieldLabel>
+                      <input
+                        value={externalBrandName}
+                        onChange={(event) => {
+                          setExternalBrandName(event.target.value);
+                        }}
+                        placeholder="예: U-Edutainment"
+                        className="mt-1 w-full bg-transparent text-sm font-bold outline-none placeholder:text-slate-300"
+                      />
+                    </label>
+                    <label className="block rounded-2xl border border-app-border bg-white px-4 py-3">
+                      <FieldLabel>행사 링크</FieldLabel>
+                      <input
+                        value={externalUrl}
+                        onChange={(event) => {
+                          setExternalUrl(event.target.value);
+                        }}
+                        inputMode="url"
+                        placeholder="https://..."
+                        className="mt-1 w-full bg-transparent text-sm font-bold outline-none placeholder:text-slate-300"
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-2 mt-5 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
                 운영팀 연락처
               </div>
               <div className="space-y-3">
@@ -327,34 +449,65 @@ export function EventCreate() {
               </div>
 
               <div className="mb-2 mt-5 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
-                콜라주 구조
+                결과물 방식
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block rounded-2xl border border-app-border bg-white px-4 py-3">
-                  <FieldLabel>가로 칸</FieldLabel>
-                  <input
-                    type="number"
-                    min={1}
-                    value={cols}
-                    onChange={(event) => {
-                      setCols(numberFromInput(event.target.value, cols));
+              <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
+                {(Object.keys(outputModeLabels) as OutputMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => {
+                      setOutputMode(mode);
                     }}
-                    className="mt-1 w-full bg-transparent text-base font-black outline-none"
-                  />
-                </label>
-                <label className="block rounded-2xl border border-app-border bg-white px-4 py-3">
-                  <FieldLabel>세로 칸</FieldLabel>
-                  <input
-                    type="number"
-                    min={1}
-                    value={rows}
-                    onChange={(event) => {
-                      setRows(numberFromInput(event.target.value, rows));
-                    }}
-                    className="mt-1 w-full bg-transparent text-base font-black outline-none"
-                  />
-                </label>
+                    className={
+                      outputMode === mode
+                        ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm"
+                        : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"
+                    }
+                  >
+                    {outputModeLabels[mode]}
+                  </button>
+                ))}
               </div>
+              <div className="mt-2 rounded-2xl border border-app-border bg-white px-4 py-3 text-xs font-bold leading-5 text-app-muted">
+                {outputMode === "collage"
+                  ? "팀마다 같은 장수를 배치해 최종 콜라주 PNG를 만듭니다."
+                  : "칸 수 계산 없이 장소별 사진을 모으고 ZIP, 갤러리, 투표 순위 중심으로 운영합니다."}
+              </div>
+
+              {outputMode === "collage" && (
+                <>
+                  <div className="mb-2 mt-5 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                    콜라주 구조
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block rounded-2xl border border-app-border bg-white px-4 py-3">
+                      <FieldLabel>가로 칸</FieldLabel>
+                      <input
+                        type="number"
+                        min={1}
+                        value={cols}
+                        onChange={(event) => {
+                          setCols(numberFromInput(event.target.value, cols));
+                        }}
+                        className="mt-1 w-full bg-transparent text-base font-black outline-none"
+                      />
+                    </label>
+                    <label className="block rounded-2xl border border-app-border bg-white px-4 py-3">
+                      <FieldLabel>세로 칸</FieldLabel>
+                      <input
+                        type="number"
+                        min={1}
+                        value={rows}
+                        onChange={(event) => {
+                          setRows(numberFromInput(event.target.value, rows));
+                        }}
+                        className="mt-1 w-full bg-transparent text-base font-black outline-none"
+                      />
+                    </label>
+                  </div>
+                </>
+              )}
               <label className="mt-3 block rounded-2xl border border-app-border bg-white px-4 py-3">
                 <FieldLabel>참여 팀 수</FieldLabel>
                 <input
@@ -368,19 +521,50 @@ export function EventCreate() {
                 />
               </label>
 
-              <div className="mt-4 rounded-panel bg-app-ink p-5 text-white">
-                <div className="text-4xl font-black tracking-normal">{totalSlots}칸</div>
-                <div className="mt-1 text-xs font-black text-slate-400">총 슬롯 · 자동 계산</div>
-                <div className="mt-4 border-t border-slate-700 pt-4 text-sm font-bold leading-6 text-slate-300">
-                  {cols} × {rows} 칸 = {totalSlots}칸 ÷ {teamCount}팀 ={" "}
-                  <b className="text-white">{perTeamCount ?? "계산 불가"}</b>
-                  {perTeamCount ? "장" : ""}
+              {outputMode === "collage" ? (
+                <div className="mt-4 rounded-panel bg-app-ink p-5 text-white">
+                  <div className="text-4xl font-black tracking-normal">{totalSlots}칸</div>
+                  <div className="mt-1 text-xs font-black text-slate-400">총 슬롯 · 자동 계산</div>
+                  <div className="mt-4 border-t border-slate-700 pt-4 text-sm font-bold leading-6 text-slate-300">
+                    {cols} × {rows} 칸 = {totalSlots}칸 ÷ {teamCount}팀 ={" "}
+                    <b className="text-white">{perTeamCount ?? "계산 불가"}</b>
+                    {perTeamCount ? "장" : ""}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-4 rounded-panel bg-app-ink p-5 text-white">
+                  <div className="text-3xl font-black tracking-normal">사진 수집</div>
+                  <div className="mt-1 text-xs font-black text-slate-400">팀 수 고정 · 장소별 목표만 사용</div>
+                  <div className="mt-4 border-t border-slate-700 pt-4 text-sm font-bold leading-6 text-slate-300">
+                    {teamCount}팀이 장소별로 자유롭게 업로드합니다. 최종 결과는 ZIP, 갤러리, 투표 순위 중심으로 정리됩니다.
+                  </div>
+                </div>
+              )}
 
-              {perTeamCount === null && (
-                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-800">
-                  팀 수가 그리드 전체 칸 수의 약수여야 합니다.
+              {outputMode === "collage" && perTeamCount === null && (
+                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">
+                  <p className="font-black">팀 수에 맞춰 칸 수를 조정해야 합니다.</p>
+                  {collageFit.recommended && (
+                    <p className="mt-1">
+                      추천: {collageFit.recommended.grid.cols}×{collageFit.recommended.grid.rows} = {collageFit.recommended.totalSlots}칸,
+                      팀당 {collageFit.recommended.perTeamCount}장
+                    </p>
+                  )}
+                  <div className="mt-3 grid gap-2">
+                    {collageFit.options.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => applyFitOption(option)}
+                        className="rounded-xl bg-white px-3 py-2 text-left text-xs font-black text-amber-900 shadow-sm"
+                      >
+                        {option.label}: {option.grid.cols}×{option.grid.rows} = {option.totalSlots}칸
+                        <span className="ml-1 text-amber-700">
+                          ({option.delta > 0 ? `${option.delta}칸 추가` : `${Math.abs(option.delta)}칸 제외`})
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -405,6 +589,71 @@ export function EventCreate() {
                   </button>
                 ))}
               </div>
+
+              <div className="mb-2 mt-5 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                행사 후 투표
+              </div>
+              <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
+                {([
+                  [false, "사용 안 함"],
+                  [true, "사용"],
+                ] as Array<[boolean, string]>).map(([enabled, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setVotingEnabled(enabled)}
+                    className={
+                      votingEnabled === enabled
+                        ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm"
+                        : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {votingEnabled && (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <FieldLabel>투표 대상</FieldLabel>
+                    <div className="mt-1 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
+                      {(Object.keys(votingTargetLabels) as VotingTarget[]).map((target) => (
+                        <button
+                          key={target}
+                          type="button"
+                          onClick={() => setVotingTarget(target)}
+                          className={
+                            votingTarget === target
+                              ? "rounded-xl bg-white px-2 py-2 text-[11px] font-black shadow-sm"
+                              : "rounded-xl px-2 py-2 text-[11px] font-black text-app-muted"
+                          }
+                        >
+                          {votingTargetLabels[target]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel>순위 반영</FieldLabel>
+                    <div className="mt-1 grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
+                      {(Object.keys(votingResultModeLabels) as VotingResultMode[]).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setVotingResultMode(mode)}
+                          className={
+                            votingResultMode === mode
+                              ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm"
+                              : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"
+                          }
+                        >
+                          {votingResultModeLabels[mode]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -426,7 +675,9 @@ export function EventCreate() {
                   </div>
                   <h2 className="font-black">장소를 추가해주세요</h2>
                   <p className="mt-2 text-sm font-bold leading-6 text-app-muted">
-                    팀당 {perTeamCount ?? 0}장을 장소별로 나누면 다음 단계로 갈 수 있습니다.
+                    {outputMode === "collage"
+                      ? `팀당 ${perTeamCount ?? 0}장을 장소별로 나누면 다음 단계로 갈 수 있습니다.`
+                      : "장소별 목표 사진 수를 정하면 팀원들이 자유롭게 업로드할 수 있습니다."}
                   </p>
                 </section>
               )}
@@ -484,7 +735,7 @@ export function EventCreate() {
               >
                 <span>팀당 분배 합계</span>
                 <span>
-                  {placeTotal} / {perTeamCount ?? 0}
+                  {outputMode === "collage" ? `${placeTotal} / ${perTeamCount ?? 0}` : `${placeTotal}장 목표`}
                   {stepTwoValid ? " ✓" : ""}
                 </span>
               </div>
@@ -497,13 +748,20 @@ export function EventCreate() {
                 <div className="text-xs font-black text-slate-400">이벤트</div>
                 <h2 className="mt-1 text-2xl font-black tracking-normal">{title || "새 이벤트"}</h2>
                 <p className="mt-3 text-xs font-bold text-slate-300">
-                  {teamCount}팀 · {totalSlots}칸 · {places.length}개 장소
+                  {teamCount}팀 · {outputMode === "collage" ? `${totalSlots}칸` : `팀당 ${placeTotal}장 목표`} · {places.length}개 장소
                   {scheduledAt ? ` · ${formatKoreanDate(scheduledAt)}` : ""}
                 </p>
+                {useMode === "attached" && (externalTitle || externalBrandName) && (
+                  <p className="mt-2 text-xs font-black text-blue-100">
+                    연결 행사: {[externalTitle, externalBrandName].filter(Boolean).join(" · ")}
+                  </p>
+                )}
               </section>
 
               <section className="card mb-4 p-4">
-                <h2 className="mb-3 text-sm font-black">한 팀의 {perTeamCount}장 구조</h2>
+                <h2 className="mb-3 text-sm font-black">
+                  한 팀의 {effectivePerTeamCount ?? 0}장 {outputMode === "collage" ? "구조" : "목표"}
+                </h2>
                 <div className="mb-3 flex h-10 overflow-hidden rounded-xl">
                   {places.map((place, index) => (
                     <div
@@ -531,24 +789,36 @@ export function EventCreate() {
                 </div>
               </section>
 
-              <h2 className="mb-2 text-sm font-black">최종 보드 ({cols} × {rows})</h2>
-              <div
-                className="mb-4 grid gap-0.5 rounded-2xl bg-slate-200 p-2"
-                style={{ gridTemplateColumns: `repeat(${Math.min(cols, 18)}, minmax(0, 1fr))` }}
-              >
-                {previewCells.map((cell) => (
-                  <div key={cell} className="aspect-square rounded-[3px] bg-white" />
-                ))}
-              </div>
-              {previewCells.length < totalSlots && (
-                <p className="mb-4 text-center text-xs font-bold text-app-muted">
-                  화면 미리보기는 앞 {previewCells.length}칸만 표시합니다.
-                </p>
+              {outputMode === "collage" ? (
+                <>
+                  <h2 className="mb-2 text-sm font-black">최종 보드 ({cols} × {rows})</h2>
+                  <div
+                    className="mb-4 grid gap-0.5 rounded-2xl bg-slate-200 p-2"
+                    style={{ gridTemplateColumns: `repeat(${Math.min(cols, 18)}, minmax(0, 1fr))` }}
+                  >
+                    {previewCells.map((cell) => (
+                      <div key={cell} className="aspect-square rounded-[3px] bg-white" />
+                    ))}
+                  </div>
+                  {previewCells.length < totalSlots && (
+                    <p className="mb-4 text-center text-xs font-bold text-app-muted">
+                      화면 미리보기는 앞 {previewCells.length}칸만 표시합니다.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <section className="card mb-4 p-4">
+                  <h2 className="text-sm font-black">사진 수집 결과</h2>
+                  <p className="mt-2 text-sm font-bold leading-6 text-app-muted">
+                    업로드 사진은 장소별 갤러리와 원본 ZIP으로 정리됩니다. 투표를 켜면 Export 화면에서 순위까지 확인할 수 있습니다.
+                  </p>
+                </section>
               )}
 
               <div className="rounded-2xl border border-app-border bg-white px-4 py-3 text-sm font-bold leading-6 text-app-muted">
-                만들기를 누르면 팀 {teamCount}개와 슬롯 {totalSlots}칸이 자동 생성되고, 각 팀에
+                만들기를 누르면 팀 {teamCount}개와 슬롯 {teamCount * (effectivePerTeamCount ?? 0)}칸이 자동 생성되고, 각 팀에
                 랜덤 토큰이 발급됩니다. 팀장 연락처는 생성 직후 팀 QR 관리에서 등록합니다.
+                {votingEnabled ? " 투표는 Export 화면에서 행사 후 열 수 있습니다." : ""}
               </div>
 
               {createError && (

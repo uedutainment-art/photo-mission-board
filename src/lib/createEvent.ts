@@ -1,16 +1,21 @@
 import { collection, doc, serverTimestamp, writeBatch, type FieldValue } from "firebase/firestore";
 import { db } from "./firebase";
+import { getCollectionGrid } from "./collageGrid";
 import { sanitizePhone } from "./phone";
 import type {
   ContactPreference,
+  EventUseMode,
+  ExternalEventReference,
   GridSize,
   MapPlatform,
   OrganizerContact,
+  OutputMode,
   Place,
   SelfieMode,
   Slot,
   Team,
   TeamLeader,
+  VotingSettings,
 } from "./types";
 
 const TEAM_COLORS = [
@@ -47,6 +52,9 @@ export interface CreateEventInput {
   subtitle?: string;
   scheduledAt?: string;
   organizer: OrganizerContact;
+  useMode?: EventUseMode;
+  externalEvent?: ExternalEventReference;
+  outputMode?: OutputMode;
   grid: GridSize;
   teamCount: number;
   leaders?: Array<{
@@ -57,6 +65,7 @@ export interface CreateEventInput {
   }>;
   places: CreateEventPlaceInput[];
   selfieMode: SelfieMode;
+  voting?: VotingSettings;
 }
 
 interface EventCreateDocument {
@@ -66,11 +75,15 @@ interface EventCreateDocument {
   scheduledAt?: string;
   organizer: OrganizerContact;
   status: "draft";
+  useMode: EventUseMode;
+  externalEvent?: ExternalEventReference;
+  outputMode: OutputMode;
   grid: GridSize;
   teamCount: number;
   perTeamCount: number;
   places: Place[];
   selfieMode: SelfieMode;
+  voting: VotingSettings;
   layoutMode: "random";
   publicViewMode: "board";
   showLeaderboard: boolean;
@@ -163,6 +176,27 @@ function cleanLeader(leader: NonNullable<CreateEventInput["leaders"]>[number]): 
   return nextLeader;
 }
 
+function cleanExternalEvent(externalEvent: ExternalEventReference | undefined): ExternalEventReference | undefined {
+  const title = externalEvent?.title?.trim();
+  const url = externalEvent?.url?.trim();
+  const brandName = externalEvent?.brandName?.trim();
+  const nextExternalEvent: ExternalEventReference = {};
+
+  if (title) {
+    nextExternalEvent.title = title;
+  }
+
+  if (url) {
+    nextExternalEvent.url = url;
+  }
+
+  if (brandName) {
+    nextExternalEvent.brandName = brandName;
+  }
+
+  return Object.keys(nextExternalEvent).length > 0 ? nextExternalEvent : undefined;
+}
+
 export function getPerTeamCount(grid: GridSize, teamCount: number): number | null {
   const total = grid.rows * grid.cols;
 
@@ -181,20 +215,34 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
   const title = input.title.trim();
   const subtitle = input.subtitle?.trim();
   const scheduledAt = input.scheduledAt?.trim();
-  const perTeamCount = getPerTeamCount(input.grid, input.teamCount);
+  const useMode = input.useMode ?? "standalone";
+  const externalEvent = useMode === "attached" ? cleanExternalEvent(input.externalEvent) : undefined;
+  const outputMode = input.outputMode ?? "collage";
+  const collagePerTeamCount = getPerTeamCount(input.grid, input.teamCount);
   const placeTotal = input.places.reduce((sum, place) => sum + place.perTeamCount, 0);
+  const perTeamCount = outputMode === "collage" ? collagePerTeamCount : placeTotal;
   const organizer = cleanOrganizer(input.organizer);
   const leaderByIndex = new Map((input.leaders ?? []).map((leader) => [leader.teamIndex, cleanLeader(leader)]));
+  const voting: VotingSettings = input.voting ?? {
+    enabled: false,
+    resultMode: "team-balanced",
+    status: "off",
+    target: "representatives",
+  };
 
   if (!title) {
     throw new Error("이벤트 제목이 필요합니다.");
   }
 
-  if (perTeamCount === null) {
+  if (outputMode === "collage" && perTeamCount === null) {
     throw new Error("그리드 칸 수가 팀 수로 나누어져야 합니다.");
   }
 
-  if (placeTotal !== perTeamCount) {
+  if (placeTotal <= 0) {
+    throw new Error("장소별 사진 수 합계가 1장 이상이어야 합니다.");
+  }
+
+  if (outputMode === "collage" && placeTotal !== perTeamCount) {
     throw new Error("장소별 사진 수 합계가 팀당 사진 수와 같아야 합니다.");
   }
 
@@ -207,16 +255,26 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
   const eventId = eventRef.id;
   const now = serverTimestamp();
   const places = input.places.map(cleanPlace);
+  const slotsPerTeam = perTeamCount ?? placeTotal;
+  const eventGrid = outputMode === "collage"
+    ? input.grid
+    : getCollectionGrid(input.teamCount * placeTotal);
   const eventData: EventCreateDocument = {
     ownerId: input.ownerId,
     title,
     organizer,
     status: "draft",
-    grid: input.grid,
+    useMode,
+    outputMode,
+    grid: eventGrid,
     teamCount: input.teamCount,
-    perTeamCount,
+    perTeamCount: slotsPerTeam,
     places,
     selfieMode: input.selfieMode,
+    voting: {
+      ...voting,
+      status: voting.enabled ? voting.status : "off",
+    },
     layoutMode: "random",
     publicViewMode: "board",
     showLeaderboard: true,
@@ -230,6 +288,10 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
 
   if (scheduledAt) {
     eventData.scheduledAt = scheduledAt;
+  }
+
+  if (externalEvent) {
+    eventData.externalEvent = externalEvent;
   }
 
   batch.set(eventRef, eventData);
@@ -266,7 +328,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
           teamId: teamRef.id,
           placeId: place.id,
           indexInPlace,
-          globalIndex: (teamIndex - 1) * perTeamCount + teamSlotOffset,
+          globalIndex: (teamIndex - 1) * slotsPerTeam + teamSlotOffset,
           submissionCount: 0,
           reviewStatus: "unchecked",
           createdAt: now,

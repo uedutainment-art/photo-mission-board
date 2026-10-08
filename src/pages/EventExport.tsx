@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { doc, serverTimestamp, updateDoc, deleteField } from "firebase/firestore";
-import { Archive, ArrowLeft, Download, Loader2, Lock, RotateCw, Users } from "lucide-react";
+import { Archive, ArrowLeft, Download, Loader2, Lock, RotateCw, Trophy, Users } from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive } from "../hooks/useEventLive";
 import { createCollagePng, createSelfieCollagePng, orderSlotsForExport, type ExportLayoutMode } from "../lib/collage";
@@ -25,7 +25,7 @@ function getProgressPercent(progress: ZipProgress | null): number {
 
 export function EventExport() {
   const { eventId } = useParams();
-  const { error, event, loading, photos, selfies, slots, teams } = useEventLive(eventId);
+  const { error, event, loading, photos, selfies, slots, teams, votes } = useEventLive(eventId);
   const [layoutMode, setLayoutMode] = useState<ExportLayoutMode>("random");
   const [seed, setSeed] = useState(1);
   const [job, setJob] = useState<ExportJob>(null);
@@ -41,6 +41,29 @@ export function EventExport() {
   const filenameBase = safeFilename(event?.title ?? "photo-mission-board");
   const locked = Boolean(event?.layoutLockedAt);
   const busy = Boolean(job);
+  const outputMode = event?.outputMode ?? "collage";
+  const votingEnabled = Boolean(event?.voting?.enabled);
+  const voteCountByPhotoId = useMemo(() => {
+    const voteCounts = new Map<string, number>();
+
+    for (const vote of votes) {
+      voteCounts.set(vote.photoId, (voteCounts.get(vote.photoId) ?? 0) + 1);
+    }
+
+    return voteCounts;
+  }, [votes]);
+  const rankedPhotos = useMemo(
+    () =>
+      photos
+        .map((photo) => ({
+          photo,
+          votes: voteCountByPhotoId.get(photo.id) ?? 0,
+        }))
+        .filter((entry) => entry.votes > 0)
+        .sort((a, b) => b.votes - a.votes || (b.photo.uploadedAt?.toMillis?.() ?? 0) - (a.photo.uploadedAt?.toMillis?.() ?? 0))
+        .slice(0, 10),
+    [photos, voteCountByPhotoId],
+  );
 
   async function handleLockToggle() {
     if (!eventId) {
@@ -50,6 +73,17 @@ export function EventExport() {
     await updateDoc(doc(db, "events", eventId), {
       layoutLockedAt: locked ? deleteField() : serverTimestamp(),
       layoutMode,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  async function handleVotingStatus(nextStatus: "open" | "closed") {
+    if (!eventId || !event?.voting?.enabled) {
+      return;
+    }
+
+    await updateDoc(doc(db, "events", eventId), {
+      "voting.status": nextStatus,
       updatedAt: serverTimestamp(),
     });
   }
@@ -150,7 +184,9 @@ export function EventExport() {
                   <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-black">
                     LIVE · {filledCount}/{slots.length}
                   </span>
-                  <span className="text-[11px] font-black text-slate-400">2400 × 2400</span>
+                  <span className="text-[11px] font-black text-slate-400">
+                    {outputMode === "collage" ? "2400 × 2400" : "사진 수집 모드"}
+                  </span>
                 </div>
                 <div
                   className="grid gap-0.5 overflow-hidden rounded-2xl bg-slate-900 p-1"
@@ -181,61 +217,127 @@ export function EventExport() {
                 </div>
               </section>
 
-              <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLayoutMode("random");
-                  }}
-                  className={layoutMode === "random" ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm" : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"}
-                >
-                  랜덤 셔플
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLayoutMode("team");
-                  }}
-                  className={layoutMode === "team" ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm" : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"}
-                >
-                  팀별 그룹
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSeed((current) => current + 1);
-                    setLayoutMode("random");
-                  }}
-                  disabled={locked}
-                  className="flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-black text-app-muted disabled:opacity-40"
-                >
-                  <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
-                  다시
-                </button>
-              </div>
-              {locked && (
-                <p className="-mt-2 text-center text-xs font-black text-app-muted">잠금 해제 후 셔플</p>
+              {outputMode === "collage" && (
+                <>
+                  <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLayoutMode("random");
+                      }}
+                      className={layoutMode === "random" ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm" : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"}
+                    >
+                      랜덤 셔플
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLayoutMode("team");
+                      }}
+                      className={layoutMode === "team" ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm" : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"}
+                    >
+                      팀별 그룹
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSeed((current) => current + 1);
+                        setLayoutMode("random");
+                      }}
+                      disabled={locked}
+                      className="flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-xs font-black text-app-muted disabled:opacity-40"
+                    >
+                      <RotateCw className="h-3.5 w-3.5" aria-hidden="true" />
+                      다시
+                    </button>
+                  </div>
+                  {locked && (
+                    <p className="-mt-2 text-center text-xs font-black text-app-muted">잠금 해제 후 셔플</p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleLockToggle();
+                    }}
+                    className={
+                      locked
+                        ? "flex w-full items-center gap-3 rounded-2xl bg-emerald-100 px-4 py-4 text-left text-sm font-black text-emerald-800"
+                        : "flex w-full items-center gap-3 rounded-2xl border border-app-border bg-white px-4 py-4 text-left text-sm font-black"
+                    }
+                  >
+                    <Lock className="h-5 w-5 flex-none" aria-hidden="true" />
+                    <span className="flex-1">
+                      {locked ? "이 배치로 잠김" : "이 배치로 잠금"}
+                      <span className="mt-1 block text-xs font-bold text-app-muted">
+                        잠금 후 다운로드하는 것을 권장합니다.
+                      </span>
+                    </span>
+                  </button>
+                </>
               )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  void handleLockToggle();
-                }}
-                className={
-                  locked
-                    ? "flex w-full items-center gap-3 rounded-2xl bg-emerald-100 px-4 py-4 text-left text-sm font-black text-emerald-800"
-                    : "flex w-full items-center gap-3 rounded-2xl border border-app-border bg-white px-4 py-4 text-left text-sm font-black"
-                }
-              >
-                <Lock className="h-5 w-5 flex-none" aria-hidden="true" />
-                <span className="flex-1">
-                  {locked ? "이 배치로 잠김" : "이 배치로 잠금"}
-                  <span className="mt-1 block text-xs font-bold text-app-muted">
-                    잠금 후 다운로드하는 것을 권장합니다.
-                  </span>
-                </span>
-              </button>
+              {votingEnabled && (
+                <section className="card p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
+                        Vote
+                      </p>
+                      <h2 className="mt-1 text-sm font-black">행사 후 투표</h2>
+                      <p className="mt-1 text-xs font-bold text-app-muted">
+                        {event.voting?.status === "open" ? "참가자 투표가 열려 있습니다." : "투표를 열면 참가자 사진 화면에 투표 버튼이 표시됩니다."}
+                      </p>
+                    </div>
+                    <Trophy className="h-5 w-5 text-app-primary" aria-hidden="true" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleVotingStatus("open");
+                      }}
+                      disabled={event.voting?.status === "open"}
+                      className="rounded-2xl bg-app-ink px-4 py-3 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
+                    >
+                      투표 열기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleVotingStatus("closed");
+                      }}
+                      disabled={event.voting?.status === "closed"}
+                      className="rounded-2xl border border-app-border bg-white px-4 py-3 text-sm font-black disabled:opacity-50"
+                    >
+                      투표 닫기
+                    </button>
+                  </div>
+                  <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-app-muted">
+                    반영 방식: {event.voting?.resultMode === "popular" ? "전체 인기순 사진" : "팀별 상위 사진"}
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <h3 className="text-xs font-black text-app-muted">현재 순위</h3>
+                    {rankedPhotos.map((entry, index) => (
+                      <div key={entry.photo.id} className="flex items-center gap-3 rounded-2xl bg-white p-2">
+                        <span className="grid h-8 w-8 flex-none place-items-center rounded-xl bg-slate-100 text-xs font-black">
+                          {index + 1}
+                        </span>
+                        <img src={entry.photo.thumbUrl} alt="" className="h-10 w-10 rounded-xl object-cover" referrerPolicy="no-referrer" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-black">{entry.photo.uploaderName || "팀원"}</p>
+                          <p className="text-[11px] font-bold text-app-muted">투표 {entry.votes}표</p>
+                        </div>
+                      </div>
+                    ))}
+                    {rankedPhotos.length === 0 && (
+                      <p className="rounded-2xl bg-white px-4 py-3 text-xs font-bold text-app-muted">
+                        아직 투표가 없습니다.
+                      </p>
+                    )}
+                  </div>
+                </section>
+              )}
 
               {job === "zip" && zipProgress && (
                 <section className="card p-4">
@@ -269,7 +371,7 @@ export function EventExport() {
                   onClick={() => {
                     void handleDownloadCollage();
                   }}
-                  disabled={busy || slots.length === 0}
+                  disabled={busy || slots.length === 0 || outputMode === "collection"}
                   className="card flex w-full items-center gap-3 p-4 text-left disabled:opacity-50"
                 >
                   <div className="grid h-11 w-11 place-items-center rounded-2xl bg-app-ink text-white">
@@ -277,7 +379,9 @@ export function EventExport() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-black">최종 콜라주 PNG</div>
-                    <div className="text-xs font-bold text-app-muted">2400×2400 · 대표 사진 {filledCount}장</div>
+                    <div className="text-xs font-bold text-app-muted">
+                      {outputMode === "collection" ? "사진 수집 모드에서는 ZIP과 순위를 사용합니다." : `2400×2400 · 대표 사진 ${filledCount}장`}
+                    </div>
                   </div>
                   <span className="text-xl font-black">↓</span>
                 </button>

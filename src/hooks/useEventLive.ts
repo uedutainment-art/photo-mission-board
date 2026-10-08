@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, doc, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import type { MissionEvent, Photo, Selfie, Slot, Team } from "../lib/types";
+import type { MissionEvent, Photo, PhotoVote, Selfie, Slot, Team } from "../lib/types";
 
 export interface EventLiveEvent extends MissionEvent {
   id: string;
@@ -23,12 +23,17 @@ export interface EventLiveSelfie extends Selfie {
   id: string;
 }
 
+export interface EventLiveVote extends PhotoVote {
+  id: string;
+}
+
 export interface UseEventLiveResult {
   event: EventLiveEvent | null;
   teams: EventLiveTeam[];
   slots: EventLiveSlot[];
   photos: EventLivePhoto[];
   selfies: EventLiveSelfie[];
+  votes: EventLiveVote[];
   loading: boolean;
   error: string | null;
 }
@@ -51,11 +56,13 @@ export function useEventLive(eventId: string | undefined): UseEventLiveResult {
   const [slots, setSlots] = useState<EventLiveSlot[]>([]);
   const [photos, setPhotos] = useState<EventLivePhoto[]>([]);
   const [selfies, setSelfies] = useState<EventLiveSelfie[]>([]);
+  const [votes, setVotes] = useState<EventLiveVote[]>([]);
   const [eventLoading, setEventLoading] = useState(Boolean(eventId));
   const [teamsLoading, setTeamsLoading] = useState(Boolean(eventId));
   const [slotsLoading, setSlotsLoading] = useState(Boolean(eventId));
   const [photosLoading, setPhotosLoading] = useState(Boolean(eventId));
   const [selfiesLoading, setSelfiesLoading] = useState(Boolean(eventId));
+  const [votesLoading, setVotesLoading] = useState(Boolean(eventId));
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -195,15 +202,38 @@ export function useEventLive(eventId: string | undefined): UseEventLiveResult {
     );
   }, [eventId]);
 
+  useEffect(() => {
+    if (!eventId) {
+      setVotes([]);
+      setVotesLoading(false);
+      return undefined;
+    }
+
+    setVotesLoading(true);
+
+    return onSnapshot(
+      collection(db, "events", eventId, "votes"),
+      (snapshot) => {
+        setVotes(snapshot.docs.map((voteDoc): EventLiveVote => ({ ...(voteDoc.data() as PhotoVote), id: voteDoc.id })));
+        setVotesLoading(false);
+      },
+      () => {
+        setError("투표 데이터를 불러오지 못했습니다.");
+        setVotesLoading(false);
+      },
+    );
+  }, [eventId]);
+
   return useMemo(
     () => ({
       error,
       event,
-      loading: eventLoading || teamsLoading || slotsLoading || photosLoading || selfiesLoading,
+      loading: eventLoading || teamsLoading || slotsLoading || photosLoading || selfiesLoading || votesLoading,
       photos,
       selfies,
       slots,
       teams,
+      votes,
     }),
     [
       error,
@@ -217,6 +247,8 @@ export function useEventLive(eventId: string | undefined): UseEventLiveResult {
       slotsLoading,
       teams,
       teamsLoading,
+      votes,
+      votesLoading,
     ],
   );
 }

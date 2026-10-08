@@ -93,6 +93,20 @@ service cloud.firestore {
             || isEventOwner(eventId)
           );
       }
+
+      match /votes/{voteId} {
+        allow read: if signedIn()
+          || isCompletedEvent(eventId);
+        allow create: if signedIn()
+          && request.resource.data.eventId == eventId
+          && request.resource.data.voterId == request.auth.uid;
+        allow update: if false;
+        allow delete: if signedIn()
+          && (
+            resource.data.voterId == request.auth.uid
+            || isEventOwner(eventId)
+          );
+      }
     }
   }
 }

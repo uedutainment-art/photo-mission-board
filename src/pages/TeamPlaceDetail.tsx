@@ -11,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { HelpSheet } from "../components/HelpSheet";
+import { useEventVotes } from "../hooks/useEventVotes";
 import { useSelfies } from "../hooks/useSelfies";
 import { useTeamMission, type PhotoWithId } from "../hooks/useTeamMission";
 import { useTeamSession } from "../hooks/useTeamSession";
@@ -20,6 +21,7 @@ import {
   setRepresentativePhoto,
   uploadMissionPhoto,
 } from "../lib/upload";
+import { getVoteId, setPhotoVote } from "../lib/votes";
 
 function getUploadedAt(photo: PhotoWithId): number {
   return photo.uploadedAt?.toMillis?.() ?? 0;
@@ -39,12 +41,14 @@ export function TeamPlaceDetail() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const { context, error: sessionError, loading: sessionLoading } = useTeamSession(teamToken);
   const { selfies } = useSelfies(context?.eventId, context?.teamId);
+  const { votes } = useEventVotes(context?.eventId);
   const { error: missionError, loading: missionLoading, photos, slots } = useTeamMission(
     context?.eventId,
     context?.teamId,
   );
   const [uploaderName, setUploaderName] = useState("");
   const [busyPhotoId, setBusyPhotoId] = useState<string | null>(null);
+  const [busyVotePhotoId, setBusyVotePhotoId] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +66,27 @@ export function TeamPlaceDetail() {
     [photos, placeSlotIds],
   );
   const representativeCount = placeSlots.filter((slot) => Boolean(slot.representativePhotoId)).length;
+  const slotById = useMemo(() => new Map(slots.map((slot) => [slot.id, slot])), [slots]);
+  const voteCountByPhotoId = useMemo(() => {
+    const voteCounts = new Map<string, number>();
+
+    for (const vote of votes) {
+      voteCounts.set(vote.photoId, (voteCounts.get(vote.photoId) ?? 0) + 1);
+    }
+
+    return voteCounts;
+  }, [votes]);
+  const myVoteIds = useMemo(() => {
+    if (!context) {
+      return new Set<string>();
+    }
+
+    return new Set(
+      votes
+        .filter((vote) => vote.voterId === context.uploaderId)
+        .map((vote) => getVoteId(vote.voterId, vote.photoId)),
+    );
+  }, [context, votes]);
   const teamLabel = context ? getTeamLabel(context.team) : "팀";
   const hasHelpContact = Boolean(context?.event.organizer?.phone || context?.team.leader?.phone);
   const hasMySelfie = selfies.some((selfie) => selfie.uploaderId === context?.uploaderId);
@@ -70,6 +95,21 @@ export function TeamPlaceDetail() {
     context.event.selfieMode === "none" ||
     (context.event.selfieMode === "group" && selfies.length > 0) ||
     (context.event.selfieMode === "individual" && hasMySelfie);
+  const votingOpen = context?.event.voting?.enabled && context.event.voting.status === "open";
+
+  function isVotingEligible(photo: PhotoWithId): boolean {
+    const target = context?.event.voting?.target ?? "representatives";
+
+    if (target === "all") {
+      return true;
+    }
+
+    if (target === "representatives") {
+      return photo.isRepresentative;
+    }
+
+    return slotById.get(photo.slotId)?.reviewStatus === "checked";
+  }
 
   async function handleFile(file: File | undefined) {
     if (!file || !context || !placeId) {
@@ -142,6 +182,29 @@ export function TeamPlaceDetail() {
       setError(deleteError instanceof Error ? deleteError.message : "사진을 삭제하지 못했습니다.");
     } finally {
       setBusyPhotoId(null);
+    }
+  }
+
+  async function handleVote(photo: PhotoWithId, active: boolean) {
+    if (!context) {
+      return;
+    }
+
+    setBusyVotePhotoId(photo.id);
+    setError(null);
+
+    try {
+      await setPhotoVote({
+        active,
+        eventId: context.eventId,
+        photoId: photo.id,
+        teamId: photo.teamId,
+        voterId: context.uploaderId,
+      });
+    } catch (voteError) {
+      setError(voteError instanceof Error ? voteError.message : "투표를 저장하지 못했습니다.");
+    } finally {
+      setBusyVotePhotoId(null);
     }
   }
 
@@ -387,6 +450,27 @@ export function TeamPlaceDetail() {
                               <p className="mt-1 text-[11px] font-bold text-app-muted">
                                 {photo.isRepresentative ? "대표 사진" : "보관 사진"}
                               </p>
+                              {votingOpen && isVotingEligible(photo) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const active = !myVoteIds.has(getVoteId(context.uploaderId, photo.id));
+                                    void handleVote(photo, active);
+                                  }}
+                                  disabled={busyVotePhotoId === photo.id}
+                                  className={
+                                    myVoteIds.has(getVoteId(context.uploaderId, photo.id))
+                                      ? "mt-3 w-full rounded-xl bg-app-primary px-3 py-2 text-[11px] font-black text-white disabled:opacity-50"
+                                      : "mt-3 w-full rounded-xl border border-app-border bg-white px-3 py-2 text-[11px] font-black text-app-ink disabled:opacity-50"
+                                  }
+                                >
+                                  {busyVotePhotoId === photo.id
+                                    ? "저장 중"
+                                    : myVoteIds.has(getVoteId(context.uploaderId, photo.id))
+                                      ? `투표 완료 · ${voteCountByPhotoId.get(photo.id) ?? 0}`
+                                      : `투표하기 · ${voteCountByPhotoId.get(photo.id) ?? 0}`}
+                                </button>
+                              )}
                             </div>
                           </article>
                         );

@@ -2,12 +2,17 @@ import type { Timestamp } from "firebase/firestore";
 
 export type EventStatus = "draft" | "live" | "completed" | "archived";
 export type SelfieMode = "individual" | "group" | "none";
+export type EventUseMode = "standalone" | "attached";
+export type OutputMode = "collage" | "collection";
 export type LayoutMode = "random" | "team" | "manual";
 export type PublicViewMode = "board";
 export type ReviewStatus = "unchecked" | "checked";
 export type TeamStatus = "idle" | "joined" | "active" | "completed";
 export type MapPlatform = "naver" | "kakao" | "google";
 export type ContactPreference = "sms-first" | "call-first";
+export type VotingStatus = "off" | "draft" | "open" | "closed";
+export type VotingTarget = "all" | "representatives" | "checked";
+export type VotingResultMode = "team-balanced" | "popular";
 
 export interface OrganizerContact {
   name: string;
@@ -20,6 +25,19 @@ export interface TeamLeader {
   name: string;
   role?: string;
   phone: string;
+}
+
+export interface VotingSettings {
+  enabled: boolean;
+  status: VotingStatus;
+  target: VotingTarget;
+  resultMode: VotingResultMode;
+}
+
+export interface ExternalEventReference {
+  title?: string;
+  url?: string;
+  brandName?: string;
 }
 
 export interface UserProfile {
@@ -54,11 +72,15 @@ export interface MissionEvent {
   scheduledAt?: string;
   organizer: OrganizerContact;
   status: EventStatus;
+  useMode?: EventUseMode;
+  externalEvent?: ExternalEventReference;
+  outputMode?: OutputMode;
   grid: GridSize;
   teamCount: number;
   perTeamCount: number;
   places: Place[];
   selfieMode: SelfieMode;
+  voting?: VotingSettings;
   layoutMode: LayoutMode;
   publicViewMode?: PublicViewMode;
   showLeaderboard?: boolean;
@@ -129,6 +151,14 @@ export interface Photo extends StoredImage {
   slotId: string;
   isRepresentative: boolean;
   uploadedAt: Timestamp;
+}
+
+export interface PhotoVote {
+  eventId: string;
+  photoId: string;
+  teamId: string;
+  voterId: string;
+  createdAt: Timestamp;
 }
 
 export interface FaceDetectionBox {
