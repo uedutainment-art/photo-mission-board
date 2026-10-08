@@ -12,6 +12,7 @@ import {
   Pencil,
   Phone,
   Printer,
+  RefreshCw,
   Save,
   Share2,
   User,
@@ -19,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { useEventTeams, type TeamWithId } from "../hooks/useEventTeams";
+import { useAccessCodes } from "../hooks/useAccessCodes";
 import { formatPhone, sanitizePhone, smsHref, telHref } from "../lib/phone";
 import { createQrDataUrl, getTeamQrUrl } from "../lib/qr";
 import {
@@ -27,7 +29,8 @@ import {
 } from "../lib/qrSheetPdf";
 import { formatKoreanDate } from "../lib/formatDate";
 import { getTeamLabel } from "../lib/teamLabel";
-import { updateTeamLeader } from "../lib/teams";
+import { updateParticipantDisplayName, updateTeamLeader } from "../lib/teams";
+import { regenerateParticipantCode } from "../lib/participantAccess";
 
 function QrImage({ size, url }: { size: number; url: string }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -62,17 +65,20 @@ interface TeamListCardProps {
   eventTitle: string;
   perTeamCount: number;
   team: TeamWithId;
+  accessCode?: string;
   onCopy: (url: string) => Promise<void>;
   onNotice: (message: string) => void;
   onShare: (team: TeamWithId, url: string) => Promise<void>;
+  onRegenerateCode: (teamId: string) => Promise<void>;
 }
 
-function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamCount, team }: TeamListCardProps) {
+function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onRegenerateCode, onShare, perTeamCount, team }: TeamListCardProps) {
   const url = getTeamQrUrl(team.token);
   const [editingLeader, setEditingLeader] = useState(false);
   const [leaderName, setLeaderName] = useState(team.leader?.name ?? "");
   const [leaderPhone, setLeaderPhone] = useState(team.leader?.phone ?? "");
   const [leaderRole, setLeaderRole] = useState(team.leader?.role ?? "");
+  const [displayName, setDisplayName] = useState(team.displayName || team.name);
   const [leaderError, setLeaderError] = useState<string | null>(null);
   const [savingLeader, setSavingLeader] = useState(false);
   const membersText =
@@ -80,14 +86,17 @@ function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamC
   const leaderPhoneValue = team.leader?.phone;
   const hasLeader = Boolean(team.leader?.name && team.leader?.phone);
   const contactMessage = `안녕하세요, ${eventTitle} 운영팀입니다.`;
-  const canSaveLeader = leaderName.trim().length > 0 && sanitizePhone(leaderPhone).length > 0;
+  const hasLeaderInput = Boolean(leaderName.trim() || leaderPhone.trim() || leaderRole.trim());
+  const canSaveLeader = displayName.trim().length > 0
+    && (!hasLeaderInput || (leaderName.trim().length > 0 && sanitizePhone(leaderPhone).length > 0));
 
   useEffect(() => {
     setLeaderName(team.leader?.name ?? "");
     setLeaderPhone(team.leader?.phone ?? "");
     setLeaderRole(team.leader?.role ?? "");
+    setDisplayName(team.displayName || team.name);
     setLeaderError(null);
-  }, [team.leader?.name, team.leader?.phone, team.leader?.role]);
+  }, [team.displayName, team.leader?.name, team.leader?.phone, team.leader?.role, team.name]);
 
   async function handleLeaderSave() {
     if (!canSaveLeader) {
@@ -98,11 +107,14 @@ function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamC
     setLeaderError(null);
 
     try {
-      await updateTeamLeader(eventId, team.id, {
-        name: leaderName,
-        phone: leaderPhone,
-        role: leaderRole,
-      });
+      await updateParticipantDisplayName(eventId, team.id, displayName);
+      if (hasLeaderInput) {
+        await updateTeamLeader(eventId, team.id, {
+          name: leaderName,
+          phone: leaderPhone,
+          role: leaderRole,
+        });
+      }
       setEditingLeader(false);
       onNotice("팀장 연락처를 저장했습니다.");
     } catch (saveError) {
@@ -159,6 +171,12 @@ function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamC
             </p>
           ) : (
             <p className="mt-1 truncate text-xs font-bold text-amber-700">팀장 미등록</p>
+          )}
+          {accessCode && (
+            <div className="mt-1 flex items-center gap-1 text-xs font-black text-app-primary">
+              <button type="button" onClick={() => void onCopy(accessCode)} className="rounded bg-blue-50 px-2 py-1">참가 코드 {accessCode}</button>
+              <button type="button" onClick={() => void onRegenerateCode(team.id)} className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 text-app-muted" aria-label={`${team.name} 참가 코드 재발급`}><RefreshCw className="h-3.5 w-3.5" /></button>
+            </div>
           )}
         </div>
         <div className="flex max-w-[124px] flex-none flex-wrap justify-end gap-1">
@@ -229,6 +247,10 @@ function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamC
       {editingLeader && (
         <div className="mt-3 rounded-2xl border border-app-border bg-slate-50 p-3">
           <div className="grid gap-2 sm:grid-cols-[1fr_1fr]">
+            <label className="block text-xs font-black text-app-muted sm:col-span-2">
+              표시 이름 *
+              <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="예: 행복한 김가족" className="mt-1 w-full rounded-xl border border-app-border bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-app-primary" />
+            </label>
             <label className="block text-xs font-black text-app-muted">
               이름 *
               <input
@@ -303,6 +325,8 @@ function TeamListCard({ eventId, eventTitle, onCopy, onNotice, onShare, perTeamC
 export function EventTeams() {
   const { eventId } = useParams();
   const { error, event, loading, teams } = useEventTeams(eventId);
+  const accessCodes = useAccessCodes(eventId);
+  const accessCodeByTeamId = new Map(accessCodes.map((code) => [code.teamId, code.displayCode]));
   const [notice, setNotice] = useState<string | null>(null);
   const [sheetPreviewUrl, setSheetPreviewUrl] = useState<string | null>(null);
   const [sheetLoading, setSheetLoading] = useState(false);
@@ -365,7 +389,7 @@ export function EventTeams() {
 
   async function handleCopy(url: string) {
     await navigator.clipboard.writeText(url);
-    showNotice("팀 링크를 복사했습니다.");
+    showNotice("복사했습니다.");
   }
 
   async function handleShare(team: TeamWithId, url: string) {
@@ -399,6 +423,16 @@ export function EventTeams() {
       setSheetError(downloadError instanceof Error ? downloadError.message : "PDF를 만들지 못했습니다.");
     } finally {
       setDownloadingPdf(false);
+    }
+  }
+
+  async function handleRegenerateCode(teamId: string) {
+    if (!eventId) return;
+    try {
+      const code = await regenerateParticipantCode(eventId, teamId);
+      showNotice(`새 참가 코드 ${code}를 발급했습니다.`);
+    } catch (codeError) {
+      setSheetError(codeError instanceof Error ? codeError.message : "참가 코드를 재발급하지 못했습니다.");
     }
   }
 
@@ -520,8 +554,10 @@ export function EventTeams() {
                     eventTitle={event.title}
                     perTeamCount={event.perTeamCount}
                     team={team}
+                    accessCode={accessCodeByTeamId.get(team.id)}
                     onCopy={handleCopy}
                     onNotice={showNotice}
+                    onRegenerateCode={handleRegenerateCode}
                     onShare={handleShare}
                   />
                 ))}

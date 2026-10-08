@@ -12,6 +12,7 @@ import {
 import { db } from "../lib/firebase";
 import type { MissionEvent, Team } from "../lib/types";
 import { ensureUploaderUser, saveTeamSession, type StoredTeamSession } from "../lib/teamSession";
+import { registerParticipantToken } from "../lib/participantAccess";
 
 export interface TeamSessionEvent extends MissionEvent {
   id: string;
@@ -100,7 +101,19 @@ export function useTeamSession(teamToken: string | undefined): UseTeamSessionRes
 
       try {
         const uploader = await ensureUploaderUser();
-        const teamMatch = await findTeamByToken(resolvedToken);
+        let teamMatch: Awaited<ReturnType<typeof findTeamByToken>>;
+
+        try {
+          const registered = await registerParticipantToken(resolvedToken);
+          teamMatch = {
+            eventId: registered.eventId,
+            teamId: registered.teamId,
+            teamRef: doc(db, "events", registered.eventId, "teams", registered.teamId),
+            eventRef: doc(db, "events", registered.eventId),
+          };
+        } catch {
+          teamMatch = await findTeamByToken(resolvedToken);
+        }
         const nextSession: StoredTeamSession = {
           eventId: teamMatch.eventId,
           teamId: teamMatch.teamId,

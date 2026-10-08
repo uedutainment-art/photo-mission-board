@@ -11,7 +11,43 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*|application/zip');
     }
 
-    match /events/{eventId}/{allPaths=**} {
+    function isEventOwner(eventId) {
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/events/$(eventId)).data.ownerId == request.auth.uid;
+    }
+
+    function hasParticipantSession(eventId, teamId) {
+      return signedIn()
+        && firestore.get(/databases/(default)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)).data.teamId == teamId;
+    }
+
+    match /events/{eventId}/contest/{teamId}/{fileName} {
+      allow read: if true;
+      allow create, update: if validUpload()
+        && (
+          isEventOwner(eventId)
+          || (
+            hasParticipantSession(eventId, teamId)
+            && firestore.get(/databases/(default)/documents/events/$(eventId)).data.submission.status == 'open'
+          )
+        );
+      allow delete: if isEventOwner(eventId)
+        || hasParticipantSession(eventId, teamId);
+    }
+
+    match /events/{eventId}/photos/{fileName} {
+      allow read: if true;
+      allow create, update: if signedIn() && validUpload();
+      allow delete: if signedIn();
+    }
+
+    match /events/{eventId}/selfies/{fileName} {
+      allow read: if true;
+      allow create, update: if signedIn() && validUpload();
+      allow delete: if signedIn();
+    }
+
+    match /events/{eventId}/places/{allPaths=**} {
       allow read: if true;
       allow create, update: if signedIn() && validUpload();
       allow delete: if signedIn();

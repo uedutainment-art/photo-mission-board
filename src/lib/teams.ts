@@ -32,3 +32,15 @@ export async function updateTeamLeader(
     leader: nextLeader,
   });
 }
+
+export async function updateParticipantDisplayName(eventId: string, teamId: string, displayName: string): Promise<void> {
+  const cleanName = displayName.trim();
+
+  if (!cleanName) {
+    throw new Error("표시 이름을 입력해주세요.");
+  }
+
+  await updateDoc(doc(db, "events", eventId, "teams", teamId), {
+    displayName: cleanName,
+  });
+}

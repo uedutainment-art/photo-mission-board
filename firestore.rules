@@ -23,6 +23,29 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).changedKeys().hasOnly(keys);
     }
 
+    function hasParticipantSession(eventId, teamId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)).data.teamId == teamId;
+    }
+
+    function isContestEvent(eventId) {
+      let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
+      return 'modules' in eventData
+        && 'photoContest' in eventData.modules
+        && eventData.modules.photoContest == true;
+    }
+
+    function resultsPublished(eventId) {
+      let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
+      return 'results' in eventData
+        && eventData.results.status == 'published';
+    }
+
+    function isOwnTeamVote(eventId, voteId) {
+      return signedIn()
+        && voteId == 'team_' + get(/databases/$(database)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)).data.teamId;
+    }
+
     // Phase 5 의 useTeamSession 이 collectionGroup("teams") + where("token", "==", ...)
     // 으로 팀을 찾기 위해 필요한 collectionGroup matcher.
     // 일반 nested matcher 는 collectionGroup query 를 인식하지 못함.
@@ -66,6 +89,26 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      match /familySubmissions/{teamId} {
+        allow read: if signedIn()
+          || isCompletedEvent(eventId);
+        allow create, update: if isEventOwner(eventId)
+          || (
+            hasParticipantSession(eventId, teamId)
+            && get(/databases/$(database)/documents/events/$(eventId)).data.submission.status == 'open'
+            && request.resource.data.eventId == eventId
+            && request.resource.data.teamId == teamId
+          );
+        allow delete: if isEventOwner(eventId);
+      }
+
+      match /songRequests/{requestId} {
+        allow read, update, delete: if isEventOwner(eventId);
+        allow create: if signedIn()
+          && request.resource.data.eventId == eventId
+          && request.resource.data.requesterId == request.auth.uid;
+      }
+
       match /slots/{slotId} {
         allow read: if signedIn()
           || isCompletedEvent(eventId);
@@ -106,17 +149,23 @@ service cloud.firestore {
       }
 
       match /votes/{voteId} {
-        allow read: if signedIn()
-          || isCompletedEvent(eventId);
-        allow create: if signedIn()
+        allow read: if (!isContestEvent(eventId) && signedIn())
+          || isEventOwner(eventId)
+          || isCompletedEvent(eventId)
+          || resultsPublished(eventId)
+          || isOwnTeamVote(eventId, voteId);
+        allow create: if !isContestEvent(eventId)
+          && signedIn()
           && request.resource.data.eventId == eventId
           && request.resource.data.voterId == request.auth.uid;
-        allow update: if signedIn()
+        allow update: if !isContestEvent(eventId)
+          && signedIn()
           && resource.data.voterId == request.auth.uid
           && request.resource.data.voterId == request.auth.uid
           && request.resource.data.eventId == eventId
           && request.resource.data.voterTeamId == resource.data.voterTeamId;
-        allow delete: if signedIn()
+        allow delete: if !isContestEvent(eventId)
+          && signedIn()
           && (
             resource.data.voterId == request.auth.uid
             || isEventOwner(eventId)

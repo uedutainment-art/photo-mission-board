@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Image, Loader2, MessageCircle, Phone, QrCode, Users } from "lucide-react";
+import { ArrowLeft, ExternalLink, Image, Loader2, MessageCircle, Phone, QrCode, Trophy, Users } from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot, type EventLiveTeam } from "../hooks/useEventLive";
 import { formatKoreanDate } from "../lib/formatDate";
@@ -120,6 +120,19 @@ export function EventOverview() {
                 </div>
                 <span className="text-xl font-black">→</span>
               </Link>
+
+              {event.modules?.photoContest && (
+                <>
+                  <Link to={`/events/${eventId}/contest`} className="card flex items-center gap-3 p-4">
+                    <div className="grid h-11 w-11 flex-none place-items-center rounded-2xl bg-amber-100 text-amber-800"><Trophy className="h-5 w-5" aria-hidden="true" /></div>
+                    <div className="min-w-0 flex-1"><h2 className="text-sm font-black">사진 콘테스트 운영</h2><p className="mt-1 text-xs font-bold text-app-muted">접수·투표·집계·결과 공개를 관리합니다.</p></div><span className="text-xl font-black">→</span>
+                  </Link>
+                  <Link to={`/e/${eventId}`} target="_blank" className="card flex items-center gap-3 p-4">
+                    <div className="grid h-11 w-11 flex-none place-items-center rounded-2xl bg-blue-100 text-blue-800"><ExternalLink className="h-5 w-5" aria-hidden="true" /></div>
+                    <div className="min-w-0 flex-1"><h2 className="text-sm font-black">참가자 공통 QR 화면</h2><p className="mt-1 text-xs font-bold text-app-muted">행사 메뉴와 가족 코드 입장을 확인합니다.</p></div>
+                  </Link>
+                </>
+              )}
 
               <section className="card p-4">
                 <h2 className="mb-3 text-sm font-black">팀별 진행률</h2>

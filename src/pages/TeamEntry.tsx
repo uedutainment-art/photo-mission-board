@@ -27,6 +27,11 @@ export function TeamEntry() {
       return;
     }
 
+    if (context.event.modules?.photoContest) {
+      navigate(`/t/${teamToken}/contest`);
+      return;
+    }
+
     if (context.event.selfieMode === "none") {
       navigate(`/t/${teamToken}/places`);
       return;
