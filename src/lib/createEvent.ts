@@ -228,6 +228,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     resultMode: "team-balanced",
     status: "off",
     target: "representatives",
+    unit: "participant",
   };
 
   if (!title) {
@@ -274,6 +275,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     voting: {
       ...voting,
       status: voting.enabled ? voting.status : "off",
+      unit: voting.unit ?? "participant",
     },
     layoutMode: "random",
     publicViewMode: "board",

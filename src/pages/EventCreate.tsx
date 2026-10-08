@@ -30,6 +30,7 @@ import type {
   SelfieMode,
   VotingResultMode,
   VotingTarget,
+  VotingUnit,
 } from "../lib/types";
 
 type WizardStep = 1 | 2 | 3;
@@ -65,6 +66,11 @@ const votingTargetLabels: Record<VotingTarget, string> = {
 const votingResultModeLabels: Record<VotingResultMode, string> = {
   "team-balanced": "팀별 상위",
   popular: "전체 인기순",
+};
+
+const votingUnitLabels: Record<VotingUnit, string> = {
+  participant: "참가자별 1표",
+  team: "팀별 1표",
 };
 
 const placeColors = ["#0284c7", "#d97706", "#7c3aed", "#16a34a", "#db2777", "#0891b2"];
@@ -134,6 +140,7 @@ export function EventCreate() {
   const [votingEnabled, setVotingEnabled] = useState(false);
   const [votingTarget, setVotingTarget] = useState<VotingTarget>("representatives");
   const [votingResultMode, setVotingResultMode] = useState<VotingResultMode>("team-balanced");
+  const [votingUnit, setVotingUnit] = useState<VotingUnit>("participant");
   const [places, setPlaces] = useState<CreateEventPlaceInput[]>([]);
   const [editingPlace, setEditingPlace] = useState<CreateEventPlaceInput | undefined>();
   const [modalOpen, setModalOpen] = useState(false);
@@ -237,6 +244,7 @@ export function EventCreate() {
           status: votingEnabled ? "draft" : "off",
           target: votingTarget,
           resultMode: votingResultMode,
+          unit: votingUnit,
         },
       });
       navigate(`/events/${eventId}/teams`, { replace: true });
@@ -614,6 +622,30 @@ export function EventCreate() {
               </div>
               {votingEnabled && (
                 <div className="mt-3 space-y-3">
+                  <div>
+                    <FieldLabel>투표권</FieldLabel>
+                    <div className="mt-1 grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1">
+                      {(Object.keys(votingUnitLabels) as VotingUnit[]).map((unit) => (
+                        <button
+                          key={unit}
+                          type="button"
+                          onClick={() => setVotingUnit(unit)}
+                          className={
+                            votingUnit === unit
+                              ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm"
+                              : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"
+                          }
+                        >
+                          {votingUnitLabels[unit]}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[11px] font-bold leading-5 text-app-muted">
+                      {votingUnit === "team"
+                        ? "팀 QR로 들어온 한 대의 폰에서 팀 전체가 한 장을 선택합니다."
+                        : "각 참가자 세션마다 한 장을 선택합니다."}
+                    </p>
+                  </div>
                   <div>
                     <FieldLabel>투표 대상</FieldLabel>
                     <div className="mt-1 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">

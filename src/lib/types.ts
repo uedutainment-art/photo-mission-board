@@ -13,6 +13,7 @@ export type ContactPreference = "sms-first" | "call-first";
 export type VotingStatus = "off" | "draft" | "open" | "closed";
 export type VotingTarget = "all" | "representatives" | "checked";
 export type VotingResultMode = "team-balanced" | "popular";
+export type VotingUnit = "participant" | "team";
 
 export interface OrganizerContact {
   name: string;
@@ -32,6 +33,7 @@ export interface VotingSettings {
   status: VotingStatus;
   target: VotingTarget;
   resultMode: VotingResultMode;
+  unit?: VotingUnit;
 }
 
 export interface ExternalEventReference {
@@ -158,6 +160,8 @@ export interface PhotoVote {
   photoId: string;
   teamId: string;
   voterId: string;
+  voterTeamId?: string;
+  unit?: VotingUnit;
   createdAt: Timestamp;
 }
 

@@ -781,8 +781,8 @@ mockups.html과 동일하게 유지:
 - `events.useMode`: `"standalone"` 또는 `"attached"`. 기본값은 `"standalone"`.
 - `events.externalEvent`: 외부 행사에 붙이는 경우의 선택 정보. `title`, `url`, `brandName` 중 입력된 값만 저장한다.
 - `events.outputMode`: `"collage"` 또는 `"collection"`. 기본값은 `"collage"`.
-- `events.voting`: 행사 후 투표 설정. `enabled`, `status`, `target`, `resultMode`를 가진다.
-- `events/{eventId}/votes/{voteId}`: 사진 투표 문서. `eventId`, `photoId`, `teamId`, `voterId`, `createdAt` 저장. `voteId`는 `voterId_photoId` 형태로 중복 투표를 막는다.
+- `events.voting`: 행사 후 투표 설정. `enabled`, `status`, `target`, `resultMode`, `unit`을 가진다. `unit`은 참가자별 1표인 `participant` 또는 팀별 1표인 `team`이다.
+- `events/{eventId}/votes/{voteId}`: 사진 투표 문서. `eventId`, `photoId`, `teamId`, `voterId`, `voterTeamId`, `unit`, `createdAt`을 저장한다. 문서 ID는 참가자 투표일 때 `participant_{uid}`, 팀 투표일 때 `team_{teamId}`를 사용하여 투표권마다 한 장만 선택하게 한다.
 
 ### 18.2 자동 콜라주 모드
 
@@ -802,13 +802,16 @@ mockups.html과 동일하게 유지:
 - 투표는 이벤트 생성 시 켜거나 끌 수 있다. 켠 경우 기본 상태는 `draft`이며, 운영자가 Export 화면에서 `open`/`closed`로 바꾼다.
 - 참가자 사진 상세 화면은 투표가 `open`일 때만 버튼을 보여준다.
 - 투표 대상은 모든 사진, 대표 사진, 검수 완료 사진 중 선택한다.
+- 투표권은 참가자별 1표와 팀별 1표 중 선택한다. 같은 투표권으로 다른 사진을 고르면 기존 선택을 교체하며, 같은 사진을 다시 누르면 선택을 취소한다.
 - 순위 반영 방식은 팀별 상위 또는 전체 인기순으로 저장한다. v1 UI는 현재 득표 수 기준 TOP 목록을 Export 화면에 표시한다.
+- 운영자 Export 화면은 투표한 팀 수와 미투표 팀 목록을 실시간 표시한다. 참가자별 투표에서는 팀원 한 명 이상이 투표한 팀을 참여 팀으로 본다. 미투표 팀에 팀장 전화·문자를 바로 보낼 수 있다.
 
 ### 18.5 보안 규칙
 
 - `votes`는 로그인 사용자 또는 종료된 공개 이벤트에서만 읽을 수 있다.
 - 생성은 로그인 사용자가 자기 `uid`를 `voterId`로 쓸 때만 허용한다.
-- 삭제는 본인 투표 또는 이벤트 운영자만 가능하고, 수정은 허용하지 않는다.
+- 선택 변경은 기존 투표자와 새 투표자의 `uid`가 같고 `voterTeamId`가 바뀌지 않을 때만 허용한다.
+- 삭제는 본인 투표 또는 이벤트 운영자만 가능하다.
 
 ---
 

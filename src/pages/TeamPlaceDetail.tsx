@@ -76,17 +76,21 @@ export function TeamPlaceDetail() {
 
     return voteCounts;
   }, [votes]);
-  const myVoteIds = useMemo(() => {
+  const myVoteId = useMemo(() => {
     if (!context) {
-      return new Set<string>();
+      return null;
     }
 
-    return new Set(
-      votes
-        .filter((vote) => vote.voterId === context.uploaderId)
-        .map((vote) => getVoteId(vote.voterId, vote.photoId)),
-    );
-  }, [context, votes]);
+    return getVoteId({
+      unit: context.event.voting?.unit ?? "participant",
+      voterId: context.uploaderId,
+      voterTeamId: context.teamId,
+    });
+  }, [context]);
+  const myVote = useMemo(
+    () => votes.find((vote) => vote.id === myVoteId),
+    [myVoteId, votes],
+  );
   const teamLabel = context ? getTeamLabel(context.team) : "팀";
   const hasHelpContact = Boolean(context?.event.organizer?.phone || context?.team.leader?.phone);
   const hasMySelfie = selfies.some((selfie) => selfie.uploaderId === context?.uploaderId);
@@ -199,7 +203,9 @@ export function TeamPlaceDetail() {
         eventId: context.eventId,
         photoId: photo.id,
         teamId: photo.teamId,
+        unit: context.event.voting?.unit ?? "participant",
         voterId: context.uploaderId,
+        voterTeamId: context.teamId,
       });
     } catch (voteError) {
       setError(voteError instanceof Error ? voteError.message : "투표를 저장하지 못했습니다.");
@@ -454,19 +460,19 @@ export function TeamPlaceDetail() {
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const active = !myVoteIds.has(getVoteId(context.uploaderId, photo.id));
+                                    const active = myVote?.photoId !== photo.id;
                                     void handleVote(photo, active);
                                   }}
                                   disabled={busyVotePhotoId === photo.id}
                                   className={
-                                    myVoteIds.has(getVoteId(context.uploaderId, photo.id))
+                                    myVote?.photoId === photo.id
                                       ? "mt-3 w-full rounded-xl bg-app-primary px-3 py-2 text-[11px] font-black text-white disabled:opacity-50"
                                       : "mt-3 w-full rounded-xl border border-app-border bg-white px-3 py-2 text-[11px] font-black text-app-ink disabled:opacity-50"
                                   }
                                 >
                                   {busyVotePhotoId === photo.id
                                     ? "저장 중"
-                                    : myVoteIds.has(getVoteId(context.uploaderId, photo.id))
+                                    : myVote?.photoId === photo.id
                                       ? `투표 완료 · ${voteCountByPhotoId.get(photo.id) ?? 0}`
                                       : `투표하기 · ${voteCountByPhotoId.get(photo.id) ?? 0}`}
                                 </button>

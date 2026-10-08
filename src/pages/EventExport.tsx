@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { doc, serverTimestamp, updateDoc, deleteField } from "firebase/firestore";
-import { Archive, ArrowLeft, Download, Loader2, Lock, RotateCw, Trophy, Users } from "lucide-react";
+import { Archive, ArrowLeft, CheckCircle2, Download, Loader2, Lock, MessageCircle, Phone, RotateCw, Trophy, Users } from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive } from "../hooks/useEventLive";
 import { createCollagePng, createSelfieCollagePng, orderSlotsForExport, type ExportLayoutMode } from "../lib/collage";
 import { downloadBlob, safeFilename } from "../lib/download";
 import { db } from "../lib/firebase";
+import { formatPhone, smsHref, telHref } from "../lib/phone";
+import { getTeamLabel } from "../lib/teamLabel";
 import { createOriginalsZip, type ZipFailure, type ZipProgress } from "../lib/zip";
 
 type ExportJob = "collage" | "zip" | "selfies" | null;
@@ -43,6 +45,7 @@ export function EventExport() {
   const busy = Boolean(job);
   const outputMode = event?.outputMode ?? "collage";
   const votingEnabled = Boolean(event?.voting?.enabled);
+  const votingUnit = event?.voting?.unit ?? "participant";
   const voteCountByPhotoId = useMemo(() => {
     const voteCounts = new Map<string, number>();
 
@@ -64,6 +67,37 @@ export function EventExport() {
         .slice(0, 10),
     [photos, voteCountByPhotoId],
   );
+  const teamIdByVoterId = useMemo(() => {
+    const teamByVoter = new Map<string, string>();
+
+    for (const team of teams) {
+      for (const member of team.joinedMembers ?? []) {
+        teamByVoter.set(member.uploaderId, team.id);
+      }
+    }
+
+    return teamByVoter;
+  }, [teams]);
+  const votedTeamIds = useMemo(() => {
+    const teamIds = new Set<string>();
+
+    for (const vote of votes) {
+      const voterTeamId = vote.voterTeamId || teamIdByVoterId.get(vote.voterId);
+
+      if (voterTeamId) {
+        teamIds.add(voterTeamId);
+      }
+    }
+
+    return teamIds;
+  }, [teamIdByVoterId, votes]);
+  const unvotedTeams = useMemo(
+    () => teams.filter((team) => !votedTeamIds.has(team.id)),
+    [teams, votedTeamIds],
+  );
+  const votingProgress = teams.length === 0
+    ? 0
+    : Math.round(((teams.length - unvotedTeams.length) / teams.length) * 100);
 
   async function handleLockToggle() {
     if (!eventId) {
@@ -314,7 +348,90 @@ export function EventExport() {
                     </button>
                   </div>
                   <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-app-muted">
-                    반영 방식: {event.voting?.resultMode === "popular" ? "전체 인기순 사진" : "팀별 상위 사진"}
+                    투표권: {votingUnit === "team" ? "팀별 1표" : "참가자별 1표"} · 반영 방식: {event.voting?.resultMode === "popular" ? "전체 인기순 사진" : "팀별 상위 사진"}
+                  </div>
+                  <div className="mt-4 border-t border-app-border pt-4">
+                    <div className="flex items-end justify-between gap-3">
+                      <div>
+                        <h3 className="text-xs font-black">
+                          {votingUnit === "team" ? "팀 투표 현황" : "팀별 참여 현황"}
+                        </h3>
+                        <p className="mt-1 text-[11px] font-bold text-app-muted">
+                          {votingUnit === "team"
+                            ? "팀 전체의 한 표가 제출됐는지 확인합니다."
+                            : "팀에서 한 명 이상 투표했는지 확인합니다."}
+                        </p>
+                      </div>
+                      <strong className="text-lg font-black tabular-nums">
+                        {teams.length - unvotedTeams.length}/{teams.length}
+                      </strong>
+                    </div>
+                    <div
+                      className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
+                      role="progressbar"
+                      aria-label="팀 투표 완료율"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={votingProgress}
+                    >
+                      <div className="h-full rounded-full bg-emerald-500" style={{ width: `${votingProgress}%` }} />
+                    </div>
+
+                    {unvotedTeams.length === 0 ? (
+                      <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-800">
+                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                        모든 팀이 투표했습니다.
+                      </div>
+                    ) : (
+                      <div className="mt-4">
+                        <div className="mb-2 flex items-center justify-between text-xs font-black">
+                          <span>{votingUnit === "team" ? "미투표 팀" : "참여 없는 팀"}</span>
+                          <span className="text-amber-700">{unvotedTeams.length}팀</span>
+                        </div>
+                        <div className="divide-y divide-app-border overflow-hidden rounded-2xl border border-app-border bg-white">
+                          {unvotedTeams.map((team) => {
+                            const leaderPhone = team.leader?.phone;
+                            const message = `안녕하세요, ${event.title} 운영팀입니다. 아직 투표가 완료되지 않았습니다.`;
+
+                            return (
+                              <div key={team.id} className="flex items-center gap-3 px-3 py-3">
+                                <span
+                                  className="h-3 w-3 flex-none rounded-full"
+                                  style={{ backgroundColor: team.color }}
+                                  aria-hidden="true"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-black">{getTeamLabel(team)}</p>
+                                  <p className="mt-0.5 truncate text-[11px] font-bold text-app-muted">
+                                    {leaderPhone
+                                      ? `${team.leader?.name || "팀장"} · ${formatPhone(leaderPhone)}`
+                                      : "팀장 연락처 없음"}
+                                  </p>
+                                </div>
+                                {leaderPhone && (
+                                  <div className="flex flex-none gap-1">
+                                    <a
+                                      href={telHref(leaderPhone)}
+                                      className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-ink"
+                                      aria-label={`${getTeamLabel(team)} 팀장에게 전화`}
+                                    >
+                                      <Phone className="h-4 w-4" aria-hidden="true" />
+                                    </a>
+                                    <a
+                                      href={smsHref(leaderPhone, message)}
+                                      className="grid h-9 w-9 place-items-center rounded-xl bg-app-ink text-white"
+                                      aria-label={`${getTeamLabel(team)} 팀장에게 문자`}
+                                    >
+                                      <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="mt-4 space-y-2">
                     <h3 className="text-xs font-black text-app-muted">현재 순위</h3>

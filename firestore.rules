@@ -100,7 +100,11 @@ service cloud.firestore {
         allow create: if signedIn()
           && request.resource.data.eventId == eventId
           && request.resource.data.voterId == request.auth.uid;
-        allow update: if false;
+        allow update: if signedIn()
+          && resource.data.voterId == request.auth.uid
+          && request.resource.data.voterId == request.auth.uid
+          && request.resource.data.eventId == eventId
+          && request.resource.data.voterTeamId == resource.data.voterTeamId;
         allow delete: if signedIn()
           && (
             resource.data.voterId == request.auth.uid

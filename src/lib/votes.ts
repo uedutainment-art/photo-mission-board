@@ -1,8 +1,17 @@
 import { deleteDoc, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
+import type { VotingUnit } from "./types";
 
-export function getVoteId(voterId: string, photoId: string): string {
-  return `${voterId}_${photoId}`;
+export function getVoteId({
+  unit,
+  voterId,
+  voterTeamId,
+}: {
+  unit: VotingUnit;
+  voterId: string;
+  voterTeamId: string;
+}): string {
+  return unit === "team" ? `team_${voterTeamId}` : `participant_${voterId}`;
 }
 
 export async function setPhotoVote({
@@ -10,15 +19,19 @@ export async function setPhotoVote({
   eventId,
   photoId,
   teamId,
+  unit,
   voterId,
+  voterTeamId,
 }: {
   active: boolean;
   eventId: string;
   photoId: string;
   teamId: string;
+  unit: VotingUnit;
   voterId: string;
+  voterTeamId: string;
 }): Promise<void> {
-  const voteRef = doc(db, "events", eventId, "votes", getVoteId(voterId, photoId));
+  const voteRef = doc(db, "events", eventId, "votes", getVoteId({ unit, voterId, voterTeamId }));
 
   if (!active) {
     await deleteDoc(voteRef);
@@ -29,7 +42,9 @@ export async function setPhotoVote({
     eventId,
     photoId,
     teamId,
+    unit,
     voterId,
+    voterTeamId,
     createdAt: serverTimestamp(),
   });
 }
