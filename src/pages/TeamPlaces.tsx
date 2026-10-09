@@ -8,6 +8,7 @@ import { useSelfies } from "../hooks/useSelfies";
 import { useTeamMission, type SlotWithId } from "../hooks/useTeamMission";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { getTeamLabel } from "../lib/teamLabel";
+import { getParticipantLabels } from "../lib/participantTerms";
 import type { Place } from "../lib/types";
 
 function isSelfieReady(selfieMode: string, selfiesCount: number, hasMySelfie: boolean): boolean {
@@ -35,6 +36,7 @@ function getLeaderboardLine(
   teams: Array<{ id: string; index: number; uploadedCount: number }>,
   teamId: string,
   teamCount: number,
+  unitLabel: string,
 ): string | null {
   if (!enabled || teams.length === 0) {
     return null;
@@ -43,7 +45,7 @@ function getLeaderboardLine(
   const currentTeam = teams.find((team) => team.id === teamId);
 
   if (!currentTeam) {
-    return `전체 ${teamCount}팀 진행 중`;
+    return `전체 ${teamCount}${unitLabel} 진행 중`;
   }
 
   const rankedTeams = [...teams].sort((a, b) => b.uploadedCount - a.uploadedCount || a.index - b.index);
@@ -53,14 +55,14 @@ function getLeaderboardLine(
   const roundedDifference = Math.round(Math.abs(difference));
 
   if (roundedDifference === 0) {
-    return `전체 ${teamCount}팀 중 ${rank}등 · 평균과 비슷해요`;
+    return `전체 ${teamCount}${unitLabel} 중 ${rank}등 · 평균과 비슷해요`;
   }
 
   const averageText = difference > 0
     ? `평균보다 ${roundedDifference}장 앞서요`
     : `평균보다 ${roundedDifference}장 뒤예요`;
 
-  return `전체 ${teamCount}팀 중 ${rank}등 · ${averageText}`;
+  return `전체 ${teamCount}${unitLabel} 중 ${rank}등 · ${averageText}`;
 }
 
 function SlotDot({ slot }: { slot: SlotWithId }) {
@@ -167,12 +169,14 @@ export function TeamPlaces() {
   const remainingSlots = Math.max(slots.length - filledSlots, 0);
   const teamLabel = context ? getTeamLabel(context.team) : "팀 미션";
   const hasHelpContact = Boolean(context?.event.organizer?.phone || context?.team.leader?.phone);
+  const participantLabels = getParticipantLabels(context?.event);
   const leaderboardLine = context
     ? getLeaderboardLine(
         context.event.showLeaderboard !== false,
         allTeams,
         context.teamId,
         context.event.teamCount,
+        participantLabels.singular,
       )
     : null;
 
@@ -191,7 +195,7 @@ export function TeamPlaces() {
             </Link>
             <div className="min-w-0 text-center">
               <p className="truncate text-[11px] font-black text-app-muted">{teamLabel}</p>
-              <h1 className="text-base font-black">우리 팀의 장소</h1>
+              <h1 className="text-base font-black">우리 {participantLabels.singular}의 장소</h1>
             </div>
             {hasHelpContact ? (
               <button
@@ -295,7 +299,7 @@ export function TeamPlaces() {
                       <div>
                         <h2 className="text-sm font-black">도움이 필요해요</h2>
                         <p className="mt-1 text-xs font-bold text-app-muted">
-                          운영팀이나 우리 팀 팀장에게 바로 연락할 수 있어요.
+                          운영팀이나 우리 {participantLabels.singular} {participantLabels.leader}에게 바로 연락할 수 있어요.
                         </p>
                       </div>
                     </button>

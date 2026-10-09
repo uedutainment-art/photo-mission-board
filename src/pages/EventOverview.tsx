@@ -4,6 +4,7 @@ import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot, type EventLiveTeam } from "../hooks/useEventLive";
 import { formatKoreanDate } from "../lib/formatDate";
 import { smsHref, telHref } from "../lib/phone";
+import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
 
 function getPercent(value: number, total: number): number {
@@ -40,6 +41,7 @@ export function EventOverview() {
   const slotById = new Map(slots.map((slot) => [slot.id, slot]));
   const recentPhotos = photos.slice(0, 6);
   const eventDateText = event ? formatKoreanDate(event.scheduledAt) || event.subtitle : "";
+  const participantLabels = getParticipantLabels(event);
 
   function getTeamProgress(team: EventLiveTeam): number {
     const teamSlots = slots.filter((slot) => slot.teamId === team.id);
@@ -100,7 +102,7 @@ export function EventOverview() {
                   <div className="mt-2 text-2xl font-black">{photos.length}</div>
                 </section>
                 <section className="card p-4">
-                  <p className="text-[11px] font-black text-app-muted">활동 중 팀</p>
+                  <p className="text-[11px] font-black text-app-muted">활동 중 {participantLabels.singular}</p>
                   <div className="mt-2 text-2xl font-black">{activeTeams} / {teams.length}</div>
                 </section>
               </div>
@@ -113,9 +115,9 @@ export function EventOverview() {
                   <QrCode className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-sm font-black">팀 QR 관리</h2>
+                  <h2 className="text-sm font-black">{participantLabels.singular} QR 관리</h2>
                   <p className="mt-1 text-xs font-bold text-app-muted">
-                    팀장에게 보낼 QR과 연락처를 바로 확인합니다.
+                    {participantLabels.leader}에게 보낼 QR과 연락처를 바로 확인합니다.
                   </p>
                 </div>
                 <span className="text-xl font-black">→</span>
@@ -135,7 +137,7 @@ export function EventOverview() {
               )}
 
               <section className="card p-4">
-                <h2 className="mb-3 text-sm font-black">팀별 진행률</h2>
+                <h2 className="mb-3 text-sm font-black">{participantLabels.singular}별 진행률</h2>
                 <div className="space-y-3">
                   {teams.map((team) => {
                     const progress = getTeamProgress(team);
@@ -152,10 +154,10 @@ export function EventOverview() {
                           </div>
                           <div className="mb-1 text-[11px] font-bold">
                             {team.leader?.name ? (
-                              <span className="text-app-muted">팀장 · {team.leader.name}</span>
+                              <span className="text-app-muted">{participantLabels.leader} · {team.leader.name}</span>
                             ) : (
                               <Link to={`/events/${eventId}/teams`} className="text-slate-400 underline-offset-2 hover:underline">
-                                팀장 미등록
+                                {participantLabels.leader} 미등록
                               </Link>
                             )}
                           </div>
@@ -168,16 +170,16 @@ export function EventOverview() {
                             <a
                               href={telHref(leaderPhone)}
                               className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100 text-app-muted"
-                              aria-label={`${team.name} 팀장 전화`}
-                              title="팀장 전화"
+                              aria-label={`${team.name} ${participantLabels.leader} 전화`}
+                              title={`${participantLabels.leader} 전화`}
                             >
                               <Phone className="h-4 w-4" aria-hidden="true" />
                             </a>
                             <a
                               href={smsHref(leaderPhone, contactMessage)}
                               className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100 text-app-muted"
-                              aria-label={`${team.name} 팀장 문자`}
-                              title="팀장 문자"
+                              aria-label={`${team.name} ${participantLabels.leader} 문자`}
+                              title={`${participantLabels.leader} 문자`}
                             >
                               <MessageCircle className="h-4 w-4" aria-hidden="true" />
                             </a>

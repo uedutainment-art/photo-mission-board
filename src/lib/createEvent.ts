@@ -191,7 +191,7 @@ function cleanLeader(leader: NonNullable<CreateEventInput["leaders"]>[number]): 
   const phone = sanitizePhone(leader.phone);
 
   if (!name || !phone) {
-    throw new Error(`${leader.teamIndex}팀 팀장 이름과 전화번호가 필요합니다.`);
+    throw new Error(`${leader.teamIndex}번 참가 단위의 대표자 이름과 전화번호가 필요합니다.`);
   }
 
   const nextLeader: TeamLeader = {
@@ -285,7 +285,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
   }
 
   if (outputMode === "collage" && perTeamCount === null) {
-    throw new Error("그리드 칸 수가 팀 수로 나누어져야 합니다.");
+    throw new Error(`${participantConfig.labels.singular} 수에 맞춰 그리드 칸 수를 조정해주세요.`);
   }
 
   if (placeTotal <= 0) {
@@ -293,7 +293,7 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
   }
 
   if (outputMode === "collage" && placeTotal !== perTeamCount) {
-    throw new Error("장소별 사진 수 합계가 팀당 사진 수와 같아야 합니다.");
+    throw new Error(`장소별 사진 수 합계가 ${participantConfig.labels.singular}당 사진 수와 같아야 합니다.`);
   }
 
   if (input.places.length === 0 || input.places.some((place) => !place.name.trim())) {

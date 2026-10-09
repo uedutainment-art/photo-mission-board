@@ -7,6 +7,7 @@ import type { MapPlatform } from "../lib/types";
 interface PlaceEditModalProps {
   eventId: string;
   initialPlace?: CreateEventPlaceInput;
+  participantLabel?: string;
   onClose: () => void;
   onDelete?: (placeId: string) => void;
   onSave: (place: CreateEventPlaceInput) => void;
@@ -22,7 +23,7 @@ function createPlaceId(): string {
   return `place-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-export function PlaceEditModal({ eventId, initialPlace, onClose, onDelete, onSave }: PlaceEditModalProps) {
+export function PlaceEditModal({ eventId, initialPlace, onClose, onDelete, onSave, participantLabel = "팀" }: PlaceEditModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [place, setPlace] = useState<CreateEventPlaceInput>(
     initialPlace ?? {
@@ -266,7 +267,7 @@ export function PlaceEditModal({ eventId, initialPlace, onClose, onDelete, onSav
           </div>
 
           <div className="mb-2 mt-5 text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">
-            팀당 사진 수 *
+            {participantLabel}당 사진 수 *
           </div>
           <div className="flex items-center justify-between rounded-2xl border border-app-border bg-white px-4 py-3">
             <span className="text-sm font-black">이 장소에서 찍을 사진</span>

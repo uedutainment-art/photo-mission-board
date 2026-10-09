@@ -8,6 +8,7 @@ import { createCollagePng, createSelfieCollagePng, orderSlotsForExport, type Exp
 import { downloadBlob, safeFilename } from "../lib/download";
 import { db } from "../lib/firebase";
 import { formatPhone, smsHref, telHref } from "../lib/phone";
+import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
 import { createOriginalsZip, type ZipFailure, type ZipProgress } from "../lib/zip";
 
@@ -46,6 +47,7 @@ export function EventExport() {
   const outputMode = event?.outputMode ?? "collage";
   const votingEnabled = Boolean(event?.voting?.enabled);
   const votingUnit = event?.voting?.unit ?? "participant";
+  const participantLabels = getParticipantLabels(event);
   const voteCountByPhotoId = useMemo(() => {
     const voteCounts = new Map<string, number>();
 
@@ -246,7 +248,7 @@ export function EventExport() {
                   })}
                 </div>
                 <div className="mt-3 flex justify-between px-1 text-xs font-bold text-slate-300">
-                  <span>현재 레이아웃: {layoutMode === "random" ? "랜덤 셔플" : "팀별 그룹"}</span>
+                  <span>현재 레이아웃: {layoutMode === "random" ? "랜덤 셔플" : `${participantLabels.singular}별 그룹`}</span>
                   <span>{locked ? "잠김" : "라이브"}</span>
                 </div>
               </section>
@@ -270,7 +272,7 @@ export function EventExport() {
                       }}
                       className={layoutMode === "team" ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm" : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"}
                     >
-                      팀별 그룹
+                      {participantLabels.singular}별 그룹
                     </button>
                     <button
                       type="button"
@@ -348,18 +350,18 @@ export function EventExport() {
                     </button>
                   </div>
                   <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-app-muted">
-                    투표권: {votingUnit === "team" ? "팀별 1표" : "참가자별 1표"} · 반영 방식: {event.voting?.resultMode === "popular" ? "전체 인기순 사진" : "팀별 상위 사진"}
+                    투표권: {votingUnit === "team" ? `${participantLabels.singular}별 1표` : "참가자별 1표"} · 반영 방식: {event.voting?.resultMode === "popular" ? "전체 인기순 사진" : `${participantLabels.singular}별 상위 사진`}
                   </div>
                   <div className="mt-4 border-t border-app-border pt-4">
                     <div className="flex items-end justify-between gap-3">
                       <div>
                         <h3 className="text-xs font-black">
-                          {votingUnit === "team" ? "팀 투표 현황" : "팀별 참여 현황"}
+                          {votingUnit === "team" ? `${participantLabels.singular} 투표 현황` : `${participantLabels.singular}별 참여 현황`}
                         </h3>
                         <p className="mt-1 text-[11px] font-bold text-app-muted">
                           {votingUnit === "team"
-                            ? "팀 전체의 한 표가 제출됐는지 확인합니다."
-                            : "팀에서 한 명 이상 투표했는지 확인합니다."}
+                            ? `${participantLabels.singular} 전체의 한 표가 제출됐는지 확인합니다.`
+                            : `${participantLabels.singular}에서 한 명 이상 투표했는지 확인합니다.`}
                         </p>
                       </div>
                       <strong className="text-lg font-black tabular-nums">
@@ -369,7 +371,7 @@ export function EventExport() {
                     <div
                       className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
                       role="progressbar"
-                      aria-label="팀 투표 완료율"
+                      aria-label={`${participantLabels.singular} 투표 완료율`}
                       aria-valuemin={0}
                       aria-valuemax={100}
                       aria-valuenow={votingProgress}
@@ -380,13 +382,13 @@ export function EventExport() {
                     {unvotedTeams.length === 0 ? (
                       <div className="mt-3 flex items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-800">
                         <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                        모든 팀이 투표했습니다.
+                        모든 {participantLabels.singular}이 투표했습니다.
                       </div>
                     ) : (
                       <div className="mt-4">
                         <div className="mb-2 flex items-center justify-between text-xs font-black">
-                          <span>{votingUnit === "team" ? "미투표 팀" : "참여 없는 팀"}</span>
-                          <span className="text-amber-700">{unvotedTeams.length}팀</span>
+                          <span>{votingUnit === "team" ? `미투표 ${participantLabels.singular}` : `참여 없는 ${participantLabels.singular}`}</span>
+                          <span className="text-amber-700">{unvotedTeams.length}{participantLabels.singular}</span>
                         </div>
                         <div className="divide-y divide-app-border overflow-hidden rounded-2xl border border-app-border bg-white">
                           {unvotedTeams.map((team) => {
@@ -404,8 +406,8 @@ export function EventExport() {
                                   <p className="truncate text-xs font-black">{getTeamLabel(team)}</p>
                                   <p className="mt-0.5 truncate text-[11px] font-bold text-app-muted">
                                     {leaderPhone
-                                      ? `${team.leader?.name || "팀장"} · ${formatPhone(leaderPhone)}`
-                                      : "팀장 연락처 없음"}
+                                      ? `${team.leader?.name || participantLabels.leader} · ${formatPhone(leaderPhone)}`
+                                      : `${participantLabels.leader} 연락처 없음`}
                                   </p>
                                 </div>
                                 {leaderPhone && (
@@ -413,14 +415,14 @@ export function EventExport() {
                                     <a
                                       href={telHref(leaderPhone)}
                                       className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-ink"
-                                      aria-label={`${getTeamLabel(team)} 팀장에게 전화`}
+                                      aria-label={`${getTeamLabel(team)} ${participantLabels.leader}에게 전화`}
                                     >
                                       <Phone className="h-4 w-4" aria-hidden="true" />
                                     </a>
                                     <a
                                       href={smsHref(leaderPhone, message)}
                                       className="grid h-9 w-9 place-items-center rounded-xl bg-app-ink text-white"
-                                      aria-label={`${getTeamLabel(team)} 팀장에게 문자`}
+                                      aria-label={`${getTeamLabel(team)} ${participantLabels.leader}에게 문자`}
                                     >
                                       <MessageCircle className="h-4 w-4" aria-hidden="true" />
                                     </a>
@@ -533,8 +535,8 @@ export function EventExport() {
                     {job === "selfies" ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Users className="h-5 w-5" aria-hidden="true" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-black">팀 셀카 모음 PNG</div>
-                    <div className="text-xs font-bold text-app-muted">{teams.length}팀 셀카 콜라주</div>
+                    <div className="font-black">{participantLabels.singular} 셀카 모음 PNG</div>
+                    <div className="text-xs font-bold text-app-muted">{teams.length}{participantLabels.singular} 셀카 콜라주</div>
                   </div>
                   <span className="text-xl font-black">↓</span>
                 </button>

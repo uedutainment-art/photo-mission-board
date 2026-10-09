@@ -3,9 +3,10 @@ interface PublicFooterProps {
   progressPercent: number;
   teamCount: number;
   totalSlots: number;
+  unitLabel: string;
 }
 
-export function PublicFooter({ filledSlots, progressPercent, teamCount, totalSlots }: PublicFooterProps) {
+export function PublicFooter({ filledSlots, progressPercent, teamCount, totalSlots, unitLabel }: PublicFooterProps) {
   return (
     <footer className="grid shrink-0 gap-4 border-t border-white/10 px-8 py-5 text-white md:grid-cols-[1fr_auto_auto] md:items-center">
       <div className="min-w-0">
@@ -19,7 +20,7 @@ export function PublicFooter({ filledSlots, progressPercent, teamCount, totalSlo
       </div>
 
       <div className="rounded-lg border border-white/10 bg-white/5 px-5 py-3">
-        <p className="text-xs font-black text-slate-400">팀 수</p>
+        <p className="text-xs font-black text-slate-400">{unitLabel} 수</p>
         <p className="text-2xl font-black">{teamCount}</p>
       </div>
 

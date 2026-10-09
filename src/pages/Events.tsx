@@ -5,6 +5,7 @@ import { AccountBar } from "../components/AccountBar";
 import { NotificationSettings } from "../components/NotificationSettings";
 import { useAuth } from "../lib/auth";
 import { formatKoreanDate } from "../lib/formatDate";
+import { getParticipantLabels } from "../lib/participantTerms";
 import type { GridSize } from "../lib/types";
 import { filterEvents, type EventFilter, type EventRecord, useEvents } from "../hooks/useEvents";
 
@@ -22,12 +23,14 @@ function getEventMeta(event: EventRecord): string {
   const gridTotal = getGridTotal(event.grid);
   const statusText = filterLabels[event.status === "archived" ? "completed" : event.status];
   const scheduleText = formatKoreanDate(event.scheduledAt) || event.subtitle || "";
+  const participantLabels = getParticipantLabels(event);
 
-  return `${event.teamCount}팀 · ${gridTotal}칸 · ${statusText}${scheduleText ? ` · ${scheduleText}` : ""}`;
+  return `${event.teamCount}${participantLabels.singular} · ${gridTotal}칸 · ${statusText}${scheduleText ? ` · ${scheduleText}` : ""}`;
 }
 
 function EventCard({ event }: { event: EventRecord }) {
   const gridTotal = getGridTotal(event.grid);
+  const participantLabels = getParticipantLabels(event);
 
   return (
     <Link to={`/events/${event.id}`} className="card block overflow-hidden">
@@ -52,7 +55,7 @@ function EventCard({ event }: { event: EventRecord }) {
           </span>
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-            팀당 {event.perTeamCount}장
+            {participantLabels.singular}당 {event.perTeamCount}장
           </span>
         </div>
       </div>

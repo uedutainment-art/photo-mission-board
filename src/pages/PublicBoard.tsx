@@ -5,6 +5,7 @@ import { PublicFooter } from "../components/PublicFooter";
 import { PublicHeader } from "../components/PublicHeader";
 import { useEventLive, type EventLivePhoto } from "../hooks/useEventLive";
 import { formatKoreanDate } from "../lib/formatDate";
+import { getParticipantLabels } from "../lib/participantTerms";
 import { ensureUploaderUser } from "../lib/teamSession";
 
 export function PublicBoard() {
@@ -18,6 +19,7 @@ export function PublicBoard() {
   );
   const filledSlots = slots.filter((slot) => Boolean(slot.representativePhotoId)).length;
   const progressPercent = slots.length > 0 ? Math.round((filledSlots / slots.length) * 100) : 0;
+  const participantLabels = getParticipantLabels(event);
   const pageError = authError || error;
 
   useEffect(() => {
@@ -103,6 +105,7 @@ export function PublicBoard() {
               progressPercent={progressPercent}
               teamCount={event.teamCount}
               totalSlots={slots.length}
+              unitLabel={participantLabels.singular}
             />
           </>
         )}

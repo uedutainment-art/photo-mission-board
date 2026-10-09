@@ -19,7 +19,7 @@ export async function updateTeamLeader(
   const phone = sanitizePhone(leader.phone);
 
   if (!name || !phone) {
-    throw new Error("팀장 이름과 전화번호가 필요합니다.");
+    throw new Error("대표자 이름과 전화번호가 필요합니다.");
   }
 
   const nextLeader: TeamLeader = { name, phone };

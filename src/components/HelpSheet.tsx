@@ -1,5 +1,6 @@
 import { MessageCircle, Phone, X } from "lucide-react";
 import { formatPhone, smsHref, telHref } from "../lib/phone";
+import { getParticipantLabels } from "../lib/participantTerms";
 import type { MissionEvent, Team } from "../lib/types";
 
 interface HelpSheetProps {
@@ -47,6 +48,7 @@ export function HelpSheet({ event, open, onClose, team, teamLabel }: HelpSheetPr
   const leaderPhone = leader?.phone;
   const showLeaderCard = Boolean(leader && leaderPhone);
   const organizerSmsBody = `[${teamLabel}] 도움이 필요합니다. `;
+  const participantLabels = getParticipantLabels(event);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-app-ink/55 px-4 py-5">
@@ -95,7 +97,7 @@ export function HelpSheet({ event, open, onClose, team, teamLabel }: HelpSheetPr
 
           {showLeaderCard && leader && leaderPhone && (
             <section className="rounded-panel border border-app-border bg-white p-4 shadow-card">
-              <p className="text-[11px] font-black text-app-muted">우리 팀 팀장</p>
+              <p className="text-[11px] font-black text-app-muted">우리 {participantLabels.singular} {participantLabels.leader}</p>
               <h3 className="mt-1 text-base font-black">{leader.name}</h3>
               <p className="mt-1 text-xs font-bold text-app-muted">
                 {leader.role ? `${leader.role} · ` : ""}

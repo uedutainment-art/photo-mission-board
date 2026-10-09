@@ -28,9 +28,11 @@ import {
   downloadTeamQrSheetPdf,
 } from "../lib/qrSheetPdf";
 import { formatKoreanDate } from "../lib/formatDate";
+import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
 import { updateParticipantDisplayName, updateTeamLeader } from "../lib/teams";
 import { regenerateParticipantCode } from "../lib/participantAccess";
+import type { ParticipantLabels } from "../lib/types";
 
 function QrImage({ size, url }: { size: number; url: string }) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
@@ -70,9 +72,10 @@ interface TeamListCardProps {
   onNotice: (message: string) => void;
   onShare: (team: TeamWithId, url: string) => Promise<void>;
   onRegenerateCode: (teamId: string) => Promise<void>;
+  participantLabels: ParticipantLabels;
 }
 
-function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onRegenerateCode, onShare, perTeamCount, team }: TeamListCardProps) {
+function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onRegenerateCode, onShare, participantLabels, perTeamCount, team }: TeamListCardProps) {
   const url = getTeamQrUrl(team.token);
   const [editingLeader, setEditingLeader] = useState(false);
   const [leaderName, setLeaderName] = useState(team.leader?.name ?? "");
@@ -82,7 +85,7 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
   const [leaderError, setLeaderError] = useState<string | null>(null);
   const [savingLeader, setSavingLeader] = useState(false);
   const membersText =
-    team.joinedMembers.length > 0 ? `팀원 ${team.joinedMembers.length}명 입장` : "아직 아무도 입장 안 함";
+    team.joinedMembers.length > 0 ? `참여자 ${team.joinedMembers.length}명 입장` : "아직 아무도 입장 안 함";
   const leaderPhoneValue = team.leader?.phone;
   const hasLeader = Boolean(team.leader?.name && team.leader?.phone);
   const contactMessage = `안녕하세요, ${eventTitle} 운영팀입니다.`;
@@ -116,9 +119,9 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
         });
       }
       setEditingLeader(false);
-      onNotice("팀장 연락처를 저장했습니다.");
+      onNotice(`${participantLabels.leader} 연락처를 저장했습니다.`);
     } catch (saveError) {
-      setLeaderError(saveError instanceof Error ? saveError.message : "팀장 연락처를 저장하지 못했습니다.");
+      setLeaderError(saveError instanceof Error ? saveError.message : `${participantLabels.leader} 연락처를 저장하지 못했습니다.`);
     } finally {
       setSavingLeader(false);
     }
@@ -130,7 +133,7 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
         <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 flex-none" aria-hidden="true" />
-            <p className="flex-1 text-xs font-black">팀장 연락처가 아직 없습니다.</p>
+            <p className="flex-1 text-xs font-black">{participantLabels.leader} 연락처가 아직 없습니다.</p>
             <button
               type="button"
               onClick={() => {
@@ -139,7 +142,7 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
               className="inline-flex items-center gap-1 rounded-xl bg-amber-200 px-3 py-2 text-xs font-black text-amber-950"
             >
               <UserPlus className="h-3.5 w-3.5" aria-hidden="true" />
-              팀장 등록하기
+              {participantLabels.leader} 등록하기
             </button>
           </div>
         </div>
@@ -167,10 +170,10 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
           {team.leader ? (
             <p className="mt-1 flex items-center gap-1 truncate text-xs font-bold text-app-muted">
               <User className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
-              <span className="truncate">팀장 {team.leader.name} · {formatPhone(team.leader.phone)}</span>
+              <span className="truncate">{participantLabels.leader} {team.leader.name} · {formatPhone(team.leader.phone)}</span>
             </p>
           ) : (
-            <p className="mt-1 truncate text-xs font-bold text-amber-700">팀장 미등록</p>
+            <p className="mt-1 truncate text-xs font-bold text-amber-700">{participantLabels.leader} 미등록</p>
           )}
           {accessCode && (
             <div className="mt-1 flex items-center gap-1 text-xs font-black text-app-primary">
@@ -185,16 +188,16 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
               <a
                 href={telHref(leaderPhoneValue)}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
-                aria-label={`${team.name} 팀장 전화`}
-                title="팀장 전화"
+                aria-label={`${team.name} ${participantLabels.leader} 전화`}
+                title={`${participantLabels.leader} 전화`}
               >
                 <Phone className="h-4 w-4" aria-hidden="true" />
               </a>
               <a
                 href={smsHref(leaderPhoneValue, contactMessage)}
                 className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
-                aria-label={`${team.name} 팀장 문자`}
-                title="팀장 문자"
+                aria-label={`${team.name} ${participantLabels.leader} 문자`}
+                title={`${participantLabels.leader} 문자`}
               >
                 <MessageCircle className="h-4 w-4" aria-hidden="true" />
               </a>
@@ -206,8 +209,8 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
               setEditingLeader((current) => !current);
             }}
             className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-app-muted"
-            aria-label={`${team.name} 팀장 편집`}
-            title="팀장 편집"
+            aria-label={`${team.name} ${participantLabels.leader} 편집`}
+            title={`${participantLabels.leader} 편집`}
           >
             <Pencil className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -256,7 +259,7 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
               <input
                 value={leaderName}
                 onChange={(event) => setLeaderName(event.target.value)}
-                placeholder="예: 박팀장"
+                placeholder={participantLabels.leader === "가족 대표" ? "예: 김대표" : "예: 박팀장"}
                 className="mt-1 w-full rounded-xl border border-app-border bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-app-primary"
               />
             </label>
@@ -275,7 +278,7 @@ function TeamListCard({ accessCode, eventId, eventTitle, onCopy, onNotice, onReg
               <input
                 value={leaderRole}
                 onChange={(event) => setLeaderRole(event.target.value)}
-                placeholder="예: 1팀 모임 안내"
+                placeholder={`예: 1${participantLabels.singular} 모임 안내`}
                 className="mt-1 w-full rounded-xl border border-app-border bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-app-primary"
               />
             </label>
@@ -333,6 +336,7 @@ export function EventTeams() {
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const noticeTimeoutRef = useRef<number | null>(null);
+  const participantLabels = getParticipantLabels(event);
 
   function clearNoticeTimeout() {
     if (noticeTimeoutRef.current !== null) {
@@ -396,7 +400,7 @@ export function EventTeams() {
     if (navigator.share) {
       await navigator.share({
         title: `${getTeamLabel(team)} 입장 QR`,
-        text: "Photo Mission Board 팀 링크입니다.",
+        text: `Photo Mission Board ${participantLabels.singular} 링크입니다.`,
         url,
       });
       showNotice("공유 창을 열었습니다.");
@@ -418,7 +422,7 @@ export function EventTeams() {
 
     try {
       await downloadTeamQrSheetPdf(event, teams);
-      showNotice("A4 팀 QR PDF를 저장했습니다.");
+      showNotice(`A4 ${participantLabels.singular} QR PDF를 저장했습니다.`);
     } catch (downloadError) {
       setSheetError(downloadError instanceof Error ? downloadError.message : "PDF를 만들지 못했습니다.");
     } finally {
@@ -449,7 +453,7 @@ export function EventTeams() {
             >
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
-            <h1 className="text-base font-black">팀 QR 관리</h1>
+            <h1 className="text-base font-black">{participantLabels.singular} QR 관리</h1>
             <div className="h-10 w-10" />
           </div>
         </header>
@@ -458,7 +462,7 @@ export function EventTeams() {
           {loading && (
             <section className="card flex items-center justify-center gap-3 p-5 text-sm font-black text-app-muted">
               <Loader2 className="h-5 w-5 animate-spin text-app-primary" aria-hidden="true" />
-              팀 QR 불러오는 중
+              {participantLabels.singular} QR 불러오는 중
             </section>
           )}
 
@@ -472,7 +476,7 @@ export function EventTeams() {
             <>
               <section className="mb-4 rounded-panel bg-app-ink p-5 text-white">
                 <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                  TEAM QR
+                  PARTICIPANT QR
                 </p>
                 <h2 className="mt-1 text-2xl font-black tracking-normal">{event.title}</h2>
                 {(formatKoreanDate(event.scheduledAt) || event.subtitle) && (
@@ -481,7 +485,7 @@ export function EventTeams() {
                   </p>
                 )}
                 <p className="mt-3 text-xs font-bold text-slate-300">
-                  {event.teamCount}팀 · 팀당 {event.perTeamCount}장 · QR 자동 발급
+                  {event.teamCount}{participantLabels.singular} · {participantLabels.singular}당 {event.perTeamCount}장 · QR 자동 발급
                 </p>
               </section>
 
@@ -498,11 +502,11 @@ export function EventTeams() {
                 ) : (
                   <Download className="h-4 w-4" aria-hidden="true" />
                 )}
-                모든 팀 QR PDF 다운로드
+                모든 {participantLabels.singular} QR PDF 다운로드
               </button>
 
               <p className="mb-4 text-center text-xs font-bold leading-5 text-app-muted">
-                행사장에 인쇄해 붙이거나, 카톡으로 팀장에게 개별 발송하세요.
+                행사장에 인쇄해 붙이거나, 카톡으로 {participantLabels.leader}에게 개별 발송하세요.
               </p>
 
               <section className="mb-4 overflow-hidden rounded-2xl border border-app-border bg-white p-4 shadow-card">
@@ -511,7 +515,7 @@ export function EventTeams() {
                     <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
                       A4 인쇄 시트
                     </p>
-                    <h2 className="mt-1 text-sm font-black">{teams.length}팀 QR · 한 장 PDF</h2>
+                    <h2 className="mt-1 text-sm font-black">{teams.length}{participantLabels.singular} QR · 한 장 PDF</h2>
                   </div>
                   <div className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-slate-100 text-app-muted">
                     <Printer className="h-5 w-5" aria-hidden="true" />
@@ -522,7 +526,7 @@ export function EventTeams() {
                     <Loader2 className="h-5 w-5 animate-spin text-app-primary" aria-hidden="true" />
                   )}
                   {!sheetLoading && sheetPreviewUrl && (
-                    <img src={sheetPreviewUrl} alt="A4 팀 QR 인쇄 시트 미리보기" className="h-full w-full object-cover" />
+                    <img src={sheetPreviewUrl} alt={`A4 ${participantLabels.singular} QR 인쇄 시트 미리보기`} className="h-full w-full object-cover" />
                   )}
                   {!sheetLoading && !sheetPreviewUrl && (
                     <span className="px-4 text-center text-xs font-black text-app-muted">
@@ -536,7 +540,7 @@ export function EventTeams() {
                   </div>
                 )}
                 <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold leading-5 text-app-muted">
-                  행사장 입구나 테이블에 붙여두면 팀원들이 직접 스캔해서 입장할 수 있습니다.
+                  행사장 입구나 테이블에 붙여두면 참여자들이 직접 스캔해서 입장할 수 있습니다.
                 </p>
               </section>
 
@@ -559,6 +563,7 @@ export function EventTeams() {
                     onNotice={showNotice}
                     onRegenerateCode={handleRegenerateCode}
                     onShare={handleShare}
+                    participantLabels={participantLabels}
                   />
                 ))}
               </div>
@@ -566,9 +571,9 @@ export function EventTeams() {
               {teams.length === 0 && (
                 <section className="card p-6 text-center">
                   <ExternalLink className="mx-auto h-8 w-8 text-app-muted" aria-hidden="true" />
-                  <h2 className="mt-3 font-black">팀이 아직 없습니다</h2>
+                  <h2 className="mt-3 font-black">{participantLabels.singular}이 아직 없습니다</h2>
                   <p className="mt-2 text-sm font-bold leading-6 text-app-muted">
-                    이벤트 생성이 끝나면 팀 QR이 자동으로 표시됩니다.
+                    이벤트 생성이 끝나면 {participantLabels.singular} QR이 자동으로 표시됩니다.
                   </p>
                 </section>
               )}

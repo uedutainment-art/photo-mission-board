@@ -1,6 +1,8 @@
 import { createQrDataUrl, getTeamQrUrl } from "./qr";
 import { formatKoreanDate } from "./formatDate";
 import { getTeamLabel } from "./teamLabel";
+import { getParticipantLabels } from "./participantTerms";
+import type { MissionEvent } from "./types";
 
 const A4_WIDTH_MM = 210;
 const A4_HEIGHT_MM = 297;
@@ -8,11 +10,7 @@ const PDF_CANVAS_WIDTH = 1240;
 const PREVIEW_CANVAS_WIDTH = 620;
 const FONT_STACK = '"Noto Sans KR", "Apple SD Gothic Neo", "Segoe UI", sans-serif';
 
-export interface QrSheetEvent {
-  title: string;
-  subtitle?: string;
-  scheduledAt?: string;
-}
+export type QrSheetEvent = Pick<MissionEvent, "participantConfig" | "preset" | "scheduledAt" | "subtitle" | "title">;
 
 export interface QrSheetTeam {
   index: number;
@@ -201,8 +199,10 @@ export async function createTeamQrSheetDataUrl(
   teams: QrSheetTeam[],
   options: QrSheetOptions = {},
 ): Promise<string> {
+  const participantLabels = getParticipantLabels(event);
+
   if (teams.length === 0) {
-    throw new Error("PDF로 만들 팀 QR이 없습니다.");
+    throw new Error(`PDF로 만들 ${participantLabels.singular} QR이 없습니다.`);
   }
 
   const width = options.widthPx ?? PDF_CANVAS_WIDTH;
@@ -230,10 +230,10 @@ export async function createTeamQrSheetDataUrl(
   context.fillStyle = "#f8fafc";
   context.fillRect(0, 0, width, height);
   context.fillStyle = "#0f172a";
-  const subtitle = formatKoreanDate(event.scheduledAt) || event.subtitle || "팀별 입장 QR";
+  const subtitle = formatKoreanDate(event.scheduledAt) || event.subtitle || `${participantLabels.singular}별 입장 QR`;
   drawFittedText(context, event.title, marginX, 72 * scale, width - marginX * 2, 44 * scale, 23 * scale, 900, "#0f172a");
   drawFittedText(context, subtitle, marginX, 112 * scale, width - marginX * 2 - 210 * scale, 21 * scale, 12 * scale, 800, "#64748b");
-  drawFittedText(context, `${sortedTeams.length}팀 · A4 1장`, width - marginX, 112 * scale, 190 * scale, 19 * scale, 11 * scale, 900, "#2563eb", "right");
+  drawFittedText(context, `${sortedTeams.length}${participantLabels.singular} · A4 1장`, width - marginX, 112 * scale, 190 * scale, 19 * scale, 11 * scale, 900, "#2563eb", "right");
 
   for (const [index, team] of sortedTeams.entries()) {
     const row = Math.floor(index / grid.cols);
@@ -246,7 +246,7 @@ export async function createTeamQrSheetDataUrl(
 
   drawFittedText(
     context,
-    "QR을 스캔하면 로그인 없이 해당 팀 페이지로 바로 입장합니다.",
+    `QR을 스캔하면 로그인 없이 해당 ${participantLabels.singular} 페이지로 바로 입장합니다.`,
     width / 2,
     height - 34 * scale,
     width - marginX * 2,
@@ -277,5 +277,5 @@ export async function downloadTeamQrSheetPdf(event: QrSheetEvent, teams: QrSheet
   });
 
   pdf.addImage(sheetDataUrl, "PNG", 0, 0, A4_WIDTH_MM, A4_HEIGHT_MM);
-  pdf.save(`${sanitizeFileName(event.title)}-team-qr.pdf`);
+  pdf.save(`${sanitizeFileName(event.title)}-participant-qr.pdf`);
 }

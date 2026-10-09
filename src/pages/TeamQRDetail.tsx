@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useEventTeams } from "../hooks/useEventTeams";
 import { createQrDataUrl, downloadTeamQrPng, getTeamQrUrl } from "../lib/qr";
+import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
 
 export function TeamQRDetail() {
@@ -20,6 +21,7 @@ export function TeamQRDetail() {
   const [saving, setSaving] = useState(false);
   const team = useMemo(() => teams.find((nextTeam) => nextTeam.id === teamId) ?? null, [teamId, teams]);
   const teamUrl = team ? getTeamQrUrl(team.token) : "";
+  const participantLabels = getParticipantLabels(event);
 
   useEffect(() => {
     if (!teamUrl) {
@@ -46,7 +48,7 @@ export function TeamQRDetail() {
     }
 
     await navigator.clipboard.writeText(teamUrl);
-    setNotice("팀 링크를 복사했습니다.");
+    setNotice(`${participantLabels.singular} 링크를 복사했습니다.`);
   }
 
   async function handleShare() {
@@ -57,7 +59,7 @@ export function TeamQRDetail() {
     if (navigator.share) {
       await navigator.share({
         title: `${getTeamLabel(team)} 입장 QR`,
-        text: event ? `${event.title} 팀 입장 링크입니다.` : "Photo Mission Board 팀 링크입니다.",
+        text: event ? `${event.title} ${participantLabels.singular} 입장 링크입니다.` : `Photo Mission Board ${participantLabels.singular} 링크입니다.`,
         url: teamUrl,
       });
       setNotice("공유 창을 열었습니다.");
@@ -95,7 +97,7 @@ export function TeamQRDetail() {
             >
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
-            <h1 className="truncate text-base font-black">{team ? getTeamLabel(team) : "팀 QR"}</h1>
+            <h1 className="truncate text-base font-black">{team ? getTeamLabel(team) : `${participantLabels.singular} QR`}</h1>
             <div className="h-10 w-10" />
           </div>
         </header>
@@ -116,9 +118,9 @@ export function TeamQRDetail() {
 
           {!loading && !error && !team && (
             <section className="card p-6 text-center">
-              <h2 className="font-black">팀을 찾을 수 없습니다</h2>
+              <h2 className="font-black">{participantLabels.singular} 정보를 찾을 수 없습니다</h2>
               <p className="mt-2 text-sm font-bold leading-6 text-app-muted">
-                팀 목록에서 다시 QR을 선택해주세요.
+                {participantLabels.singular} 목록에서 다시 QR을 선택해주세요.
               </p>
             </section>
           )}

@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Camera, ChevronRight, Loader2, Share2, Target, Users } from "lucide-react";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { formatKoreanDate } from "../lib/formatDate";
+import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
 
 function getStartLabel(selfieMode: string): string {
@@ -21,6 +22,7 @@ export function TeamEntry() {
   const navigate = useNavigate();
   const { context, error, loading } = useTeamSession(teamToken);
   const eventDateText = context ? formatKoreanDate(context.event.scheduledAt) || context.event.subtitle : "";
+  const participantLabels = getParticipantLabels(context?.event);
 
   function handleStart() {
     if (!context || !teamToken) {
@@ -57,7 +59,7 @@ export function TeamEntry() {
           {loading && (
             <section className="card flex items-center justify-center gap-3 p-5 text-sm font-black text-app-muted">
               <Loader2 className="h-5 w-5 animate-spin text-app-primary" aria-hidden="true" />
-              팀 링크 확인 중
+              {participantLabels.singular} 링크 확인 중
             </section>
           )}
 
@@ -71,7 +73,7 @@ export function TeamEntry() {
             <>
               <section className="rounded-panel bg-gradient-to-br from-app-ink to-slate-700 p-6 text-white">
                 <div className="mb-4 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
-                  팀 입장 · 링크로 자동 인식
+                  {participantLabels.singular} 입장 · 링크로 자동 인식
                 </div>
                 <div
                   className="mb-4 grid h-16 w-16 place-items-center rounded-[22px] text-2xl font-black text-white"
@@ -92,7 +94,7 @@ export function TeamEntry() {
                 <div className="mt-5 grid grid-cols-3 gap-2 border-t border-slate-700 pt-5">
                   <div>
                     <div className="text-lg font-black">{context.event.perTeamCount}장</div>
-                    <div className="text-[11px] font-bold text-slate-400">우리 팀 사진</div>
+                    <div className="text-[11px] font-bold text-slate-400">우리 {participantLabels.singular} 사진</div>
                   </div>
                   <div>
                     <div className="text-lg font-black">{context.event.places.length}곳</div>
@@ -119,7 +121,7 @@ export function TeamEntry() {
                   <Share2 className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-black">팀원 모두 같은 링크</h2>
+                  <h2 className="text-sm font-black">참여자 모두 같은 링크</h2>
                   <p className="mt-1 text-xs font-bold leading-5 text-app-muted">
                     이 화면에 들어온 모든 사람이 사진을 올리고 볼 수 있어요.
                   </p>
@@ -131,9 +133,9 @@ export function TeamEntry() {
                   <Target className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-black">우리 팀만의 공간</h2>
+                  <h2 className="text-sm font-black">우리 {participantLabels.singular}만의 공간</h2>
                   <p className="mt-1 text-xs font-bold leading-5 text-app-muted">
-                    다른 팀 사진은 보이지 않아요. 마지막 공개 보드에서 모두 함께 봅니다.
+                    다른 {participantLabels.singular} 사진은 보이지 않아요. 마지막 공개 보드에서 모두 함께 봅니다.
                   </p>
                 </div>
               </section>
@@ -150,7 +152,7 @@ export function TeamEntry() {
                     <h2 className="text-sm font-black">셀카 단계가 필요합니다</h2>
                     <p className="mt-1 text-xs font-bold leading-5 text-app-muted">
                       {context.event.selfieMode === "group"
-                        ? "팀 단체사진 1장을 올리면 장소 미션을 시작합니다."
+                        ? `${participantLabels.singular} 단체사진 1장을 올리면 장소 미션을 시작합니다.`
                         : "내 셀카를 올리면 장소 미션을 시작할 수 있습니다."}
                     </p>
                   </div>

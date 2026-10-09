@@ -6,6 +6,7 @@ import { BoardCell } from "../components/BoardCell";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot } from "../hooks/useEventLive";
 import { db } from "../lib/firebase";
+import { getParticipantLabels } from "../lib/participantTerms";
 
 type BoardMode = "random" | "team" | "unchecked";
 
@@ -71,6 +72,7 @@ export function EventBoard() {
     (slot) => slot.reviewStatus === "unchecked" && Boolean(slot.representativePhotoId),
   ).length;
   const publicViewMode = event?.publicViewMode ?? "board";
+  const participantLabels = getParticipantLabels(event);
 
   async function savePublicViewMode() {
     if (!eventId) {
@@ -128,7 +130,7 @@ export function EventBoard() {
               <div className="grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
                 {([
                   ["random", "랜덤 셔플"],
-                  ["team", "팀별 그룹"],
+                  ["team", `${participantLabels.singular}별 그룹`],
                   ["unchecked", "미확인 강조"],
                 ] as Array<[BoardMode, string]>).map(([nextMode, label]) => (
                   <button

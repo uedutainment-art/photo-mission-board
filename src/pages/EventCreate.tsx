@@ -21,6 +21,7 @@ import {
 } from "../lib/createEvent";
 import { useAuth } from "../lib/auth";
 import { formatKoreanDate } from "../lib/formatDate";
+import { getPresetParticipantLabels } from "../lib/participantTerms";
 import { sanitizePhone } from "../lib/phone";
 import type {
   ContactPreference,
@@ -112,13 +113,13 @@ function getStepTitle(step: WizardStep): string {
   return "미리보기";
 }
 
-function getStepDescription(step: WizardStep): string {
+function getStepDescription(step: WizardStep, participantLabel: string): string {
   if (step === 1) {
     return "기본 정보";
   }
 
   if (step === 2) {
-    return "팀당 사진 분배";
+    return `${participantLabel}당 사진 분배`;
   }
 
   return "만들기 직전 확인";
@@ -154,6 +155,7 @@ export function EventCreate() {
   const [modalOpen, setModalOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const participantLabels = getPresetParticipantLabels(preset);
   const grid = useMemo(() => ({ rows, cols }), [cols, rows]);
   const totalSlots = rows * cols;
   const collageFit = useMemo(() => getCollageFit(grid, teamCount), [grid, teamCount]);
@@ -280,27 +282,11 @@ export function EventCreate() {
           unit: votingUnit,
         },
         preset,
-        participantConfig: preset === "family-photo-contest"
-          ? {
-              unitType: "group",
-              accessMethod: "code",
-              labels: {
-                singular: "가족",
-                plural: "참가 가족",
-                leader: "가족 대표",
-                code: "가족 코드",
-              },
-            }
-          : {
-              unitType: "group",
-              accessMethod: "unique-link",
-              labels: {
-                singular: "팀",
-                plural: "참가 팀",
-                leader: "팀장",
-                code: "팀 코드",
-              },
-            },
+        participantConfig: {
+          unitType: "group",
+          accessMethod: preset === "family-photo-contest" ? "code" : "unique-link",
+          labels: participantLabels,
+        },
         modules: {
           guide: true,
           songRequest: preset === "family-photo-contest",
@@ -352,7 +338,7 @@ export function EventCreate() {
           <StepDot active={step >= 3} />
         </div>
         <div className="px-4 pb-3 text-[11px] font-black text-app-muted">
-          STEP {step} / 3 · {getStepDescription(step)}
+          STEP {step} / 3 · {getStepDescription(step, participantLabels.singular)}
         </div>
 
         <div className="flex-1 overflow-y-auto bg-slate-50 p-4">
@@ -599,7 +585,7 @@ export function EventCreate() {
                 </>
               )}
               <label className="mt-3 block rounded-2xl border border-app-border bg-white px-4 py-3">
-                <FieldLabel>참여 팀 수</FieldLabel>
+                <FieldLabel>{participantLabels.plural} 수</FieldLabel>
                 <input
                   type="number"
                   min={1}
@@ -616,7 +602,7 @@ export function EventCreate() {
                   <div className="text-4xl font-black tracking-normal">{totalSlots}칸</div>
                   <div className="mt-1 text-xs font-black text-slate-400">총 슬롯 · 자동 계산</div>
                   <div className="mt-4 border-t border-slate-700 pt-4 text-sm font-bold leading-6 text-slate-300">
-                    {cols} × {rows} 칸 = {totalSlots}칸 ÷ {teamCount}팀 ={" "}
+                    {cols} × {rows} 칸 = {totalSlots}칸 ÷ {teamCount}{participantLabels.singular} ={" "}
                     <b className="text-white">{perTeamCount ?? "계산 불가"}</b>
                     {perTeamCount ? "장" : ""}
                   </div>
@@ -624,20 +610,20 @@ export function EventCreate() {
               ) : (
                 <div className="mt-4 rounded-panel bg-app-ink p-5 text-white">
                   <div className="text-3xl font-black tracking-normal">사진 수집</div>
-                  <div className="mt-1 text-xs font-black text-slate-400">팀 수 고정 · 장소별 목표만 사용</div>
+                  <div className="mt-1 text-xs font-black text-slate-400">{participantLabels.singular} 수 고정 · 장소별 목표만 사용</div>
                   <div className="mt-4 border-t border-slate-700 pt-4 text-sm font-bold leading-6 text-slate-300">
-                    {teamCount}팀이 장소별로 자유롭게 업로드합니다. 최종 결과는 ZIP, 갤러리, 투표 순위 중심으로 정리됩니다.
+                    {teamCount}{participantLabels.singular}이 장소별로 자유롭게 업로드합니다. 최종 결과는 ZIP, 갤러리, 투표 순위 중심으로 정리됩니다.
                   </div>
                 </div>
               )}
 
               {outputMode === "collage" && perTeamCount === null && (
                 <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold leading-6 text-amber-900">
-                  <p className="font-black">팀 수에 맞춰 칸 수를 조정해야 합니다.</p>
+                  <p className="font-black">{participantLabels.singular} 수에 맞춰 칸 수를 조정해야 합니다.</p>
                   {collageFit.recommended && (
                     <p className="mt-1">
                       추천: {collageFit.recommended.grid.cols}×{collageFit.recommended.grid.rows} = {collageFit.recommended.totalSlots}칸,
-                      팀당 {collageFit.recommended.perTeamCount}장
+                      {participantLabels.singular}당 {collageFit.recommended.perTeamCount}장
                     </p>
                   )}
                   <div className="mt-3 grid gap-2">
@@ -718,13 +704,13 @@ export function EventCreate() {
                               : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"
                           }
                         >
-                          {votingUnitLabels[unit]}
+                          {unit === "team" ? `${participantLabels.singular}별 1표` : votingUnitLabels[unit]}
                         </button>
                       ))}
                     </div>
                     <p className="mt-2 text-[11px] font-bold leading-5 text-app-muted">
                       {votingUnit === "team"
-                        ? "팀 QR로 들어온 한 대의 폰에서 팀 전체가 한 장을 선택합니다."
+                        ? `${participantLabels.singular} QR로 들어온 한 대의 폰에서 ${participantLabels.singular} 전체가 한 장을 선택합니다.`
                         : "각 참가자 세션마다 한 장을 선택합니다."}
                     </p>
                   </div>
@@ -761,7 +747,7 @@ export function EventCreate() {
                               : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"
                           }
                         >
-                          {votingResultModeLabels[mode]}
+                          {mode === "team-balanced" ? `${participantLabels.singular}별 상위` : votingResultModeLabels[mode]}
                         </button>
                       ))}
                     </div>
@@ -790,8 +776,8 @@ export function EventCreate() {
                   <h2 className="font-black">장소를 추가해주세요</h2>
                   <p className="mt-2 text-sm font-bold leading-6 text-app-muted">
                     {outputMode === "collage"
-                      ? `팀당 ${perTeamCount ?? 0}장을 장소별로 나누면 다음 단계로 갈 수 있습니다.`
-                      : "장소별 목표 사진 수를 정하면 팀원들이 자유롭게 업로드할 수 있습니다."}
+                      ? `${participantLabels.singular}당 ${perTeamCount ?? 0}장을 장소별로 나누면 다음 단계로 갈 수 있습니다.`
+                      : "장소별 목표 사진 수를 정하면 참여자들이 자유롭게 업로드할 수 있습니다."}
                   </p>
                 </section>
               )}
@@ -815,7 +801,7 @@ export function EventCreate() {
                         </p>
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] font-black text-amber-700">
-                            팀당 {place.perTeamCount}장
+                            {participantLabels.singular}당 {place.perTeamCount}장
                           </span>
                           {place.mapUrl && place.mapPlatform && (
                             <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-black text-blue-700">
@@ -847,7 +833,7 @@ export function EventCreate() {
                     : "mt-4 flex items-center justify-between rounded-2xl bg-amber-100 px-4 py-3 text-sm font-black text-amber-800"
                 }
               >
-                <span>팀당 분배 합계</span>
+                <span>{participantLabels.singular}당 분배 합계</span>
                 <span>
                   {outputMode === "collage" ? `${placeTotal} / ${perTeamCount ?? 0}` : `${placeTotal}장 목표`}
                   {stepTwoValid ? " ✓" : ""}
@@ -862,7 +848,7 @@ export function EventCreate() {
                 <div className="text-xs font-black text-slate-400">이벤트</div>
                 <h2 className="mt-1 text-2xl font-black tracking-normal">{title || "새 이벤트"}</h2>
                 <p className="mt-3 text-xs font-bold text-slate-300">
-                  {teamCount}팀 · {outputMode === "collage" ? `${totalSlots}칸` : `팀당 ${placeTotal}장 목표`} · {places.length}개 장소
+                  {teamCount}{participantLabels.singular} · {outputMode === "collage" ? `${totalSlots}칸` : `${participantLabels.singular}당 ${placeTotal}장 목표`} · {places.length}개 장소
                   {scheduledAt ? ` · ${formatKoreanDate(scheduledAt)}` : ""}
                 </p>
                 {useMode === "attached" && (externalTitle || externalBrandName) && (
@@ -874,7 +860,7 @@ export function EventCreate() {
 
               <section className="card mb-4 p-4">
                 <h2 className="mb-3 text-sm font-black">
-                  한 팀의 {effectivePerTeamCount ?? 0}장 {outputMode === "collage" ? "구조" : "목표"}
+                  한 {participantLabels.singular}의 {effectivePerTeamCount ?? 0}장 {outputMode === "collage" ? "구조" : "목표"}
                 </h2>
                 <div className="mb-3 flex h-10 overflow-hidden rounded-xl">
                   {places.map((place, index) => (
@@ -930,8 +916,8 @@ export function EventCreate() {
               )}
 
               <div className="rounded-2xl border border-app-border bg-white px-4 py-3 text-sm font-bold leading-6 text-app-muted">
-                만들기를 누르면 팀 {teamCount}개와 슬롯 {teamCount * (effectivePerTeamCount ?? 0)}칸이 자동 생성되고, 각 팀에
-                랜덤 토큰이 발급됩니다. 팀장 연락처는 생성 직후 팀 QR 관리에서 등록합니다.
+                만들기를 누르면 {participantLabels.singular} {teamCount}개와 슬롯 {teamCount * (effectivePerTeamCount ?? 0)}칸이 자동 생성되고, 각 {participantLabels.singular}에
+                랜덤 토큰이 발급됩니다. {participantLabels.leader} 연락처는 생성 직후 {participantLabels.singular} QR 관리에서 등록합니다.
                 {votingEnabled ? " 투표는 Export 화면에서 행사 후 열 수 있습니다." : ""}
               </div>
 
@@ -1001,6 +987,7 @@ export function EventCreate() {
           }}
           onDelete={editingPlace ? handleDeletePlace : undefined}
           onSave={handleSavePlace}
+          participantLabel={participantLabels.singular}
         />
       )}
     </main>

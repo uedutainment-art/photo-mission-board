@@ -4,6 +4,7 @@ import { Camera, Images, Loader2, Trophy } from "lucide-react";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { saveContestSubmission } from "../lib/contest";
+import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
 
 export function TeamContest() {
@@ -19,6 +20,7 @@ export function TeamContest() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const submissionOpen = context?.event.submission?.status === "open";
+  const participantLabels = getParticipantLabels(context?.event);
 
   function handleFile(nextFile: File | undefined) {
     if (!nextFile) return;
@@ -58,7 +60,7 @@ export function TeamContest() {
           {notice && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-700">{notice}</div>}
           {!loading && context && (
             <>
-              <section className="card p-4"><h2 className="text-base font-black">오늘의 즐거운 순간</h2><p className="mt-2 text-sm font-bold leading-6 text-app-muted">가족·팀을 대표할 사진 한 장과 짧은 제목을 등록해주세요.</p><span className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-black ${submissionOpen ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-app-muted"}`}>{submissionOpen ? "사진 접수 중" : context.event.submission?.status === "closed" ? "사진 접수 마감" : "접수 대기"}</span></section>
+              <section className="card p-4"><h2 className="text-base font-black">오늘의 즐거운 순간</h2><p className="mt-2 text-sm font-bold leading-6 text-app-muted">{participantLabels.singular}을 대표할 사진 한 장과 짧은 제목을 등록해주세요.</p><span className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-black ${submissionOpen ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-app-muted"}`}>{submissionOpen ? "사진 접수 중" : context.event.submission?.status === "closed" ? "사진 접수 마감" : "접수 대기"}</span></section>
               {ownSubmission && !preview && <section className="card overflow-hidden"><img src={ownSubmission.thumbUrl} alt={ownSubmission.title} className="aspect-square w-full object-cover" /><div className="p-4"><p className="text-[11px] font-black text-app-muted">현재 대표사진</p><h2 className="mt-1 text-base font-black">{ownSubmission.title}</h2></div></section>}
               {submissionOpen && (
                 <section className="card p-4">
