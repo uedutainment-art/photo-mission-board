@@ -1,6 +1,6 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./firebase";
-import { ensureUploaderUser } from "./teamSession";
+import { ensureUploaderUser, saveTeamSession } from "./teamSession";
 
 export interface ParticipantJoinResult {
   eventId: string;
@@ -10,12 +10,18 @@ export interface ParticipantJoinResult {
 }
 
 export async function joinParticipantGroup(eventId: string, accessCode: string): Promise<ParticipantJoinResult> {
-  await ensureUploaderUser();
+  const user = await ensureUploaderUser();
   const callable = httpsCallable<{ eventId: string; accessCode: string }, ParticipantJoinResult>(
     functions,
     "joinParticipantGroup",
   );
   const result = await callable({ eventId, accessCode });
+  saveTeamSession({
+    eventId: result.data.eventId,
+    teamId: result.data.teamId,
+    token: result.data.teamToken,
+    uploaderId: user.uid,
+  });
   return result.data;
 }
 
