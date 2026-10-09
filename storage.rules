@@ -18,6 +18,7 @@ service firebase.storage {
 
     function hasParticipantSession(eventId, teamId) {
       return signedIn()
+        && firestore.exists(/databases/(default)/documents/events/$(eventId)/participantSessions/$(request.auth.uid))
         && firestore.get(/databases/(default)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)).data.teamId == teamId;
     }
 
