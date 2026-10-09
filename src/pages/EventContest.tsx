@@ -10,9 +10,30 @@ import { clearContestVote } from "../lib/contest";
 import { downloadBlob, safeFilename } from "../lib/download";
 import { db } from "../lib/firebase";
 import { getTeamLabel } from "../lib/teamLabel";
-import type { ContestWinner, ModuleStatus } from "../lib/types";
+import type { ContestWinner, MissionEvent, ModuleStatus } from "../lib/types";
 
 const prizeAmounts = [50000, 30000, 20000] as const;
+
+const operationStages = [
+  { id: "prepare", label: "준비", description: "가족·코드 확인" },
+  { id: "submission", label: "접수", description: "대표사진 등록" },
+  { id: "voting", label: "투표", description: "가족당 1표" },
+  { id: "results", label: "결과", description: "순위 확정·공개" },
+] as const;
+
+function getOperationStage(event: MissionEvent): number {
+  if (event.results?.status === "published" || event.voting?.status === "closed") return 4;
+  if (event.voting?.status === "open" || event.submission?.status === "closed") return 3;
+  if (event.submission?.status === "open") return 2;
+  return 1;
+}
+
+function getStageAction(stage: number): { label: string; targetIndex: number } {
+  if (stage === 1) return { label: "사진 접수 준비", targetIndex: 1 };
+  if (stage === 2) return { label: "접수 현황 확인", targetIndex: 1 };
+  if (stage === 3) return { label: "투표 현황 확인", targetIndex: 2 };
+  return { label: "수상 가족 확정", targetIndex: 4 };
+}
 
 export function EventContest() {
   const { eventId } = useParams();
@@ -37,6 +58,8 @@ export function EventContest() {
   const unvotedTeams = teams.filter((team) => !voteByVoterTeam.has(team.id));
   const cutoffVotes = rankedSubmissions[2]?.votes;
   const tieAtCutoff = cutoffVotes !== undefined && rankedSubmissions.filter((item) => item.votes === cutoffVotes).length > 1;
+  const operationStage = event ? getOperationStage(event) : 1;
+  const stageAction = getStageAction(operationStage);
 
   useEffect(() => {
     if (event?.results?.winners?.length) {
@@ -140,6 +163,38 @@ export function EventContest() {
       {(error || submissionsError || localError) && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error || submissionsError || localError}</div>}
       {notice && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-700">{notice}</div>}
       {!pageLoading && event && eventId && <>
+        <section className="card p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-black text-app-muted">현장 운영 순서</p>
+              <h2 className="mt-1 text-base font-black">지금은 {operationStages[operationStage - 1].label} 단계입니다</h2>
+            </div>
+            <span className="rounded-full bg-app-ink px-3 py-1 text-[11px] font-black text-white">{operationStage}/4</span>
+          </div>
+          <ol className="mt-4 grid grid-cols-4 gap-1" aria-label="콘테스트 운영 단계">
+            {operationStages.map((stage, index) => {
+              const stageNumber = index + 1;
+              const active = stageNumber === operationStage;
+              const complete = stageNumber < operationStage;
+              return (
+                <li key={stage.id} className="min-w-0 text-center">
+                  <div className={`mx-auto grid h-8 w-8 place-items-center rounded-full text-xs font-black ${active ? "bg-app-primary text-white" : complete ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-app-muted"}`}>
+                    {complete ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : stageNumber}
+                  </div>
+                  <p className={`mt-1 text-xs font-black ${active ? "text-app-primary" : "text-app-ink"}`}>{stage.label}</p>
+                  <p className="mt-0.5 hidden text-[10px] font-bold text-app-muted sm:block">{stage.description}</p>
+                </li>
+              );
+            })}
+          </ol>
+          <button
+            type="button"
+            onClick={() => document.querySelectorAll("main section section.card")[stageAction.targetIndex]?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            className="mt-4 flex w-full items-center justify-center rounded-2xl bg-app-ink px-4 py-3 text-sm font-black text-white"
+          >
+            {stageAction.label}
+          </button>
+        </section>
         <section className="card p-4"><h2 className="text-sm font-black">사진 접수</h2><p className="mt-1 text-xs font-bold text-app-muted">현재 {event.submission?.status === "open" ? "접수 중" : event.submission?.status === "closed" ? "마감" : "대기"} · {submissions.length}/{teams.length} 등록</p><div className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">{(["waiting","open","closed"] as ModuleStatus[]).map((status) => <button key={status} type="button" onClick={() => void updatePhase("submission.status", status)} disabled={busy === "submission.status"} className={event.submission?.status === status ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm" : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"}>{status === "waiting" ? "대기" : status === "open" ? "접수 시작" : "접수 마감"}</button>)}</div></section>
         <section className="card p-4"><h2 className="text-sm font-black">투표</h2><p className="mt-1 text-xs font-bold text-app-muted">완료 {teams.length - unvotedTeams.length}/{teams.length} · 참가자에게 득표수 비공개</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => void updatePhase("voting.status", "open")} className="rounded-2xl bg-app-ink px-4 py-3 text-sm font-black text-white">투표 시작</button><button type="button" onClick={() => void updatePhase("voting.status", "closed")} className="rounded-2xl border border-app-border bg-white px-4 py-3 text-sm font-black">투표 마감</button></div><div className="mt-4 divide-y divide-app-border">{teams.map((team) => { const vote = voteByVoterTeam.get(team.id); return <div key={team.id} className="flex items-center gap-2 py-2"><span className={`h-2.5 w-2.5 rounded-full ${vote ? "bg-emerald-500" : "bg-amber-400"}`} /><span className="min-w-0 flex-1 truncate text-xs font-black">{getTeamLabel(team)}</span><span className="text-[11px] font-bold text-app-muted">{vote ? "투표 완료" : "미투표"}</span>{vote && <button type="button" onClick={() => void handleClearVote(team.id)} disabled={busy === `vote-${team.id}`} className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100" aria-label="투표 초기화"><RotateCcw className="h-3.5 w-3.5" /></button>}</div>; })}</div></section>
         <section className="card p-4"><div className="flex items-center justify-between"><div><h2 className="text-sm font-black">사진 검수</h2><p className="mt-1 text-xs font-bold text-app-muted">부적절한 사진은 투표 대상에서 숨깁니다.</p></div><span className="text-sm font-black">{submissions.length}</span></div><div className="mt-3 grid grid-cols-2 gap-2">{submissions.map((item) => <div key={item.id} className="overflow-hidden rounded-2xl border border-app-border bg-white"><img src={item.thumbUrl} alt={item.title} className="aspect-square w-full object-cover" /><div className="p-2"><p className="truncate text-xs font-black">{getTeamLabel(teamById.get(item.teamId) ?? { name: item.teamId })}</p><p className="truncate text-[11px] font-bold text-app-muted">{item.title}</p><button type="button" onClick={() => void toggleHidden(item.teamId, !item.hidden)} disabled={busy === `hide-${item.teamId}`} className={`mt-2 flex w-full items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-black ${item.hidden ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-app-muted"}`}>{item.hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}{item.hidden ? "다시 표시" : "숨기기"}</button></div></div>)}</div></section>
