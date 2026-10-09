@@ -1,0 +1,13 @@
+[
+  {
+    "origin": [
+      "https://photo-mission-board-prod.web.app",
+      "https://photo-mission-board-prod.firebaseapp.com",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173"
+    ],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Length", "Content-Disposition"],
+    "maxAgeSeconds": 3600
+  }
+]

@@ -177,6 +177,12 @@ firebase deploy --only hosting
 firebase deploy --only firestore:rules,storage:rules
 ```
 
+원본 ZIP처럼 브라우저에서 Storage 파일을 직접 묶는 기능은 버킷 CORS 설정도 필요함:
+
+```bash
+gsutil cors set storage.cors.json gs://photo-mission-board-prod.firebasestorage.app
+```
+
 ---
 
 ## 7. 운영 사용법
