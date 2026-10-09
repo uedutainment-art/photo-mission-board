@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Image, Loader2, MessageCircle, Phone, QrCode, Trophy, Users } from "lucide-react";
+import { ArrowLeft, CalendarDays, ExternalLink, Image, Loader2, MessageCircle, Phone, QrCode, Trophy, Users } from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot, type EventLiveTeam } from "../hooks/useEventLive";
 import { formatKoreanDate } from "../lib/formatDate";
@@ -134,6 +134,19 @@ export function EventOverview() {
                     <div className="min-w-0 flex-1"><h2 className="text-sm font-black">참가자 공통 QR 화면</h2><p className="mt-1 text-xs font-bold text-app-muted">행사 메뉴와 가족 코드 입장을 확인합니다.</p></div>
                   </Link>
                 </>
+              )}
+
+              {(event.modules?.guide ?? true) && (
+                <Link to={`/events/${eventId}/guide`} className="card flex items-center gap-3 p-4">
+                  <div className="grid h-11 w-11 flex-none place-items-center rounded-2xl bg-emerald-100 text-emerald-800">
+                    <CalendarDays className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-black">행사 안내 편집</h2>
+                    <p className="mt-1 text-xs font-bold text-app-muted">참가자에게 보일 시간표·장소·안내를 관리합니다.</p>
+                  </div>
+                  <span className="text-xl font-black">→</span>
+                </Link>
               )}
 
               <section className="card p-4">

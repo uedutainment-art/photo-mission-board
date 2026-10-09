@@ -41,6 +41,20 @@ export interface EventModules {
   archive: boolean;
 }
 
+export interface EventGuideScheduleItem {
+  id: string;
+  time: string;
+  title: string;
+  description?: string;
+}
+
+export interface EventGuideSettings {
+  intro?: string;
+  venue?: string;
+  schedule: EventGuideScheduleItem[];
+  notices: string[];
+}
+
 export interface SubmissionSettings {
   status: ModuleStatus;
   limit: number;
@@ -134,6 +148,7 @@ export interface MissionEvent {
   preset?: EventPreset;
   participantConfig?: ParticipantConfig;
   modules?: EventModules;
+  guide?: EventGuideSettings;
   submission?: SubmissionSettings;
   results?: ResultSettings;
   layoutMode: LayoutMode;

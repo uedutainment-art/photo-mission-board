@@ -6,6 +6,7 @@ import { EventExport } from "./pages/EventExport";
 import { EventHub } from "./pages/EventHub";
 import { EventContest } from "./pages/EventContest";
 import { EventGuide } from "./pages/EventGuide";
+import { EventGuideEditor } from "./pages/EventGuideEditor";
 import { SongRequestPage } from "./pages/SongRequestPage";
 import { EventArchive } from "./pages/EventArchive";
 import { EventOverview } from "./pages/EventOverview";
@@ -99,6 +100,14 @@ export default function App() {
         element={
           <RequireAuth>
             <EventContest />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/events/:eventId/guide"
+        element={
+          <RequireAuth>
+            <EventGuideEditor />
           </RequireAuth>
         }
       />
