@@ -75,6 +75,10 @@ export interface ResultSettings {
   winnerCount: number;
   winners?: ContestWinner[];
   publishedAt?: Timestamp;
+  tieBreak?: {
+    note: string;
+    resolvedAt?: Timestamp;
+  };
 }
 
 export interface OrganizerContact {

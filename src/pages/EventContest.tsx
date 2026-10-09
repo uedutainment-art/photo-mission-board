@@ -76,6 +76,7 @@ export function EventContest() {
   const [confirmBusy, setConfirmBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [tieBreakNote, setTieBreakNote] = useState("");
   const [winnerIds, setWinnerIds] = useState<string[]>(["", "", ""]);
 
   const teamById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
@@ -100,9 +101,18 @@ export function EventContest() {
   const unvotedTeams = teams.filter((team) => !voteByVoterTeam.has(team.id));
   const submittedTeamIds = useMemo(() => new Set(submissions.map((item) => item.teamId)), [submissions]);
   const unregisteredTeams = teams.filter((team) => !submittedTeamIds.has(team.id));
-  const cutoffVotes = rankedSubmissions[2]?.votes;
-  const tieAtCutoff = cutoffVotes !== undefined
-    && rankedSubmissions.filter((item) => item.votes === cutoffVotes).length > 1;
+  const tieVoteCounts = useMemo(() => {
+    const groups = new Map<number, number>();
+    rankedSubmissions.forEach((item) => groups.set(item.votes, (groups.get(item.votes) ?? 0) + 1));
+    return new Set(
+      rankedSubmissions
+        .slice(0, 3)
+        .filter((item) => (groups.get(item.votes) ?? 0) > 1)
+        .map((item) => item.votes),
+    );
+  }, [rankedSubmissions]);
+  const tiedCandidates = rankedSubmissions.filter((item) => tieVoteCounts.has(item.votes));
+  const hasAwardTie = tiedCandidates.length > 0;
   const operationStage = event ? getOperationStage(event) : 1;
   const stageAction = getStageAction(operationStage);
 
@@ -117,6 +127,10 @@ export function EventContest() {
     }
     setWinnerIds(rankedSubmissions.slice(0, 3).map((item) => item.submission.teamId));
   }, [event?.results?.winners, rankedSubmissions]);
+
+  useEffect(() => {
+    setTieBreakNote(event?.results?.tieBreak?.note ?? "");
+  }, [event?.results?.tieBreak?.note]);
 
   function requestConfirmation(nextConfirmation: Confirmation) {
     setLocalError(null);
@@ -217,6 +231,9 @@ export function EventContest() {
     if (published && (selected.length !== requiredCount || new Set(selected).size !== selected.length)) {
       throw new Error(`서로 다른 수상 가족 ${requiredCount}곳을 선택해주세요.`);
     }
+    if (published && hasAwardTie && !tieBreakNote.trim()) {
+      throw new Error("동점 추첨 결과를 입력한 뒤 공개해주세요.");
+    }
     const winners: ContestWinner[] = selected.map((teamId, index) => ({
       rank: (index + 1) as 1 | 2 | 3,
       teamId,
@@ -224,12 +241,19 @@ export function EventContest() {
     }));
     setBusy("results");
     try {
-      await updateDoc(doc(db, "events", eventId), {
+      const resultUpdate: Record<string, unknown> = {
         "results.status": published ? "published" : "hidden",
         "results.winners": winners,
         "results.publishedAt": published ? serverTimestamp() : deleteField(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (published && hasAwardTie) {
+        resultUpdate["results.tieBreak"] = {
+          note: tieBreakNote.trim(),
+          resolvedAt: serverTimestamp(),
+        };
+      }
+      await updateDoc(doc(db, "events", eventId), resultUpdate);
       setNotice(published ? "결과를 참가자에게 공개했습니다." : "결과를 비공개로 전환했습니다.");
     } finally {
       setBusy(null);
@@ -522,8 +546,24 @@ export function EventContest() {
                     <h2 className="text-sm font-black">집계 및 결과 공개</h2>
                     <p className="mt-1 text-xs font-bold text-app-muted">동점은 현장 추첨 후 수상 순서를 직접 지정합니다.</p>
                   </div>
-                  {tieAtCutoff && <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-black text-amber-900">동점 확인</span>}
+                  {hasAwardTie && <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-black text-amber-900">동점 처리 필요</span>}
                 </div>
+                {hasAwardTie && (
+                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs font-black text-amber-900">시상권 동점 가족</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {tiedCandidates.map((item) => (
+                        <span key={item.submission.teamId} className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-amber-900">
+                          {getTeamLabel(teamById.get(item.submission.teamId) ?? { name: item.submission.teamId })} · {item.votes}표
+                        </span>
+                      ))}
+                    </div>
+                    <label className="mt-3 block text-xs font-black text-amber-900">
+                      현장 추첨 결과 *
+                      <input value={tieBreakNote} onChange={(changeEvent) => setTieBreakNote(changeEvent.target.value)} placeholder="예: 무대 추첨 결과 행복한 김가족을 3등으로 확정" className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-amber-500" />
+                    </label>
+                  </div>
+                )}
                 <div className="mt-4 space-y-2">
                   {[0, 1, 2].slice(0, Math.min(3, rankedSubmissions.length)).map((index) => (
                     <label key={index} className="flex items-center gap-3">
@@ -568,10 +608,12 @@ export function EventContest() {
                     onClick={() => requestConfirmation({
                       action: () => publishResults(true),
                       confirmLabel: "결과 공개",
-                      description: "선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 표시됩니다.",
+                      description: hasAwardTie
+                        ? "입력한 현장 추첨 기록과 선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 반영됩니다."
+                        : "선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 표시됩니다.",
                       title: "최종 결과를 공개할까요?",
                     })}
-                    disabled={busy === "results" || event.voting?.status !== "closed"}
+                    disabled={busy === "results" || event.voting?.status !== "closed" || (hasAwardTie && !tieBreakNote.trim())}
                     className="rounded-2xl bg-app-primary px-3 py-3 text-xs font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
                   >
                     결과 공개
