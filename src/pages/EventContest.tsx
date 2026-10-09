@@ -8,6 +8,8 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  MessageCircle,
+  Phone,
   RotateCcw,
   Trophy,
 } from "lucide-react";
@@ -19,6 +21,7 @@ import { useSongRequests } from "../hooks/useSongRequests";
 import { clearContestVote } from "../lib/contest";
 import { downloadBlob, safeFilename } from "../lib/download";
 import { db } from "../lib/firebase";
+import { formatPhone, smsHref, telHref } from "../lib/phone";
 import { getTeamLabel } from "../lib/teamLabel";
 import type { ContestWinner, MissionEvent, ModuleStatus } from "../lib/types";
 
@@ -95,6 +98,8 @@ export function EventContest() {
     [countByTargetTeam, submissions],
   );
   const unvotedTeams = teams.filter((team) => !voteByVoterTeam.has(team.id));
+  const submittedTeamIds = useMemo(() => new Set(submissions.map((item) => item.teamId)), [submissions]);
+  const unregisteredTeams = teams.filter((team) => !submittedTeamIds.has(team.id));
   const cutoffVotes = rankedSubmissions[2]?.votes;
   const tieAtCutoff = cutoffVotes !== undefined
     && rankedSubmissions.filter((item) => item.votes === cutoffVotes).length > 1;
@@ -368,6 +373,37 @@ export function EventContest() {
                     </button>
                   ))}
                 </div>
+                <div className="mt-4 border-t border-app-border pt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-xs font-black">사진 미등록 가족</h3>
+                    <span className={`text-xs font-black ${unregisteredTeams.length > 0 ? "text-amber-700" : "text-emerald-700"}`}>{unregisteredTeams.length}가족</span>
+                  </div>
+                  {unregisteredTeams.length === 0 ? (
+                    <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-800">모든 가족이 대표사진을 등록했습니다.</p>
+                  ) : (
+                    <div className="mt-2 divide-y divide-app-border">
+                      {unregisteredTeams.map((team) => {
+                        const phone = team.leader?.phone;
+                        const message = `안녕하세요, ${event.title} 운영팀입니다. ${getTeamLabel(team)} 대표사진이 아직 등록되지 않았습니다. 접수 마감 전에 등록해주세요.`;
+                        return (
+                          <div key={team.id} className="flex items-center gap-2 py-2">
+                            <span className="h-2.5 w-2.5 flex-none rounded-full bg-amber-400" aria-hidden="true" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-black">{getTeamLabel(team)}</p>
+                              <p className="mt-0.5 truncate text-[11px] font-bold text-app-muted">{phone ? `${team.leader?.name} · ${formatPhone(phone)}` : "가족 대표 연락처 없음"}</p>
+                            </div>
+                            {phone && (
+                              <div className="flex flex-none gap-1">
+                                <a href={telHref(phone)} className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100" aria-label={`${getTeamLabel(team)} 가족 대표에게 전화`}><Phone className="h-3.5 w-3.5" aria-hidden="true" /></a>
+                                <a href={smsHref(phone, message)} className="grid h-8 w-8 place-items-center rounded-xl bg-app-ink text-white" aria-label={`${getTeamLabel(team)} 가족 대표에게 문자`}><MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /></a>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </section>
 
               <section id="voting-operations" className="card scroll-mt-4 p-4">
@@ -399,11 +435,19 @@ export function EventContest() {
                 <div className="mt-4 divide-y divide-app-border">
                   {teams.map((team) => {
                     const vote = voteByVoterTeam.get(team.id);
+                    const phone = team.leader?.phone;
+                    const message = `안녕하세요, ${event.title} 운영팀입니다. ${getTeamLabel(team)}의 가족 투표가 아직 완료되지 않았습니다. 투표 마감 전에 한 표를 선택해주세요.`;
                     return (
                       <div key={team.id} className="flex items-center gap-2 py-2">
                         <span className={`h-2.5 w-2.5 rounded-full ${vote ? "bg-emerald-500" : "bg-amber-400"}`} aria-hidden="true" />
                         <span className="min-w-0 flex-1 truncate text-xs font-black">{getTeamLabel(team)}</span>
                         <span className="text-[11px] font-bold text-app-muted">{vote ? "투표 완료" : "미투표"}</span>
+                        {!vote && phone && (
+                          <div className="flex flex-none gap-1">
+                            <a href={telHref(phone)} className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100" aria-label={`${getTeamLabel(team)} 가족 대표에게 전화`}><Phone className="h-3.5 w-3.5" aria-hidden="true" /></a>
+                            <a href={smsHref(phone, message)} className="grid h-8 w-8 place-items-center rounded-xl bg-app-ink text-white" aria-label={`${getTeamLabel(team)} 가족 대표에게 문자`}><MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /></a>
+                          </div>
+                        )}
                         {vote && (
                           <button
                             type="button"
