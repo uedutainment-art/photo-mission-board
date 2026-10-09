@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Camera, Images, Loader2, Trophy } from "lucide-react";
+import { Camera, Images, Loader2, RotateCw, Trophy } from "lucide-react";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { saveContestSubmission } from "../lib/contest";
@@ -65,11 +65,14 @@ export function TeamContest() {
               {submissionOpen && (
                 <section className="card p-4">
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleFile(event.target.files?.[0])} />
-                  <button type="button" onClick={() => fileRef.current?.click()} className="grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-100">
+                  <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-slate-100 disabled:opacity-60">
                     {preview ? <img src={preview} alt="선택한 사진 미리보기" className="h-full w-full object-cover" /> : <span className="flex flex-col items-center gap-2 text-sm font-black text-app-muted"><Camera className="h-7 w-7" />{ownSubmission ? "교체할 사진 선택" : "대표사진 선택"}</span>}
                   </button>
                   <input value={title} onChange={(event) => setTitle(event.target.value.slice(0, 30))} placeholder="사진 제목 (30자 이하)" className="mt-3 w-full rounded-2xl border border-app-border bg-white px-4 py-3 text-sm font-bold outline-none focus:border-app-primary" />
-                  <button type="button" onClick={() => void handleSubmit()} disabled={!file || !title.trim() || busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500">{busy && <Loader2 className="h-4 w-4 animate-spin" />}{ownSubmission ? "대표사진 교체" : "대표사진 등록"}</button>
+                  <button type="button" onClick={() => void handleSubmit()} disabled={!file || !title.trim() || busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500">
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : localError ? <RotateCw className="h-4 w-4" aria-hidden="true" /> : null}
+                    {busy ? "업로드 중 · 잠시만 기다려주세요" : localError ? "같은 사진으로 다시 시도" : ownSubmission ? "대표사진 교체" : "대표사진 등록"}
+                  </button>
                 </section>
               )}
               <div className="grid grid-cols-2 gap-3">

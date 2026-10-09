@@ -1,4 +1,4 @@
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { deleteObject, getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "./firebase";
 
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
@@ -86,17 +86,25 @@ export async function uploadImage(file: File, basePath: string): Promise<Uploade
   const originalRef = ref(storage, originalPath);
   const thumbRef = ref(storage, thumbPath);
 
-  await uploadBytes(originalRef, file, {
-    contentType: file.type || "image/jpeg",
-  });
-  await uploadBytes(thumbRef, thumb.blob, {
-    contentType: "image/jpeg",
-  });
+  let originalUrl: string;
+  let thumbUrl: string;
 
-  const [originalUrl, thumbUrl] = await Promise.all([
-    getDownloadURL(originalRef),
-    getDownloadURL(thumbRef),
-  ]);
+  try {
+    await uploadBytes(originalRef, file, {
+      contentType: file.type || "image/jpeg",
+    });
+    await uploadBytes(thumbRef, thumb.blob, {
+      contentType: "image/jpeg",
+    });
+
+    [originalUrl, thumbUrl] = await Promise.all([
+      getDownloadURL(originalRef),
+      getDownloadURL(thumbRef),
+    ]);
+  } catch (uploadError) {
+    await Promise.allSettled([deleteObject(originalRef), deleteObject(thumbRef)]);
+    throw uploadError;
+  }
 
   return {
     originalUrl,

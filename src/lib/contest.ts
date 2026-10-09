@@ -7,6 +7,19 @@ import type { CropMeta, FamilySubmission } from "./types";
 
 const defaultCropMeta: CropMeta = { x: 0.5, y: 0.5, scale: 1 };
 
+function wait(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+async function uploadContestImage(file: File, basePath: string) {
+  try {
+    return await uploadImage(file, basePath);
+  } catch {
+    await wait(700);
+    return uploadImage(file, basePath);
+  }
+}
+
 export async function saveContestSubmission({
   eventId,
   file,
@@ -33,25 +46,36 @@ export async function saveContestSubmission({
   const submissionRef = doc(db, "events", eventId, "familySubmissions", teamId);
   const previousSnapshot = await getDoc(submissionRef);
   const previous = previousSnapshot.exists() ? previousSnapshot.data() as FamilySubmission : null;
-  const image = await uploadImage(file, `events/${eventId}/contest/${teamId}/submission-${Date.now()}`);
+  const image = await uploadContestImage(
+    file,
+    `events/${eventId}/contest/${teamId}/submission-${Date.now()}`,
+  );
 
-  await setDoc(submissionRef, {
-    eventId,
-    teamId,
-    uploaderId,
-    title: cleanTitle,
-    originalPath: image.originalPath,
-    thumbPath: image.thumbPath,
-    originalUrl: image.originalUrl,
-    thumbUrl: image.thumbUrl,
-    cropMeta: defaultCropMeta,
-    width: image.width,
-    height: image.height,
-    bytes: image.bytes,
-    hidden: false,
-    submittedAt: previous?.submittedAt ?? serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  try {
+    await setDoc(submissionRef, {
+      eventId,
+      teamId,
+      uploaderId,
+      title: cleanTitle,
+      originalPath: image.originalPath,
+      thumbPath: image.thumbPath,
+      originalUrl: image.originalUrl,
+      thumbUrl: image.thumbUrl,
+      cropMeta: defaultCropMeta,
+      width: image.width,
+      height: image.height,
+      bytes: image.bytes,
+      hidden: false,
+      submittedAt: previous?.submittedAt ?? serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  } catch (saveError) {
+    await Promise.allSettled([
+      deleteObject(ref(storage, image.originalPath)),
+      deleteObject(ref(storage, image.thumbPath)),
+    ]);
+    throw saveError;
+  }
 
   if (previous) {
     await Promise.allSettled([

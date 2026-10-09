@@ -90,53 +90,61 @@ export async function uploadMissionPhoto(input: UploadMissionPhotoInput): Promis
   const image = await uploadImage(input.file, `events/${input.eventId}/photos/${photoRef.id}`);
   const cleanName = input.uploaderName?.trim();
 
-  await runTransaction(db, async (transaction) => {
-    const slotCandidates = await Promise.all(
-      placeSlots.map(async (slot): Promise<SlotCandidate> => {
-        const slotRef = doc(db, "events", input.eventId, "slots", slot.id);
-        const slotSnapshot = await transaction.get(slotRef);
+  try {
+    await runTransaction(db, async (transaction) => {
+      const slotCandidates = await Promise.all(
+        placeSlots.map(async (slot): Promise<SlotCandidate> => {
+          const slotRef = doc(db, "events", input.eventId, "slots", slot.id);
+          const slotSnapshot = await transaction.get(slotRef);
 
-        if (!slotSnapshot.exists()) {
-          throw new Error("슬롯을 찾을 수 없습니다.");
-        }
+          if (!slotSnapshot.exists()) {
+            throw new Error("슬롯을 찾을 수 없습니다.");
+          }
 
-        const slotData = slotSnapshot.data() as LatestSlotData;
+          const slotData = slotSnapshot.data() as LatestSlotData;
 
-        return {
-          id: slot.id,
-          indexInPlace: slotData.indexInPlace ?? slot.indexInPlace,
-          ref: slotRef,
-          representativePhotoId: slotData.representativePhotoId,
-          submissionCount: slotData.submissionCount ?? slot.submissionCount,
-        };
-      }),
-    );
-    const targetSlot = chooseTargetSlot(slotCandidates);
-    const isRepresentative = !targetSlot.representativePhotoId;
+          return {
+            id: slot.id,
+            indexInPlace: slotData.indexInPlace ?? slot.indexInPlace,
+            ref: slotRef,
+            representativePhotoId: slotData.representativePhotoId,
+            submissionCount: slotData.submissionCount ?? slot.submissionCount,
+          };
+        }),
+      );
+      const targetSlot = chooseTargetSlot(slotCandidates);
+      const isRepresentative = !targetSlot.representativePhotoId;
 
-    transaction.set(photoRef, {
-      eventId: input.eventId,
-      teamId: input.teamId,
-      slotId: targetSlot.id,
-      uploaderId: input.uploaderId,
-      originalPath: image.originalPath,
-      thumbPath: image.thumbPath,
-      originalUrl: image.originalUrl,
-      thumbUrl: image.thumbUrl,
-      cropMeta: defaultCropMeta,
-      isRepresentative,
-      width: image.width,
-      height: image.height,
-      bytes: image.bytes,
-      uploadedAt: serverTimestamp(),
-      ...(cleanName ? { uploaderName: cleanName } : {}),
+      transaction.set(photoRef, {
+        eventId: input.eventId,
+        teamId: input.teamId,
+        slotId: targetSlot.id,
+        uploaderId: input.uploaderId,
+        originalPath: image.originalPath,
+        thumbPath: image.thumbPath,
+        originalUrl: image.originalUrl,
+        thumbUrl: image.thumbUrl,
+        cropMeta: defaultCropMeta,
+        isRepresentative,
+        width: image.width,
+        height: image.height,
+        bytes: image.bytes,
+        uploadedAt: serverTimestamp(),
+        ...(cleanName ? { uploaderName: cleanName } : {}),
+      });
+
+      transaction.update(targetSlot.ref, {
+        submissionCount: increment(1),
+        ...(isRepresentative ? { representativePhotoId: photoRef.id } : {}),
+      });
     });
-
-    transaction.update(targetSlot.ref, {
-      submissionCount: increment(1),
-      ...(isRepresentative ? { representativePhotoId: photoRef.id } : {}),
-    });
-  });
+  } catch (transactionError) {
+    await Promise.allSettled([
+      deleteObject(ref(storage, image.originalPath)),
+      deleteObject(ref(storage, image.thumbPath)),
+    ]);
+    throw transactionError;
+  }
 
   return photoRef.id;
 }
