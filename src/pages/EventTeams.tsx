@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   AlertCircle,
@@ -17,6 +17,7 @@ import {
   Share2,
   User,
   UserPlus,
+  Users,
   X,
 } from "lucide-react";
 import { useEventTeams, type TeamWithId } from "../hooks/useEventTeams";
@@ -32,6 +33,7 @@ import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
 import { updateParticipantDisplayName, updateTeamLeader } from "../lib/teams";
 import { regenerateParticipantCode } from "../lib/participantAccess";
+import { bulkUpdateParticipants, parseParticipantImport } from "../lib/participantImport";
 import type { ParticipantLabels } from "../lib/types";
 
 function QrImage({ size, url }: { size: number; url: string }) {
@@ -337,6 +339,11 @@ export function EventTeams() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const noticeTimeoutRef = useRef<number | null>(null);
   const participantLabels = getParticipantLabels(event);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
+  const [bulkImportText, setBulkImportText] = useState("");
+  const [bulkImportBusy, setBulkImportBusy] = useState(false);
+  const [bulkImportError, setBulkImportError] = useState<string | null>(null);
+  const bulkImportRows = useMemo(() => parseParticipantImport(bulkImportText), [bulkImportText]);
 
   function clearNoticeTimeout() {
     if (noticeTimeoutRef.current !== null) {
@@ -440,6 +447,22 @@ export function EventTeams() {
     }
   }
 
+  async function handleBulkImport() {
+    if (!eventId || bulkImportRows.length === 0) return;
+    setBulkImportBusy(true);
+    setBulkImportError(null);
+    try {
+      const updatedCount = await bulkUpdateParticipants(eventId, teams, bulkImportRows);
+      showNotice(`${updatedCount}${participantLabels.singular} 정보를 저장했습니다.`);
+      setBulkImportOpen(false);
+      setBulkImportText("");
+    } catch (importError) {
+      setBulkImportError(importError instanceof Error ? importError.message : "참가 명단을 저장하지 못했습니다.");
+    } finally {
+      setBulkImportBusy(false);
+    }
+  }
+
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
       <section className="phone-surface overflow-hidden rounded-[28px] border border-app-border shadow-phone">
@@ -487,6 +510,32 @@ export function EventTeams() {
                 <p className="mt-3 text-xs font-bold text-slate-300">
                   {event.teamCount}{participantLabels.singular} · {participantLabels.singular}당 {event.perTeamCount}장 · QR 자동 발급
                 </p>
+              </section>
+
+              <section className="mb-4 overflow-hidden rounded-2xl border border-app-border bg-white shadow-card">
+                <button type="button" onClick={() => setBulkImportOpen((current) => !current)} className="flex w-full items-center gap-3 p-4 text-left">
+                  <div className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-blue-50 text-app-primary"><Users className="h-5 w-5" aria-hidden="true" /></div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-black">{participantLabels.plural} 명단 일괄 등록</h2>
+                    <p className="mt-1 text-xs font-bold text-app-muted">이름만 또는 이름·대표자·전화번호를 붙여넣습니다.</p>
+                  </div>
+                  <span className="text-xl font-black">{bulkImportOpen ? "−" : "+"}</span>
+                </button>
+                {bulkImportOpen && (
+                  <div className="border-t border-app-border bg-slate-50 p-4">
+                    <p className="text-xs font-bold leading-5 text-app-muted">한 줄에 하나씩 입력하세요. 선택 형식: <strong>{participantLabels.singular}명, {participantLabels.leader}, 전화번호</strong></p>
+                    <textarea value={bulkImportText} onChange={(changeEvent) => setBulkImportText(changeEvent.target.value)} rows={7} placeholder={participantLabels.singular === "가족" ? "행복한 김가족, 김대표, 010-1234-5678\n즐거운 이가족, 이대표, 010-2345-6789" : "파란 팀, 박팀장, 010-1234-5678\n초록 팀"} className="mt-3 w-full resize-none rounded-2xl border border-app-border bg-white px-3 py-3 text-sm font-bold leading-6 outline-none focus:border-app-primary" />
+                    <div className="mt-2 flex items-center justify-between text-xs font-black">
+                      <span className="text-app-muted">인식 {bulkImportRows.length}개 · 저장 가능 {Math.min(bulkImportRows.length, teams.length)}개</span>
+                      {bulkImportRows.length > teams.length && <span className="text-amber-700">초과 {bulkImportRows.length - teams.length}개 제외</span>}
+                    </div>
+                    {bulkImportError && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-700">{bulkImportError}</p>}
+                    <button type="button" onClick={() => void handleBulkImport()} disabled={bulkImportBusy || bulkImportRows.length === 0 || teams.length === 0} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-ink px-4 py-3 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500">
+                      {bulkImportBusy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                      순서대로 {participantLabels.plural} 저장
+                    </button>
+                  </div>
+                )}
               </section>
 
               <button
