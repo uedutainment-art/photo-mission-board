@@ -1,6 +1,6 @@
 import { httpsCallable } from "firebase/functions";
-import { signInAnonymously } from "firebase/auth";
-import { auth, functions } from "./firebase";
+import { functions } from "./firebase";
+import { ensureUploaderUser } from "./teamSession";
 
 export interface ParticipantJoinResult {
   eventId: string;
@@ -9,14 +9,8 @@ export interface ParticipantJoinResult {
   teamName: string;
 }
 
-async function ensureParticipantUser(): Promise<void> {
-  if (!auth.currentUser) {
-    await signInAnonymously(auth);
-  }
-}
-
 export async function joinParticipantGroup(eventId: string, accessCode: string): Promise<ParticipantJoinResult> {
-  await ensureParticipantUser();
+  await ensureUploaderUser();
   const callable = httpsCallable<{ eventId: string; accessCode: string }, ParticipantJoinResult>(
     functions,
     "joinParticipantGroup",
@@ -26,7 +20,7 @@ export async function joinParticipantGroup(eventId: string, accessCode: string):
 }
 
 export async function registerParticipantToken(token: string): Promise<{ eventId: string; teamId: string }> {
-  await ensureParticipantUser();
+  await ensureUploaderUser();
   const callable = httpsCallable<{ token: string }, { eventId: string; teamId: string }>(
     functions,
     "joinParticipantGroupByToken",

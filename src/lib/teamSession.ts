@@ -49,6 +49,8 @@ export function saveTeamSession(session: StoredTeamSession): void {
 }
 
 export async function ensureUploaderUser(): Promise<User> {
+  await auth.authStateReady();
+
   if (auth.currentUser) {
     return auth.currentUser;
   }
