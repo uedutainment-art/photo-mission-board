@@ -34,6 +34,7 @@ import { getTeamLabel } from "../lib/teamLabel";
 import { updateParticipantDisplayName, updateTeamLeader } from "../lib/teams";
 import { regenerateParticipantCode } from "../lib/participantAccess";
 import { bulkUpdateParticipants, parseParticipantImport } from "../lib/participantImport";
+import { downloadFamilyAccessSheetPdf } from "../lib/accessCodeSheetPdf";
 import type { ParticipantLabels } from "../lib/types";
 
 function QrImage({ size, url }: { size: number; url: string }) {
@@ -337,6 +338,7 @@ export function EventTeams() {
   const [sheetLoading, setSheetLoading] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingAccessPdf, setDownloadingAccessPdf] = useState(false);
   const noticeTimeoutRef = useRef<number | null>(null);
   const participantLabels = getParticipantLabels(event);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
@@ -447,6 +449,20 @@ export function EventTeams() {
     }
   }
 
+  async function handleDownloadAccessPdf() {
+    if (!eventId || !event || teams.length === 0) return;
+    setDownloadingAccessPdf(true);
+    setSheetError(null);
+    try {
+      await downloadFamilyAccessSheetPdf(eventId, event, teams, accessCodes);
+      showNotice("공통 QR과 가족 코드 인쇄 PDF를 저장했습니다.");
+    } catch (downloadError) {
+      setSheetError(downloadError instanceof Error ? downloadError.message : "가족 코드 PDF를 만들지 못했습니다.");
+    } finally {
+      setDownloadingAccessPdf(false);
+    }
+  }
+
   async function handleBulkImport() {
     if (!eventId || bulkImportRows.length === 0) return;
     setBulkImportBusy(true);
@@ -538,13 +554,25 @@ export function EventTeams() {
                 )}
               </section>
 
+              {event.participantConfig?.accessMethod === "code" && (
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadAccessPdf()}
+                  disabled={downloadingAccessPdf || teams.length === 0 || accessCodes.length === 0}
+                  className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  {downloadingAccessPdf ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Printer className="h-4 w-4" aria-hidden="true" />}
+                  공통 QR + {participantLabels.code} 인쇄 PDF
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => {
                   void handleDownloadPdf();
                 }}
                 disabled={downloadingPdf || teams.length === 0}
-                className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
+                className={`mb-3 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-sm font-black disabled:bg-slate-200 disabled:text-slate-500 ${event.participantConfig?.accessMethod === "code" ? "border border-app-border bg-white text-app-ink" : "bg-app-primary text-white"}`}
               >
                 {downloadingPdf ? (
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />

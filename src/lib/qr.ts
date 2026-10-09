@@ -9,6 +9,11 @@ export function getTeamQrUrl(token: string): string {
   return `${host}/t/${token}`;
 }
 
+export function getEventHubUrl(eventId: string): string {
+  const host = publicHost.replace(/\/$/, "");
+  return `${host}/e/${eventId}`;
+}
+
 export async function createQrDataUrl(url: string, size = 220): Promise<string> {
   return QRCode.toDataURL(url, {
     errorCorrectionLevel: "M",
