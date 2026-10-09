@@ -63,7 +63,7 @@ export function ContestGallery() {
           {(sessionError || submissionError || error) && <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{sessionError || submissionError || error}</div>}
           {!loading && context && (
             <>
-              <section className="mb-4 rounded-2xl bg-app-ink p-4 text-white"><div className="flex items-center justify-between"><div><p className="text-[11px] font-black text-slate-400">{votingOpen ? "투표 진행 중" : context.event.voting?.status === "closed" ? "투표 마감" : "사진 감상"}</p><h2 className="mt-1 text-sm font-black">{votingOpen ? "마음에 드는 사진 한 장을 골라주세요" : "다른 참가자의 사진을 둘러보세요"}</h2></div><Vote className="h-5 w-5 text-slate-300" /></div>{myVote && <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-xs font-black">선택 완료 · 다른 사진을 누르면 변경됩니다</p>}</section>
+              <section className="mb-4 rounded-2xl bg-app-ink p-4 text-white"><div className="flex items-center justify-between"><div><p className="text-[11px] font-black text-slate-400">{votingOpen ? "투표 진행 중" : context.event.voting?.status === "closed" ? "투표 마감" : "사진 감상"}</p><h2 className="mt-1 text-sm font-black">{votingOpen ? "마음에 드는 사진 한 장을 골라주세요" : "다른 참가자의 사진을 둘러보세요"}</h2></div><Vote className="h-5 w-5 text-slate-300" /></div>{myVote && <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-xs font-black">{votingOpen ? "선택 완료 · 다른 사진을 누르면 변경됩니다" : "내 투표가 저장되어 있습니다."}</p>}</section>
               <div className="grid grid-cols-3 gap-1">
                 {visibleSubmissions.map((submission) => {
                   const team = teamById.get(submission.teamId);
