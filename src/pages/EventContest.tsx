@@ -43,9 +43,10 @@ interface Confirmation {
 }
 
 function getOperationStage(event: MissionEvent): number {
-  if (event.results?.status === "published" || event.voting?.status === "closed") return 4;
-  if (event.voting?.status === "open" || event.submission?.status === "closed") return 3;
   if (event.submission?.status === "open") return 2;
+  if (event.voting?.status === "open") return 3;
+  if (event.results?.status === "published" || event.voting?.status === "closed") return 4;
+  if (event.submission?.status === "closed") return 3;
   return 1;
 }
 
@@ -159,12 +160,26 @@ export function EventContest() {
     setLocalError(null);
     try {
       const fieldPrefix = path.split(".")[0];
-      await updateDoc(doc(db, "events", eventId), {
+      const phaseUpdate: Record<string, unknown> = {
         [path]: status,
         [`${fieldPrefix}.${status === "open" ? "openedAt" : "closedAt"}`]:
           status === "waiting" || status === "draft" ? deleteField() : serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      // Reopening an earlier phase must not leave live voting or published results behind.
+      if (path === "submission.status" && status !== "closed") {
+        phaseUpdate["voting.status"] = "waiting";
+        phaseUpdate["voting.openedAt"] = deleteField();
+        phaseUpdate["voting.closedAt"] = deleteField();
+        phaseUpdate["results.status"] = "hidden";
+        phaseUpdate["results.publishedAt"] = deleteField();
+      } else if (path === "voting.status" && status === "open") {
+        phaseUpdate["results.status"] = "hidden";
+        phaseUpdate["results.publishedAt"] = deleteField();
+      }
+
+      await updateDoc(doc(db, "events", eventId), phaseUpdate);
       setNotice("운영 상태를 변경했습니다.");
     } finally {
       setBusy(null);
@@ -190,10 +205,22 @@ export function EventContest() {
           closed: ["투표를 마감할까요?", "마감 후 참가자는 투표를 제출하거나 변경할 수 없습니다.", "투표 마감"],
         };
     const [title, description, confirmLabel] = labels[status];
+    const resetsLaterPhases = isSubmission
+      && status !== "closed"
+      && (event?.voting?.status === "open"
+        || event?.voting?.status === "closed"
+        || event?.results?.status === "published");
+    const hidesPublishedResults = !isSubmission
+      && status === "open"
+      && event?.results?.status === "published";
     requestConfirmation({
       action: () => updatePhase(path, status),
       confirmLabel,
-      description,
+      description: resetsLaterPhases
+        ? `${description} 기존 투표 상태와 공개 결과는 초기화됩니다.`
+        : hidesPublishedResults
+          ? `${description} 공개 중인 결과는 자동으로 비공개됩니다.`
+          : description,
       title,
       tone: status === "closed" ? "danger" : "default",
     });

@@ -33,7 +33,10 @@ service firebase.storage {
           )
         );
       allow delete: if isEventOwner(eventId)
-        || hasParticipantSession(eventId, teamId);
+        || (
+          hasParticipantSession(eventId, teamId)
+          && firestore.get(/databases/(default)/documents/events/$(eventId)).data.submission.status == 'open'
+        );
     }
 
     match /events/{eventId}/photos/{fileName} {

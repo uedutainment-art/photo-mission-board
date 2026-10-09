@@ -38,7 +38,9 @@ service cloud.firestore {
     function resultsPublished(eventId) {
       let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
       return 'results' in eventData
-        && eventData.results.status == 'published';
+        && eventData.results.status == 'published'
+        && 'voting' in eventData
+        && eventData.voting.status == 'closed';
     }
 
     function isOwnTeamVote(eventId, voteId) {
@@ -92,12 +94,23 @@ service cloud.firestore {
       match /familySubmissions/{teamId} {
         allow read: if signedIn()
           || isCompletedEvent(eventId);
-        allow create, update: if isEventOwner(eventId)
+        allow create: if isEventOwner(eventId)
           || (
             hasParticipantSession(eventId, teamId)
             && get(/databases/$(database)/documents/events/$(eventId)).data.submission.status == 'open'
             && request.resource.data.eventId == eventId
             && request.resource.data.teamId == teamId
+            && request.resource.data.uploaderId == request.auth.uid
+            && request.resource.data.hidden == false
+          );
+        allow update: if isEventOwner(eventId)
+          || (
+            hasParticipantSession(eventId, teamId)
+            && get(/databases/$(database)/documents/events/$(eventId)).data.submission.status == 'open'
+            && request.resource.data.eventId == eventId
+            && request.resource.data.teamId == teamId
+            && request.resource.data.uploaderId == request.auth.uid
+            && request.resource.data.hidden == resource.data.hidden
           );
         allow delete: if isEventOwner(eventId);
       }

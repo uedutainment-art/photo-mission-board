@@ -65,7 +65,7 @@ export async function saveContestSubmission({
       width: image.width,
       height: image.height,
       bytes: image.bytes,
-      hidden: false,
+      hidden: previous?.hidden ?? false,
       submittedAt: previous?.submittedAt ?? serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
