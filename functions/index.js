@@ -126,7 +126,12 @@ exports.castContestVote = onCall({ region }, async (request) => {
     const eventData = eventSnapshot.data();
     const voterTeamId = sessionSnapshot.get("teamId");
 
-    if (!eventData?.voting?.enabled || eventData.voting.status !== "open") {
+    if (
+      !eventData?.voting?.enabled
+      || eventData.voting.status !== "open"
+      || eventData?.submission?.status !== "closed"
+      || eventData?.results?.status === "published"
+    ) {
       throw new HttpsError("failed-precondition", "현재 투표 시간이 아닙니다.");
     }
 

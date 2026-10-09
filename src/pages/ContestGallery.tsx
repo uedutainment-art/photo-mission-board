@@ -32,7 +32,9 @@ export function ContestGallery() {
     [context?.eventId, submissions],
   );
   const selected = visibleSubmissions.find((item) => item.id === selectedId) ?? null;
-  const votingOpen = context?.event.voting?.status === "open";
+  const votingOpen = context?.event.submission?.status === "closed"
+    && context.event.voting?.status === "open"
+    && context.event.results?.status !== "published";
 
   async function handleVote(targetTeamId: string) {
     if (!context) return;

@@ -114,6 +114,8 @@ export function EventContest() {
   }, [rankedSubmissions]);
   const tiedCandidates = rankedSubmissions.filter((item) => tieVoteCounts.has(item.votes));
   const hasAwardTie = tiedCandidates.length > 0;
+  const resultsVisible = event?.voting?.status === "closed"
+    && event.results?.status === "published";
   const operationStage = event ? getOperationStage(event) : 1;
   const stageAction = getStageAction(operationStage);
 
@@ -649,11 +651,16 @@ export function EventContest() {
                 {event.voting?.status !== "closed" && (
                   <p className="mt-2 text-center text-[11px] font-bold text-app-muted">투표 마감 후 결과를 공개할 수 있습니다.</p>
                 )}
-                {event.results?.status === "published" && (
+                {resultsVisible && (
                   <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">
                     <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
                     참가자에게 결과 공개 중
                   </div>
+                )}
+                {!resultsVisible && event.results?.status === "published" && (
+                  <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-center text-xs font-black text-amber-800">
+                    저장된 결과는 투표를 마감할 때까지 참가자에게 보이지 않습니다.
+                  </p>
                 )}
               </section>
 
