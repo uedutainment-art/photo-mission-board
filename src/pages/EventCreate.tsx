@@ -294,7 +294,7 @@ export function EventCreate() {
           photoMission: preset !== "family-photo-contest",
           photoContest: preset === "family-photo-contest",
           voting: votingEnabled,
-          archive: true,
+          archive: preset !== "family-photo-contest",
         },
       });
       navigate(`/events/${eventId}/teams`, { replace: true });

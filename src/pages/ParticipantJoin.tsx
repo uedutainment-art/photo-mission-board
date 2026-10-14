@@ -28,7 +28,7 @@ export function ParticipantJoin() {
     setError(null);
     try {
       const result = await joinParticipantGroup(eventId, code, familyName);
-      navigate(`/t/${result.teamToken}/contest`, { replace: true });
+      navigate(`/t/${result.teamToken}`, { replace: true });
     } catch (joinError) {
       setError(joinError instanceof Error ? joinError.message : "참가 코드를 확인하지 못했습니다.");
     } finally {

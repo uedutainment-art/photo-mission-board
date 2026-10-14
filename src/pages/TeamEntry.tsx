@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Camera, ChevronRight, Loader2, Share2, Target, Users } from "lucide-react";
-import { useTeamSession } from "../hooks/useTeamSession";
+import { CalendarDays, Camera, ChevronRight, Images, Loader2, Music2, Share2, Target, Users } from "lucide-react";
+import { useTeamSession, type TeamSessionContext } from "../hooks/useTeamSession";
 import { formatKoreanDate } from "../lib/formatDate";
 import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
@@ -15,6 +15,58 @@ function getStartLabel(selfieMode: string): string {
   }
 
   return "셀카부터 시작하기";
+}
+
+function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; teamToken: string }) {
+  const modules = context.event.modules;
+
+  return (
+    <>
+      <section className="rounded-panel bg-app-ink p-6 text-white">
+        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">FAMILY DAY</p>
+        <h1 className="mt-2 text-2xl font-black tracking-normal">{context.event.title}</h1>
+        <div className="mt-5 border-t border-slate-700 pt-4">
+          <p className="text-xs font-bold text-slate-400">로그인한 가족</p>
+          <p className="mt-1 text-lg font-black">{getTeamLabel(context.team)}</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="mb-3 text-sm font-black">행사 메뉴</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {(modules?.guide ?? true) && (
+            <Link to={`/e/${context.eventId}/guide`} className="card p-4">
+              <CalendarDays className="h-6 w-6 text-app-primary" aria-hidden="true" />
+              <h3 className="mt-4 text-sm font-black">행사 안내</h3>
+              <p className="mt-1 text-xs font-bold leading-5 text-app-muted">시간표·장소·이용 안내</p>
+            </Link>
+          )}
+          {modules?.songRequest && (
+            <Link to={`/e/${context.eventId}/songs`} className="card p-4">
+              <Music2 className="h-6 w-6 text-rose-500" aria-hidden="true" />
+              <h3 className="mt-4 text-sm font-black">신청곡</h3>
+              <p className="mt-1 text-xs font-bold leading-5 text-app-muted">곡명·가수·짧은 사연</p>
+            </Link>
+          )}
+          {modules?.photoContest && (
+            <Link to={`/t/${teamToken}/contest`} className="card col-span-2 flex items-center gap-4 p-4">
+              <div className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-amber-100 text-amber-700"><Camera className="h-6 w-6" aria-hidden="true" /></div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-black">사진 콘테스트</h3>
+                <p className="mt-1 text-xs font-bold leading-5 text-app-muted">우리 가족 사진 등록·감상·투표</p>
+              </div>
+              <ChevronRight className="h-5 w-5 flex-none text-app-muted" aria-hidden="true" />
+            </Link>
+          )}
+        </div>
+      </section>
+
+      <section className="card flex items-center gap-3 p-4">
+        <Images className="h-5 w-5 flex-none text-app-muted" aria-hidden="true" />
+        <p className="text-xs font-bold leading-5 text-app-muted">사진 공개와 투표 시작 시점은 운영팀이 행사 중 안내합니다.</p>
+      </section>
+    </>
+  );
 }
 
 export function TeamEntry() {
@@ -70,7 +122,9 @@ export function TeamEntry() {
           )}
 
           {!loading && !error && context && (
-            <>
+            context.event.preset === "family-photo-contest" && teamToken ? (
+              <FamilyEventMenu context={context} teamToken={teamToken} />
+            ) : <>
               <section className="rounded-panel bg-gradient-to-br from-app-ink to-slate-700 p-6 text-white">
                 <div className="mb-4 text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
                   {participantLabels.singular} 입장 · 링크로 자동 인식
