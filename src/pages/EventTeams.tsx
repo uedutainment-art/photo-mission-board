@@ -77,11 +77,11 @@ interface TeamListCardProps {
   onShare: (team: TeamWithId, url: string) => Promise<void>;
   onRegenerateCode: (teamId: string) => Promise<void>;
   participantLabels: ParticipantLabels;
-  contestSubmissionRegistered: boolean;
+  contestSubmissionCount: number;
   isPhotoContest: boolean;
 }
 
-function TeamListCard({ accessCode, contestSubmissionRegistered, eventId, eventTitle, isPhotoContest, onCopy, onNotice, onRegenerateCode, onShare, participantLabels, perTeamCount, team }: TeamListCardProps) {
+function TeamListCard({ accessCode, contestSubmissionCount, eventId, eventTitle, isPhotoContest, onCopy, onNotice, onRegenerateCode, onShare, participantLabels, perTeamCount, team }: TeamListCardProps) {
   const url = getTeamQrUrl(team.token);
   const [editingLeader, setEditingLeader] = useState(false);
   const [leaderName, setLeaderName] = useState(team.leader?.name ?? "");
@@ -172,7 +172,7 @@ function TeamListCard({ accessCode, contestSubmissionRegistered, eventId, eventT
           </div>
           <p className="mt-1 truncate text-xs font-bold text-app-muted">
             {isPhotoContest
-              ? contestSubmissionRegistered ? "대표사진 등록 완료" : "대표사진 미등록"
+              ? `가족 사진 ${contestSubmissionCount}/6장 등록`
               : `${membersText} · ${team.uploadedCount}/${perTeamCount} 업로드`}
           </p>
           {team.leader ? (
@@ -339,8 +339,11 @@ export function EventTeams() {
   const accessCodes = useAccessCodes(eventId);
   const { submissions: contestSubmissions } = useContestSubmissions(eventId);
   const accessCodeByTeamId = new Map(accessCodes.map((code) => [code.teamId, code.displayCode]));
-  const contestSubmissionTeamIds = useMemo(
-    () => new Set(contestSubmissions.map((submission) => submission.teamId)),
+  const contestSubmissionCountByTeam = useMemo(
+    () => contestSubmissions.reduce((counts, submission) => {
+      counts.set(submission.teamId, (counts.get(submission.teamId) ?? 0) + 1);
+      return counts;
+    }, new Map<string, number>()),
     [contestSubmissions],
   );
   const [notice, setNotice] = useState<string | null>(null);
@@ -644,7 +647,7 @@ export function EventTeams() {
                     eventId={eventId}
                     eventTitle={event.title}
                     isPhotoContest={Boolean(event.modules?.photoContest)}
-                    contestSubmissionRegistered={contestSubmissionTeamIds.has(team.id)}
+                    contestSubmissionCount={contestSubmissionCountByTeam.get(team.id) ?? 0}
                     perTeamCount={event.perTeamCount}
                     team={team}
                     accessCode={accessCodeByTeamId.get(team.id)}

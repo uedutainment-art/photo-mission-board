@@ -96,6 +96,7 @@ interface EventCreateDocument {
   submission: {
     status: "waiting";
     limit: number;
+    minimum?: number;
     titleRequired: boolean;
     allowReplacement: boolean;
   };
@@ -333,7 +334,8 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
     modules,
     submission: {
       status: "waiting",
-      limit: preset === "family-photo-contest" ? 1 : Math.max(1, slotsPerTeam),
+      limit: preset === "family-photo-contest" ? 6 : Math.max(1, slotsPerTeam),
+      ...(preset === "family-photo-contest" ? { minimum: 4 } : {}),
       titleRequired: preset === "family-photo-contest",
       allowReplacement: true,
     },

@@ -58,6 +58,7 @@ export interface EventGuideSettings {
 export interface SubmissionSettings {
   status: ModuleStatus;
   limit: number;
+  minimum?: number;
   titleRequired: boolean;
   allowReplacement: boolean;
   openedAt?: Timestamp;

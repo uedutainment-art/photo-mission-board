@@ -95,28 +95,31 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      match /familySubmissions/{teamId} {
+      match /familySubmissions/{submissionId} {
         allow read: if signedIn()
           || isCompletedEvent(eventId);
         allow create: if isEventOwner(eventId)
           || (
-            hasParticipantSession(eventId, teamId)
+            hasParticipantSession(eventId, request.resource.data.teamId)
             && get(/databases/$(database)/documents/events/$(eventId)).data.submission.status == 'open'
             && request.resource.data.eventId == eventId
-            && request.resource.data.teamId == teamId
             && request.resource.data.uploaderId == request.auth.uid
             && request.resource.data.hidden == false
           );
         allow update: if isEventOwner(eventId)
           || (
-            hasParticipantSession(eventId, teamId)
+            hasParticipantSession(eventId, resource.data.teamId)
             && get(/databases/$(database)/documents/events/$(eventId)).data.submission.status == 'open'
             && request.resource.data.eventId == eventId
-            && request.resource.data.teamId == teamId
+            && request.resource.data.teamId == resource.data.teamId
             && request.resource.data.uploaderId == request.auth.uid
             && request.resource.data.hidden == resource.data.hidden
           );
-        allow delete: if isEventOwner(eventId);
+        allow delete: if isEventOwner(eventId)
+          || (
+            hasParticipantSession(eventId, resource.data.teamId)
+            && get(/databases/$(database)/documents/events/$(eventId)).data.submission.status == 'open'
+          );
       }
 
       match /songRequests/{requestId} {

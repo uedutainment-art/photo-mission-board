@@ -124,7 +124,7 @@ export function EventGuideEditor() {
               <section className="card p-4">
                 <label className="block text-sm font-black">이용 안내</label>
                 <p className="mt-1 text-xs font-bold text-app-muted">한 줄에 안내 하나씩 입력합니다.</p>
-                <textarea value={noticesText} onChange={(changeEvent) => setNoticesText(changeEvent.target.value)} rows={5} placeholder={"가족별 코드는 다른 가족과 공유하지 마세요.\n사진 접수 마감 전까지 대표사진을 교체할 수 있습니다."} className="mt-3 w-full resize-none rounded-xl border border-app-border px-3 py-3 text-sm font-bold leading-6 outline-none focus:border-app-primary" />
+                <textarea value={noticesText} onChange={(changeEvent) => setNoticesText(changeEvent.target.value)} rows={5} placeholder={"가족별 코드는 다른 가족과 공유하지 마세요.\n사진 접수 마감 전까지 사진을 추가·교체·삭제할 수 있습니다."} className="mt-3 w-full resize-none rounded-xl border border-app-border px-3 py-3 text-sm font-bold leading-6 outline-none focus:border-app-primary" />
               </section>
 
               <button type="button" onClick={() => void handleSave()} disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:opacity-50">

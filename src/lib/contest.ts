@@ -1,5 +1,5 @@
 import { deleteObject, ref } from "firebase/storage";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions, storage } from "./firebase";
 import { uploadImage } from "./storage";
@@ -26,12 +26,14 @@ export async function saveContestSubmission({
   teamId,
   title,
   uploaderId,
+  submissionId,
 }: {
   eventId: string;
   file: File;
   teamId: string;
   title: string;
   uploaderId: string;
+  submissionId?: string;
 }): Promise<void> {
   const cleanTitle = title.trim();
 
@@ -43,9 +45,19 @@ export async function saveContestSubmission({
     throw new Error("사진 제목은 30자 이하로 입력해주세요.");
   }
 
-  const submissionRef = doc(db, "events", eventId, "familySubmissions", teamId);
+  const submissionsRef = collection(db, "events", eventId, "familySubmissions");
+  const submissionRef = submissionId
+    ? doc(submissionsRef, submissionId)
+    : doc(submissionsRef);
   const previousSnapshot = await getDoc(submissionRef);
   const previous = previousSnapshot.exists() ? previousSnapshot.data() as FamilySubmission : null;
+
+  if (!previous) {
+    const ownSubmissions = await getDocs(query(submissionsRef, where("teamId", "==", teamId)));
+    if (ownSubmissions.size >= 6) {
+      throw new Error("사진은 가족당 최대 6장까지 등록할 수 있습니다.");
+    }
+  }
   const image = await uploadContestImage(
     file,
     `events/${eventId}/contest/${teamId}/submission-${Date.now()}`,
@@ -83,6 +95,18 @@ export async function saveContestSubmission({
       deleteObject(ref(storage, previous.thumbPath)),
     ]);
   }
+}
+
+export async function deleteContestSubmission(
+  eventId: string,
+  submissionId: string,
+  submission: Pick<FamilySubmission, "originalPath" | "thumbPath">,
+): Promise<void> {
+  await deleteDoc(doc(db, "events", eventId, "familySubmissions", submissionId));
+  await Promise.allSettled([
+    deleteObject(ref(storage, submission.originalPath)),
+    deleteObject(ref(storage, submission.thumbPath)),
+  ]);
 }
 
 export async function castContestVotes(eventId: string, targetTeamIds: string[]): Promise<void> {

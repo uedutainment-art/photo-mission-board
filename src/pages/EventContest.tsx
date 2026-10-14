@@ -29,7 +29,7 @@ const prizeAmounts = [50000, 30000, 20000] as const;
 
 const operationStages = [
   { id: "prepare", label: "준비", description: "가족·코드 확인" },
-  { id: "submission", label: "접수", description: "대표사진 등록" },
+  { id: "submission", label: "접수", description: "가족 사진 4~6장" },
   { id: "voting", label: "투표", description: "가족당 2표" },
   { id: "results", label: "결과", description: "순위 확정·공개" },
 ] as const;
@@ -81,6 +81,9 @@ export function EventContest() {
   const [winnerIds, setWinnerIds] = useState<string[]>(["", "", ""]);
   const selectionLimit = event?.voting?.selectionsPerVoter
     ?? (event?.preset === "family-photo-contest" ? 2 : 1);
+  const minimumPhotos = event?.preset === "family-photo-contest"
+    ? event.submission?.minimum ?? 4
+    : 1;
 
   const teamById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const votesByVoterTeam = useMemo(() => {
@@ -99,15 +102,27 @@ export function EventContest() {
     return counts;
   }, [votes]);
   const rankedSubmissions = useMemo(
-    () => submissions
-      .filter((item) => !item.hidden)
-      .map((item) => ({ submission: item, votes: countByTargetTeam.get(item.teamId) ?? 0 }))
-      .sort((a, b) => b.votes - a.votes || a.submission.teamId.localeCompare(b.submission.teamId)),
+    () => {
+      const coverByTeam = new Map<string, (typeof submissions)[number]>();
+      submissions
+        .filter((item) => !item.hidden)
+        .forEach((item) => {
+          if (!coverByTeam.has(item.teamId)) coverByTeam.set(item.teamId, item);
+        });
+      return [...coverByTeam.values()]
+        .map((submission) => ({ submission, votes: countByTargetTeam.get(submission.teamId) ?? 0 }))
+        .sort((a, b) => b.votes - a.votes || a.submission.teamId.localeCompare(b.submission.teamId));
+    },
     [countByTargetTeam, submissions],
   );
   const unvotedTeams = teams.filter((team) => (votesByVoterTeam.get(team.id)?.length ?? 0) < selectionLimit);
-  const submittedTeamIds = useMemo(() => new Set(submissions.map((item) => item.teamId)), [submissions]);
-  const unregisteredTeams = teams.filter((team) => !submittedTeamIds.has(team.id));
+  const submissionCountByTeam = useMemo(() => {
+    const counts = new Map<string, number>();
+    submissions.forEach((item) => counts.set(item.teamId, (counts.get(item.teamId) ?? 0) + 1));
+    return counts;
+  }, [submissions]);
+  const completedSubmissionTeams = teams.filter((team) => (submissionCountByTeam.get(team.id) ?? 0) >= minimumPhotos);
+  const unregisteredTeams = teams.filter((team) => (submissionCountByTeam.get(team.id) ?? 0) < minimumPhotos);
   const tieVoteCounts = useMemo(() => {
     const groups = new Map<number, number>();
     rankedSubmissions.forEach((item) => groups.set(item.votes, (groups.get(item.votes) ?? 0) + 1));
@@ -119,7 +134,8 @@ export function EventContest() {
     );
   }, [rankedSubmissions]);
   const tiedCandidates = rankedSubmissions.filter((item) => tieVoteCounts.has(item.votes));
-  const hasAwardTie = tiedCandidates.length > 0;
+  const hasAwardTie = event?.voting?.status === "closed" && votes.length > 0 && tiedCandidates.length > 0;
+  const hasDuplicateWinners = winnerIds.filter(Boolean).length !== new Set(winnerIds.filter(Boolean)).size;
   const resultsVisible = event?.voting?.status === "closed"
     && event.results?.status === "published";
   const operationStage = event ? getOperationStage(event) : 1;
@@ -203,8 +219,8 @@ export function EventContest() {
       ? {
           draft: ["사진 접수를 준비할까요?", "참가자는 아직 사진을 등록할 수 없습니다.", "준비로 변경"],
           waiting: ["사진 접수를 대기로 바꿀까요?", "참가자에게 접수 대기 상태가 표시됩니다.", "대기로 변경"],
-          open: ["사진 접수를 시작할까요?", "참가자가 대표사진을 등록하거나 교체할 수 있게 됩니다.", "접수 시작"],
-          closed: ["사진 접수를 마감할까요?", "마감 후 참가자는 대표사진을 등록하거나 교체할 수 없습니다.", "접수 마감"],
+          open: ["사진 접수를 시작할까요?", "참가자가 가족 사진을 추가·교체·삭제할 수 있게 됩니다.", "접수 시작"],
+          closed: ["사진 접수를 마감할까요?", "마감 후 참가자는 사진을 추가·교체·삭제할 수 없습니다.", "접수 마감"],
         }
       : {
           draft: ["투표를 준비 상태로 바꿀까요?", "참가자는 아직 투표할 수 없습니다.", "준비로 변경"],
@@ -234,11 +250,11 @@ export function EventContest() {
     });
   }
 
-  async function toggleHidden(teamId: string, hidden: boolean) {
+  async function toggleHidden(submissionId: string, hidden: boolean) {
     if (!eventId) return;
-    setBusy(`hide-${teamId}`);
+    setBusy(`hide-${submissionId}`);
     try {
-      await updateDoc(doc(db, "events", eventId, "familySubmissions", teamId), {
+      await updateDoc(doc(db, "events", eventId, "familySubmissions", submissionId), {
         hidden,
         updatedAt: serverTimestamp(),
       });
@@ -417,7 +433,7 @@ export function EventContest() {
               <section id="submission-operations" className="card scroll-mt-4 p-4">
                 <h2 className="text-sm font-black">사진 접수</h2>
                 <p className="mt-1 text-xs font-bold text-app-muted">
-                  현재 {getSubmissionStatusLabel(event.submission?.status)} · {submissions.length}/{teams.length} 등록
+                  현재 {getSubmissionStatusLabel(event.submission?.status)} · 최소 {minimumPhotos}장 충족 {completedSubmissionTeams.length}/{teams.length}가족 · 총 {submissions.length}장
                 </p>
                 <div className="mt-3 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1">
                   {(["waiting", "open", "closed"] as ModuleStatus[]).map((status) => (
@@ -434,22 +450,23 @@ export function EventContest() {
                 </div>
                 <div className="mt-4 border-t border-app-border pt-4">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-xs font-black">사진 미등록 가족</h3>
+                    <h3 className="text-xs font-black">사진 {minimumPhotos}장 미충족 가족</h3>
                     <span className={`text-xs font-black ${unregisteredTeams.length > 0 ? "text-amber-700" : "text-emerald-700"}`}>{unregisteredTeams.length}가족</span>
                   </div>
                   {unregisteredTeams.length === 0 ? (
-                    <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-800">모든 가족이 대표사진을 등록했습니다.</p>
+                    <p className="mt-3 rounded-xl bg-emerald-50 px-3 py-3 text-xs font-black text-emerald-800">모든 가족이 사진을 {minimumPhotos}장 이상 등록했습니다.</p>
                   ) : (
                     <div className="mt-2 divide-y divide-app-border">
                       {unregisteredTeams.map((team) => {
                         const phone = team.leader?.phone;
-                        const message = `안녕하세요, ${event.title} 운영팀입니다. ${getTeamLabel(team)} 대표사진이 아직 등록되지 않았습니다. 접수 마감 전에 등록해주세요.`;
+                        const photoCount = submissionCountByTeam.get(team.id) ?? 0;
+                        const message = `안녕하세요, ${event.title} 운영팀입니다. ${getTeamLabel(team)} 사진이 현재 ${photoCount}장 등록되었습니다. 접수 마감 전에 ${minimumPhotos}장 이상 등록해주세요.`;
                         return (
                           <div key={team.id} className="flex items-center gap-2 py-2">
                             <span className="h-2.5 w-2.5 flex-none rounded-full bg-amber-400" aria-hidden="true" />
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-xs font-black">{getTeamLabel(team)}</p>
-                              <p className="mt-0.5 truncate text-[11px] font-bold text-app-muted">{phone ? `${team.leader?.name} · ${formatPhone(phone)}` : "가족 대표 연락처 없음"}</p>
+                              <p className="mt-0.5 truncate text-[11px] font-bold text-app-muted">{photoCount}/{minimumPhotos}장 · {phone ? `${team.leader?.name} · ${formatPhone(phone)}` : "가족 대표 연락처 없음"}</p>
                             </div>
                             {phone && (
                               <div className="flex flex-none gap-1">
@@ -552,18 +569,18 @@ export function EventContest() {
                             type="button"
                             onClick={() => {
                               if (item.hidden) {
-                                void toggleHidden(item.teamId, false);
+                                void toggleHidden(item.id, false);
                                 return;
                               }
                               requestConfirmation({
-                                action: () => toggleHidden(item.teamId, true),
+                                action: () => toggleHidden(item.id, true),
                                 confirmLabel: "사진 숨기기",
                                 description: `${teamLabel}의 사진이 포토 보드와 투표 대상에서 숨겨집니다. 나중에 다시 표시할 수 있습니다.`,
                                 title: "이 사진을 숨길까요?",
                                 tone: "danger",
                               });
                             }}
-                            disabled={busy === `hide-${item.teamId}`}
+                            disabled={busy === `hide-${item.id}`}
                             className={`mt-2 flex w-full items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-black ${item.hidden ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-app-muted"}`}
                           >
                             {item.hidden ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -615,7 +632,7 @@ export function EventContest() {
                       >
                         <option value="">선택</option>
                         {rankedSubmissions.map((item) => (
-                          <option key={item.submission.teamId} value={item.submission.teamId}>
+                          <option key={item.submission.teamId} value={item.submission.teamId} disabled={winnerIds.some((winnerId, winnerIndex) => winnerIndex !== index && winnerId === item.submission.teamId)}>
                             {getTeamLabel(teamById.get(item.submission.teamId) ?? { name: item.submission.teamId })} · {item.votes}표
                           </option>
                         ))}
@@ -624,6 +641,7 @@ export function EventContest() {
                     </label>
                   ))}
                 </div>
+                {hasDuplicateWinners && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-center text-[11px] font-black text-red-700">같은 가족을 여러 순위에 선택할 수 없습니다.</p>}
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -649,7 +667,7 @@ export function EventContest() {
                         : "선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 표시됩니다.",
                       title: "최종 결과를 공개할까요?",
                     })}
-                    disabled={busy === "results" || event.voting?.status !== "closed" || (hasAwardTie && !tieBreakNote.trim())}
+                    disabled={busy === "results" || event.voting?.status !== "closed" || hasDuplicateWinners || (hasAwardTie && !tieBreakNote.trim())}
                     className="rounded-2xl bg-app-primary px-3 py-3 text-xs font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
                   >
                     결과 공개

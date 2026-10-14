@@ -191,7 +191,7 @@ export function EventCreate() {
       setVotingUnit("team");
       setPlaces((current) => current.length > 0 ? current : [{
         id: "family-photo",
-        name: "가족 대표사진",
+        name: "가족 사진",
         description: "오늘 우리 가족의 즐거운 순간을 사진으로 남겨주세요.",
         perTeamCount: 1,
       }]);

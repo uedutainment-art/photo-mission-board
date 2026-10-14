@@ -175,11 +175,13 @@ exports.castContestVote = onCall({ region }, async (request) => {
 
     const submissionSnapshots = await Promise.all(
       targetTeamIds.map((targetTeamId) => transaction.get(
-        eventRef.collection("familySubmissions").doc(targetTeamId),
+        eventRef.collection("familySubmissions").where("teamId", "==", targetTeamId),
       )),
     );
 
-    if (submissionSnapshots.some((snapshot) => !snapshot.exists || snapshot.get("hidden") === true)) {
+    if (submissionSnapshots.some((snapshot) => (
+      snapshot.empty || snapshot.docs.every((document) => document.get("hidden") === true)
+    ))) {
       throw new HttpsError("not-found", "투표할 수 있는 사진이 포함되어 있습니다.");
     }
 
