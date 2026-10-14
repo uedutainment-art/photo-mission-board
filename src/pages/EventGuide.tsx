@@ -1,11 +1,13 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, Clock3, MapPin } from "lucide-react";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { formatKoreanDate } from "../lib/formatDate";
 
 export function EventGuide() {
   const { eventId } = useParams();
+  const [searchParams] = useSearchParams();
   const { event, loading, error } = usePublicEvent(eventId);
+  const teamToken = searchParams.get("team");
 
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
@@ -13,7 +15,7 @@ export function EventGuide() {
         <header className="border-b border-app-border bg-white px-4 pb-4 pt-3">
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between">
-            <Link to={`/e/${eventId}`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label="행사 메뉴로 돌아가기">
+            <Link to={teamToken ? `/t/${teamToken}` : `/e/${eventId}`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label="행사 메뉴로 돌아가기">
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
             <h1 className="text-base font-black">행사 안내</h1>

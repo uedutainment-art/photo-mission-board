@@ -8,6 +8,7 @@ export interface StoredTeamSession {
   teamId: string;
   token: string;
   uploaderId: string;
+  savedAt?: number;
 }
 
 function getSessionKey(token: string): string {
@@ -35,6 +36,7 @@ export function readStoredTeamSession(token: string): StoredTeamSession | null {
         teamId: parsedValue.teamId,
         token: parsedValue.token,
         uploaderId: parsedValue.uploaderId,
+        savedAt: parsedValue.savedAt,
       };
     }
   } catch {
@@ -45,11 +47,26 @@ export function readStoredTeamSession(token: string): StoredTeamSession | null {
 }
 
 export function saveTeamSession(session: StoredTeamSession): void {
-  localStorage.setItem(getSessionKey(session.token), JSON.stringify(session));
+  localStorage.setItem(getSessionKey(session.token), JSON.stringify({ ...session, savedAt: Date.now() }));
 }
 
 export function clearStoredTeamSession(token: string): void {
   localStorage.removeItem(getSessionKey(token));
+}
+
+export function readLatestTeamSessionForEvent(eventId: string): StoredTeamSession | null {
+  let latest: StoredTeamSession | null = null;
+
+  for (let index = 0; index < localStorage.length; index += 1) {
+    const key = localStorage.key(index);
+    if (!key?.startsWith(`${TEAM_SESSION_KEY_PREFIX}:`)) continue;
+    const session = readStoredTeamSession(key.slice(TEAM_SESSION_KEY_PREFIX.length + 1));
+    if (session?.eventId === eventId && (!latest || (session.savedAt ?? 0) > (latest.savedAt ?? 0))) {
+      latest = session;
+    }
+  }
+
+  return latest;
 }
 
 export async function ensureUploaderUser(): Promise<User> {

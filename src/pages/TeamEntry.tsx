@@ -35,14 +35,14 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
         <h2 className="mb-3 text-sm font-black">행사 메뉴</h2>
         <div className="grid grid-cols-2 gap-3">
           {(modules?.guide ?? true) && (
-            <Link to={`/e/${context.eventId}/guide`} className="card p-4">
+            <Link to={`/e/${context.eventId}/guide?team=${encodeURIComponent(teamToken)}`} className="card p-4">
               <CalendarDays className="h-6 w-6 text-app-primary" aria-hidden="true" />
               <h3 className="mt-4 text-sm font-black">행사 안내</h3>
               <p className="mt-1 text-xs font-bold leading-5 text-app-muted">시간표·장소·이용 안내</p>
             </Link>
           )}
           {modules?.songRequest && (
-            <Link to={`/e/${context.eventId}/songs`} className="card p-4">
+            <Link to={`/e/${context.eventId}/songs?team=${encodeURIComponent(teamToken)}`} className="card p-4">
               <Music2 className="h-6 w-6 text-rose-500" aria-hidden="true" />
               <h3 className="mt-4 text-sm font-black">신청곡</h3>
               <p className="mt-1 text-xs font-bold leading-5 text-app-muted">곡명·가수·짧은 사연</p>
