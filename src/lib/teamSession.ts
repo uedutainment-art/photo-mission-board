@@ -48,6 +48,10 @@ export function saveTeamSession(session: StoredTeamSession): void {
   localStorage.setItem(getSessionKey(session.token), JSON.stringify(session));
 }
 
+export function clearStoredTeamSession(token: string): void {
+  localStorage.removeItem(getSessionKey(token));
+}
+
 export async function ensureUploaderUser(): Promise<User> {
   await auth.authStateReady();
 

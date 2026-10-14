@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import type { MissionEvent, Team } from "../lib/types";
-import { ensureUploaderUser, readStoredTeamSession, saveTeamSession, type StoredTeamSession } from "../lib/teamSession";
+import { clearStoredTeamSession, ensureUploaderUser, saveTeamSession, type StoredTeamSession } from "../lib/teamSession";
 import { registerParticipantToken } from "../lib/participantAccess";
 
 export interface TeamSessionEvent extends MissionEvent {
@@ -102,27 +102,17 @@ export function useTeamSession(teamToken: string | undefined): UseTeamSessionRes
       try {
         const uploader = await ensureUploaderUser();
         let teamMatch: Awaited<ReturnType<typeof findTeamByToken>>;
-        const storedSession = readStoredTeamSession(resolvedToken);
-
-        if (storedSession?.uploaderId === uploader.uid) {
+        try {
+          const registered = await registerParticipantToken(resolvedToken);
           teamMatch = {
-            eventId: storedSession.eventId,
-            teamId: storedSession.teamId,
-            teamRef: doc(db, "events", storedSession.eventId, "teams", storedSession.teamId),
-            eventRef: doc(db, "events", storedSession.eventId),
+            eventId: registered.eventId,
+            teamId: registered.teamId,
+            teamRef: doc(db, "events", registered.eventId, "teams", registered.teamId),
+            eventRef: doc(db, "events", registered.eventId),
           };
-        } else {
-          try {
-            const registered = await registerParticipantToken(resolvedToken);
-            teamMatch = {
-              eventId: registered.eventId,
-              teamId: registered.teamId,
-              teamRef: doc(db, "events", registered.eventId, "teams", registered.teamId),
-              eventRef: doc(db, "events", registered.eventId),
-            };
-          } catch {
-            teamMatch = await findTeamByToken(resolvedToken);
-          }
+        } catch {
+          clearStoredTeamSession(resolvedToken);
+          teamMatch = await findTeamByToken(resolvedToken);
         }
         const nextSession: StoredTeamSession = {
           eventId: teamMatch.eventId,
