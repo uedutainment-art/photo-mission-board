@@ -537,7 +537,7 @@ export function EventTeams() {
                   </p>
                 )}
                 <p className="mt-3 text-xs font-bold text-slate-300">
-                  {event.teamCount}{participantLabels.singular} · {participantLabels.singular}당 {event.perTeamCount}장 · QR 자동 발급
+                  {event.teamCount}{participantLabels.singular} · {participantLabels.singular}당 {event.modules?.photoContest ? `${event.submission?.minimum ?? 1}~${event.submission?.limit ?? 1}` : event.perTeamCount}장 · QR 자동 발급
                 </p>
               </section>
 
