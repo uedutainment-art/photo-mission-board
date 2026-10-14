@@ -325,6 +325,8 @@ export async function createEvent(input: CreateEventInput): Promise<string> {
       ...voting,
       status: voting.enabled ? voting.status : "off",
       unit: voting.unit ?? "participant",
+      selectionsPerVoter: voting.selectionsPerVoter
+        ?? (preset === "family-photo-contest" ? 2 : 1),
     },
     preset,
     participantConfig,

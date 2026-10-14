@@ -30,7 +30,7 @@ const prizeAmounts = [50000, 30000, 20000] as const;
 const operationStages = [
   { id: "prepare", label: "준비", description: "가족·코드 확인" },
   { id: "submission", label: "접수", description: "대표사진 등록" },
-  { id: "voting", label: "투표", description: "가족당 1표" },
+  { id: "voting", label: "투표", description: "가족당 2표" },
   { id: "results", label: "결과", description: "순위 확정·공개" },
 ] as const;
 
@@ -79,12 +79,18 @@ export function EventContest() {
   const [notice, setNotice] = useState<string | null>(null);
   const [tieBreakNote, setTieBreakNote] = useState("");
   const [winnerIds, setWinnerIds] = useState<string[]>(["", "", ""]);
+  const selectionLimit = event?.voting?.selectionsPerVoter
+    ?? (event?.preset === "family-photo-contest" ? 2 : 1);
 
   const teamById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
-  const voteByVoterTeam = useMemo(
-    () => new Map(votes.filter((vote) => vote.voterTeamId).map((vote) => [vote.voterTeamId!, vote])),
-    [votes],
-  );
+  const votesByVoterTeam = useMemo(() => {
+    const grouped = new Map<string, typeof votes>();
+    for (const vote of votes) {
+      if (!vote.voterTeamId) continue;
+      grouped.set(vote.voterTeamId, [...(grouped.get(vote.voterTeamId) ?? []), vote]);
+    }
+    return grouped;
+  }, [votes]);
   const countByTargetTeam = useMemo(() => {
     const counts = new Map<string, number>();
     for (const vote of votes) {
@@ -99,7 +105,7 @@ export function EventContest() {
       .sort((a, b) => b.votes - a.votes || a.submission.teamId.localeCompare(b.submission.teamId)),
     [countByTargetTeam, submissions],
   );
-  const unvotedTeams = teams.filter((team) => !voteByVoterTeam.has(team.id));
+  const unvotedTeams = teams.filter((team) => (votesByVoterTeam.get(team.id)?.length ?? 0) < selectionLimit);
   const submittedTeamIds = useMemo(() => new Set(submissions.map((item) => item.teamId)), [submissions]);
   const unregisteredTeams = teams.filter((team) => !submittedTeamIds.has(team.id));
   const tieVoteCounts = useMemo(() => {
@@ -203,7 +209,7 @@ export function EventContest() {
       : {
           draft: ["투표를 준비 상태로 바꿀까요?", "참가자는 아직 투표할 수 없습니다.", "준비로 변경"],
           waiting: ["투표를 대기 상태로 바꿀까요?", "참가자는 아직 투표할 수 없습니다.", "대기로 변경"],
-          open: ["투표를 시작할까요?", "가족당 한 표를 제출할 수 있게 됩니다.", "투표 시작"],
+          open: ["투표를 시작할까요?", `가족당 서로 다른 ${selectionLimit}곳에 투표할 수 있게 됩니다.`, "투표 시작"],
           closed: ["투표를 마감할까요?", "마감 후 참가자는 투표를 제출하거나 변경할 수 없습니다.", "투표 마감"],
         };
     const [title, description, confirmLabel] = labels[status];
@@ -261,7 +267,7 @@ export function EventContest() {
       throw new Error(`서로 다른 수상 가족 ${requiredCount}곳을 선택해주세요.`);
     }
     if (published && hasAwardTie && !tieBreakNote.trim()) {
-      throw new Error("동점 추첨 결과를 입력한 뒤 공개해주세요.");
+      throw new Error("동점 선정 사유를 입력한 뒤 공개해주세요.");
     }
     const winners: ContestWinner[] = selected.map((teamId, index) => ({
       rank: (index + 1) as 1 | 2 | 3,
@@ -462,7 +468,7 @@ export function EventContest() {
               <section id="voting-operations" className="card scroll-mt-4 p-4">
                 <h2 className="text-sm font-black">투표</h2>
                 <p className="mt-1 text-xs font-bold text-app-muted">
-                  완료 {teams.length - unvotedTeams.length}/{teams.length} · 참가자에게 득표수 비공개
+                  2표 완료 {teams.length - unvotedTeams.length}/{teams.length} · 참가자에게 득표수 비공개
                 </p>
                 {event.submission?.status !== "closed" && (
                   <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-black text-amber-800">사진 접수를 마감한 뒤 투표를 시작할 수 있습니다.</p>
@@ -487,27 +493,28 @@ export function EventContest() {
                 </div>
                 <div className="mt-4 divide-y divide-app-border">
                   {teams.map((team) => {
-                    const vote = voteByVoterTeam.get(team.id);
+                    const teamVotes = votesByVoterTeam.get(team.id) ?? [];
+                    const voteComplete = teamVotes.length >= selectionLimit;
                     const phone = team.leader?.phone;
-                    const message = `안녕하세요, ${event.title} 운영팀입니다. ${getTeamLabel(team)}의 가족 투표가 아직 완료되지 않았습니다. 투표 마감 전에 한 표를 선택해주세요.`;
+                    const message = `안녕하세요, ${event.title} 운영팀입니다. ${getTeamLabel(team)}의 가족 투표가 아직 완료되지 않았습니다. 투표 마감 전에 다른 가족 두 곳을 선택해주세요.`;
                     return (
                       <div key={team.id} className="flex items-center gap-2 py-2">
-                        <span className={`h-2.5 w-2.5 rounded-full ${vote ? "bg-emerald-500" : "bg-amber-400"}`} aria-hidden="true" />
+                        <span className={`h-2.5 w-2.5 rounded-full ${voteComplete ? "bg-emerald-500" : "bg-amber-400"}`} aria-hidden="true" />
                         <span className="min-w-0 flex-1 truncate text-xs font-black">{getTeamLabel(team)}</span>
-                        <span className="text-[11px] font-bold text-app-muted">{vote ? "투표 완료" : "미투표"}</span>
-                        {!vote && phone && (
+                        <span className="text-[11px] font-bold text-app-muted">{teamVotes.length}/{selectionLimit} {voteComplete ? "완료" : "미완료"}</span>
+                        {!voteComplete && phone && (
                           <div className="flex flex-none gap-1">
                             <a href={telHref(phone)} className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100" aria-label={`${getTeamLabel(team)} 가족 대표에게 전화`}><Phone className="h-3.5 w-3.5" aria-hidden="true" /></a>
                             <a href={smsHref(phone, message)} className="grid h-8 w-8 place-items-center rounded-xl bg-app-ink text-white" aria-label={`${getTeamLabel(team)} 가족 대표에게 문자`}><MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /></a>
                           </div>
                         )}
-                        {vote && (
+                        {teamVotes.length > 0 && (
                           <button
                             type="button"
                             onClick={() => requestConfirmation({
                               action: () => handleClearVote(team.id),
                               confirmLabel: "투표 초기화",
-                              description: `${getTeamLabel(team)}의 기존 한 표가 삭제됩니다. 해당 가족은 다시 투표할 수 있습니다.`,
+                              description: `${getTeamLabel(team)}의 기존 ${teamVotes.length}표가 삭제됩니다. 해당 가족은 다시 투표할 수 있습니다.`,
                               title: "이 가족의 투표를 초기화할까요?",
                               tone: "danger",
                             })}
@@ -573,7 +580,7 @@ export function EventContest() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-sm font-black">집계 및 결과 공개</h2>
-                    <p className="mt-1 text-xs font-bold text-app-muted">동점은 현장 추첨 후 수상 순서를 직접 지정합니다.</p>
+                    <p className="mt-1 text-xs font-bold text-app-muted">동점은 사진·제목·사연 등을 검토해 운영팀이 최종 순서를 지정합니다.</p>
                   </div>
                   {hasAwardTie && <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-black text-amber-900">동점 처리 필요</span>}
                 </div>
@@ -588,8 +595,8 @@ export function EventContest() {
                       ))}
                     </div>
                     <label className="mt-3 block text-xs font-black text-amber-900">
-                      현장 추첨 결과 *
-                      <input value={tieBreakNote} onChange={(changeEvent) => setTieBreakNote(changeEvent.target.value)} placeholder="예: 무대 추첨 결과 행복한 김가족을 3등으로 확정" className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-amber-500" />
+                      운영팀 선정 사유 *
+                      <input value={tieBreakNote} onChange={(changeEvent) => setTieBreakNote(changeEvent.target.value)} placeholder="예: 사진의 사연과 행사 주제 표현이 좋아 행복한 김가족을 3등으로 선정" className="mt-1 w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-bold text-app-ink outline-none focus:border-amber-500" />
                     </label>
                   </div>
                 )}
@@ -638,7 +645,7 @@ export function EventContest() {
                       action: () => publishResults(true),
                       confirmLabel: "결과 공개",
                       description: hasAwardTie
-                        ? "입력한 현장 추첨 기록과 선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 반영됩니다."
+                        ? "입력한 운영팀 선정 사유와 선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 반영됩니다."
                         : "선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 표시됩니다.",
                       title: "최종 결과를 공개할까요?",
                     })}

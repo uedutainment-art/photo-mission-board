@@ -130,16 +130,17 @@ exports.joinParticipantGroupByToken = onCall({ region }, async (request) => {
 exports.castContestVote = onCall({ region }, async (request) => {
   const uid = requireUser(request);
   const eventId = requiredString(request.data?.eventId, "이벤트");
-  const targetTeamId = requiredString(request.data?.targetTeamId, "투표 대상");
+  const requestedTargetIds = Array.isArray(request.data?.targetTeamIds)
+    ? request.data.targetTeamIds
+    : [request.data?.targetTeamId];
+  const targetTeamIds = requestedTargetIds.map((value) => requiredString(value, "투표 대상"));
   const eventRef = db.doc(`events/${eventId}`);
   const sessionRef = eventRef.collection("participantSessions").doc(uid);
-  const submissionRef = eventRef.collection("familySubmissions").doc(targetTeamId);
 
   return db.runTransaction(async (transaction) => {
-    const [eventSnapshot, sessionSnapshot, submissionSnapshot] = await Promise.all([
+    const [eventSnapshot, sessionSnapshot] = await Promise.all([
       transaction.get(eventRef),
       transaction.get(sessionRef),
-      transaction.get(submissionRef),
     ]);
 
     if (!eventSnapshot.exists || !sessionSnapshot.exists) {
@@ -148,6 +149,8 @@ exports.castContestVote = onCall({ region }, async (request) => {
 
     const eventData = eventSnapshot.data();
     const voterTeamId = sessionSnapshot.get("teamId");
+    const selectionLimit = eventData?.voting?.selectionsPerVoter
+      ?? (eventData?.preset === "family-photo-contest" ? 2 : 1);
 
     if (
       !eventData?.voting?.enabled
@@ -162,27 +165,43 @@ exports.castContestVote = onCall({ region }, async (request) => {
       throw new HttpsError("failed-precondition", "그룹별 투표 행사가 아닙니다.");
     }
 
-    if (voterTeamId === targetTeamId) {
+    if (targetTeamIds.length !== selectionLimit || new Set(targetTeamIds).size !== targetTeamIds.length) {
+      throw new HttpsError("invalid-argument", `서로 다른 ${selectionLimit}곳을 선택해주세요.`);
+    }
+
+    if (targetTeamIds.includes(voterTeamId)) {
       throw new HttpsError("failed-precondition", "자기 그룹에는 투표할 수 없습니다.");
     }
 
-    if (!submissionSnapshot.exists || submissionSnapshot.get("hidden") === true) {
-      throw new HttpsError("not-found", "투표할 수 있는 사진이 아닙니다.");
+    const submissionSnapshots = await Promise.all(
+      targetTeamIds.map((targetTeamId) => transaction.get(
+        eventRef.collection("familySubmissions").doc(targetTeamId),
+      )),
+    );
+
+    if (submissionSnapshots.some((snapshot) => !snapshot.exists || snapshot.get("hidden") === true)) {
+      throw new HttpsError("not-found", "투표할 수 있는 사진이 포함되어 있습니다.");
     }
 
-    const voteRef = eventRef.collection("votes").doc(`team_${voterTeamId}`);
-    transaction.set(voteRef, {
-      eventId,
-      photoId: targetTeamId,
-      teamId: targetTeamId,
-      voterId: uid,
-      voterTeamId,
-      unit: "team",
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+    transaction.delete(eventRef.collection("votes").doc(`team_${voterTeamId}`));
+    transaction.delete(eventRef.collection("votes").doc(`team_${voterTeamId}_1`));
+    transaction.delete(eventRef.collection("votes").doc(`team_${voterTeamId}_2`));
+
+    targetTeamIds.forEach((targetTeamId, index) => {
+      transaction.set(eventRef.collection("votes").doc(`team_${voterTeamId}_${index + 1}`), {
+        eventId,
+        photoId: targetTeamId,
+        teamId: targetTeamId,
+        voterId: uid,
+        voterTeamId,
+        unit: "team",
+        selectionIndex: index,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
     });
 
-    return { voterTeamId, targetTeamId };
+    return { voterTeamId, targetTeamIds };
   });
 });
 
@@ -197,7 +216,11 @@ exports.clearContestVote = onCall({ region }, async (request) => {
     throw new HttpsError("permission-denied", "운영자만 투표를 초기화할 수 있습니다.");
   }
 
-  await eventRef.collection("votes").doc(`team_${voterTeamId}`).delete();
+  const batch = db.batch();
+  batch.delete(eventRef.collection("votes").doc(`team_${voterTeamId}`));
+  batch.delete(eventRef.collection("votes").doc(`team_${voterTeamId}_1`));
+  batch.delete(eventRef.collection("votes").doc(`team_${voterTeamId}_2`));
+  await batch.commit();
   return { cleared: true };
 });
 

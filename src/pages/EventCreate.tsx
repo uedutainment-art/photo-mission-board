@@ -280,6 +280,7 @@ export function EventCreate() {
           target: votingTarget,
           resultMode: votingResultMode,
           unit: votingUnit,
+          selectionsPerVoter: preset === "family-photo-contest" ? 2 : 1,
         },
         preset,
         participantConfig: {
@@ -704,13 +705,13 @@ export function EventCreate() {
                               : "rounded-xl px-2 py-2 text-xs font-black text-app-muted"
                           }
                         >
-                          {unit === "team" ? `${participantLabels.singular}별 1표` : votingUnitLabels[unit]}
+                          {unit === "team" ? `${participantLabels.singular}별 ${preset === "family-photo-contest" ? 2 : 1}표` : votingUnitLabels[unit]}
                         </button>
                       ))}
                     </div>
                     <p className="mt-2 text-[11px] font-bold leading-5 text-app-muted">
                       {votingUnit === "team"
-                        ? `${participantLabels.singular} QR로 들어온 한 대의 폰에서 ${participantLabels.singular} 전체가 한 장을 선택합니다.`
+                        ? `${participantLabels.singular} QR로 들어온 한 대의 폰에서 ${participantLabels.singular} 전체가 ${preset === "family-photo-contest" ? "서로 다른 두 가족" : "한 장"}을 선택합니다.`
                         : "각 참가자 세션마다 한 장을 선택합니다."}
                     </p>
                   </div>

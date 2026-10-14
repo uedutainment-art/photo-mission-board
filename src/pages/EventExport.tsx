@@ -47,6 +47,8 @@ export function EventExport() {
   const outputMode = event?.outputMode ?? "collage";
   const votingEnabled = Boolean(event?.voting?.enabled);
   const votingUnit = event?.voting?.unit ?? "participant";
+  const selectionLimit = event?.voting?.selectionsPerVoter
+    ?? (event?.preset === "family-photo-contest" ? 2 : 1);
   const participantLabels = getParticipantLabels(event);
   const voteCountByPhotoId = useMemo(() => {
     const voteCounts = new Map<string, number>();
@@ -80,22 +82,22 @@ export function EventExport() {
 
     return teamByVoter;
   }, [teams]);
-  const votedTeamIds = useMemo(() => {
-    const teamIds = new Set<string>();
+  const voteCountByVoterTeam = useMemo(() => {
+    const counts = new Map<string, number>();
 
     for (const vote of votes) {
       const voterTeamId = vote.voterTeamId || teamIdByVoterId.get(vote.voterId);
 
       if (voterTeamId) {
-        teamIds.add(voterTeamId);
+        counts.set(voterTeamId, (counts.get(voterTeamId) ?? 0) + 1);
       }
     }
 
-    return teamIds;
+    return counts;
   }, [teamIdByVoterId, votes]);
   const unvotedTeams = useMemo(
-    () => teams.filter((team) => !votedTeamIds.has(team.id)),
-    [teams, votedTeamIds],
+    () => teams.filter((team) => (voteCountByVoterTeam.get(team.id) ?? 0) < selectionLimit),
+    [selectionLimit, teams, voteCountByVoterTeam],
   );
   const votingProgress = teams.length === 0
     ? 0
@@ -350,7 +352,7 @@ export function EventExport() {
                     </button>
                   </div>
                   <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs font-bold leading-5 text-app-muted">
-                    투표권: {votingUnit === "team" ? `${participantLabels.singular}별 1표` : "참가자별 1표"} · 반영 방식: {event.voting?.resultMode === "popular" ? "전체 인기순 사진" : `${participantLabels.singular}별 상위 사진`}
+                    투표권: {votingUnit === "team" ? `${participantLabels.singular}별 ${selectionLimit}표` : "참가자별 1표"} · 반영 방식: {event.voting?.resultMode === "popular" ? "전체 인기순 사진" : `${participantLabels.singular}별 상위 사진`}
                   </div>
                   <div className="mt-4 border-t border-app-border pt-4">
                     <div className="flex items-end justify-between gap-3">
@@ -360,7 +362,7 @@ export function EventExport() {
                         </h3>
                         <p className="mt-1 text-[11px] font-bold text-app-muted">
                           {votingUnit === "team"
-                            ? `${participantLabels.singular} 전체의 한 표가 제출됐는지 확인합니다.`
+                            ? `${participantLabels.singular} 전체의 ${selectionLimit}표가 제출됐는지 확인합니다.`
                             : `${participantLabels.singular}에서 한 명 이상 투표했는지 확인합니다.`}
                         </p>
                       </div>

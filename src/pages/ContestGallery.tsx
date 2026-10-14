@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Loader2, Vote, X } from "lucide-react";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventTeams } from "../hooks/useEventTeams";
 import { useContestVote } from "../hooks/useContestVote";
 import { useTeamSession } from "../hooks/useTeamSession";
-import { castContestVote } from "../lib/contest";
+import { castContestVotes } from "../lib/contest";
 import { getTeamLabel } from "../lib/teamLabel";
 
 function stableOrder(value: string): number {
@@ -22,9 +22,10 @@ export function ContestGallery() {
   const { context, error: sessionError, loading: sessionLoading } = useTeamSession(teamToken);
   const { submissions, error: submissionError, loading: submissionLoading } = useContestSubmissions(context?.eventId);
   const { teams } = useEventTeams(context?.eventId);
-  const myVote = useContestVote(context?.eventId, context?.teamId);
+  const myVotes = useContestVote(context?.eventId, context?.teamId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const teamById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const visibleSubmissions = useMemo(
@@ -35,17 +36,38 @@ export function ContestGallery() {
   const votingOpen = context?.event.submission?.status === "closed"
     && context.event.voting?.status === "open"
     && context.event.results?.status !== "published";
+  const selectionLimit = context?.event.voting?.selectionsPerVoter
+    ?? (context?.event.preset === "family-photo-contest" ? 2 : 1);
+  const savedTeamIds = useMemo(() => myVotes.map((vote) => vote.teamId), [myVotes]);
+  const voteComplete = savedTeamIds.length === selectionLimit;
 
-  async function handleVote(targetTeamId: string) {
+  useEffect(() => {
+    setSelectedTeamIds(savedTeamIds);
+  }, [savedTeamIds]);
+
+  function toggleSelection(targetTeamId: string) {
+    setSelectedTeamIds((current) => {
+      if (current.includes(targetTeamId)) {
+        return current.filter((teamId) => teamId !== targetTeamId);
+      }
+      if (current.length >= selectionLimit) {
+        return current;
+      }
+      return [...current, targetTeamId];
+    });
+    setSelectedId(null);
+  }
+
+  async function handleVoteSubmit() {
     if (!context) return;
-    setBusyId(targetTeamId);
+    setBusy(true);
     setError(null);
     try {
-      await castContestVote(context.eventId, targetTeamId);
+      await castContestVotes(context.eventId, selectedTeamIds);
     } catch (voteError) {
       setError(voteError instanceof Error ? voteError.message : "투표를 저장하지 못했습니다.");
     } finally {
-      setBusyId(null);
+      setBusy(false);
     }
   }
 
@@ -63,13 +85,19 @@ export function ContestGallery() {
           {(sessionError || submissionError || error) && <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{sessionError || submissionError || error}</div>}
           {!loading && context && (
             <>
-              <section className="mb-4 rounded-2xl bg-app-ink p-4 text-white"><div className="flex items-center justify-between"><div><p className="text-[11px] font-black text-slate-400">{votingOpen ? "투표 진행 중" : context.event.voting?.status === "closed" ? "투표 마감" : "사진 감상"}</p><h2 className="mt-1 text-sm font-black">{votingOpen ? "마음에 드는 사진 한 장을 골라주세요" : "다른 참가자의 사진을 둘러보세요"}</h2></div><Vote className="h-5 w-5 text-slate-300" /></div>{myVote && <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-xs font-black">{votingOpen ? "선택 완료 · 다른 사진을 누르면 변경됩니다" : "내 투표가 저장되어 있습니다."}</p>}</section>
+              <section className="mb-4 rounded-2xl bg-app-ink p-4 text-white"><div className="flex items-center justify-between gap-3"><div><p className="text-[11px] font-black text-slate-400">{votingOpen ? "투표 진행 중" : context.event.voting?.status === "closed" ? "투표 마감" : "사진 감상"}</p><h2 className="mt-1 text-sm font-black">{votingOpen ? `마음에 드는 다른 가족 ${selectionLimit}곳을 골라주세요` : "다른 참가자의 사진을 둘러보세요"}</h2></div><span className="flex-none rounded-full bg-white/10 px-3 py-1 text-xs font-black">{votingOpen ? `${selectedTeamIds.length}/${selectionLimit}` : <Vote className="h-5 w-5 text-slate-300" />}</span></div>{voteComplete && <p className="mt-3 rounded-xl bg-white/10 px-3 py-2 text-xs font-black">{votingOpen ? "저장된 투표가 있습니다 · 두 가족을 다시 골라 변경할 수 있어요" : `내 ${selectionLimit}표가 저장되어 있습니다.`}</p>}</section>
               <div className="grid grid-cols-3 gap-1">
                 {visibleSubmissions.map((submission) => {
                   const team = teamById.get(submission.teamId);
-                  return <button key={submission.id} type="button" onClick={() => setSelectedId(submission.id)} className="relative aspect-square overflow-hidden bg-slate-200"><img src={submission.thumbUrl} alt={submission.title} className="h-full w-full object-cover" /><span className="absolute bottom-1 left-1 max-w-[calc(100%-8px)] truncate rounded bg-slate-950/70 px-1.5 py-0.5 text-[10px] font-black text-white">{team ? getTeamLabel(team) : "참가자"}</span>{myVote?.teamId === submission.teamId && <span className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-app-primary text-white"><Check className="h-3.5 w-3.5" /></span>}</button>;
+                  return <button key={submission.id} type="button" onClick={() => setSelectedId(submission.id)} className="relative aspect-square overflow-hidden bg-slate-200"><img src={submission.thumbUrl} alt={submission.title} className="h-full w-full object-cover" /><span className="absolute bottom-1 left-1 max-w-[calc(100%-8px)] truncate rounded bg-slate-950/70 px-1.5 py-0.5 text-[10px] font-black text-white">{team ? getTeamLabel(team) : "참가자"}</span>{selectedTeamIds.includes(submission.teamId) && <span className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-app-primary text-white"><Check className="h-3.5 w-3.5" /></span>}</button>;
                 })}
               </div>
+              {votingOpen && (
+                <button type="button" onClick={() => void handleVoteSubmit()} disabled={busy || selectedTeamIds.length !== selectionLimit} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500">
+                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {selectedTeamIds.length === selectionLimit ? `${selectionLimit}표 제출하기` : `${selectionLimit - selectedTeamIds.length}곳 더 선택해주세요`}
+                </button>
+              )}
               {visibleSubmissions.length === 0 && <div className="card p-8 text-center text-sm font-black text-app-muted">아직 등록된 사진이 없습니다.</div>}
             </>
           )}
@@ -77,7 +105,7 @@ export function ContestGallery() {
         {selected && context && (
           <div className="absolute inset-0 z-10 flex flex-col bg-white">
             <div className="relative flex-1 bg-slate-950"><img src={selected.originalUrl} alt={selected.title} className="h-full w-full object-contain" /><button type="button" onClick={() => setSelectedId(null)} className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-slate-950/70 text-white" aria-label="닫기"><X className="h-5 w-5" /></button></div>
-            <div className="p-4"><p className="text-xs font-black text-app-muted">{teamById.get(selected.teamId) ? getTeamLabel(teamById.get(selected.teamId)!) : "참가자"}</p><h2 className="mt-1 text-lg font-black">{selected.title}</h2>{selected.teamId === context.teamId ? <p className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-black text-app-muted">우리 사진에는 투표할 수 없습니다.</p> : votingOpen ? <button type="button" onClick={() => void handleVote(selected.teamId)} disabled={busyId === selected.teamId} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:opacity-50">{busyId === selected.teamId && <Loader2 className="h-4 w-4 animate-spin" />}{myVote?.teamId === selected.teamId ? "이 사진으로 투표 완료" : "이 사진에 한 표"}</button> : <p className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-black text-app-muted">현재 투표 시간이 아닙니다.</p>}</div>
+            <div className="p-4"><p className="text-xs font-black text-app-muted">{teamById.get(selected.teamId) ? getTeamLabel(teamById.get(selected.teamId)!) : "참가자"}</p><h2 className="mt-1 text-lg font-black">{selected.title}</h2>{selected.teamId === context.teamId ? <p className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-black text-app-muted">우리 사진에는 투표할 수 없습니다.</p> : votingOpen ? <button type="button" onClick={() => toggleSelection(selected.teamId)} disabled={!selectedTeamIds.includes(selected.teamId) && selectedTeamIds.length >= selectionLimit} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500">{selectedTeamIds.includes(selected.teamId) ? "선택 취소" : selectedTeamIds.length >= selectionLimit ? `이미 ${selectionLimit}가족을 선택했습니다` : "이 사진 선택"}</button> : <p className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-center text-sm font-black text-app-muted">현재 투표 시간이 아닙니다.</p>}</div>
           </div>
         )}
       </section>

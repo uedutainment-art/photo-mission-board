@@ -100,6 +100,7 @@ export interface VotingSettings {
   target: VotingTarget;
   resultMode: VotingResultMode;
   unit?: VotingUnit;
+  selectionsPerVoter?: number;
 }
 
 export interface ExternalEventReference {
@@ -234,6 +235,7 @@ export interface PhotoVote {
   voterId: string;
   voterTeamId?: string;
   unit?: VotingUnit;
+  selectionIndex?: number;
   createdAt: Timestamp;
 }
 

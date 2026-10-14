@@ -4,18 +4,30 @@ import { db } from "../lib/firebase";
 import type { PhotoVote } from "../lib/types";
 
 export function useContestVote(eventId: string | undefined, teamId: string | undefined) {
-  const [vote, setVote] = useState<(PhotoVote & { id: string }) | null>(null);
+  const [votes, setVotes] = useState<(PhotoVote & { id: string })[]>([]);
 
   useEffect(() => {
     if (!eventId || !teamId) {
-      setVote(null);
+      setVotes([]);
       return undefined;
     }
 
-    return onSnapshot(doc(db, "events", eventId, "votes", `team_${teamId}`), (snapshot) => {
-      setVote(snapshot.exists() ? { ...(snapshot.data() as PhotoVote), id: snapshot.id } : null);
-    });
+    const snapshots = new Map<string, PhotoVote & { id: string }>();
+    const voteIds = [`team_${teamId}`, `team_${teamId}_1`, `team_${teamId}_2`];
+    const unsubscribes = voteIds.map((voteId) => onSnapshot(
+      doc(db, "events", eventId, "votes", voteId),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          snapshots.set(voteId, { ...(snapshot.data() as PhotoVote), id: snapshot.id });
+        } else {
+          snapshots.delete(voteId);
+        }
+        setVotes([...snapshots.values()].sort((a, b) => (a.selectionIndex ?? 0) - (b.selectionIndex ?? 0)));
+      },
+    ));
+
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
   }, [eventId, teamId]);
 
-  return vote;
+  return votes;
 }

@@ -44,8 +44,12 @@ service cloud.firestore {
     }
 
     function isOwnTeamVote(eventId, voteId) {
-      return signedIn()
-        && voteId == 'team_' + get(/databases/$(database)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)).data.teamId;
+      let ownVotePrefix = 'team_' + get(/databases/$(database)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)).data.teamId;
+      return signedIn() && (
+        voteId == ownVotePrefix
+        || voteId == ownVotePrefix + '_1'
+        || voteId == ownVotePrefix + '_2'
+      );
     }
 
     // Phase 5 의 useTeamSession 이 collectionGroup("teams") + where("token", "==", ...)

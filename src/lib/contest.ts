@@ -85,9 +85,9 @@ export async function saveContestSubmission({
   }
 }
 
-export async function castContestVote(eventId: string, targetTeamId: string): Promise<void> {
-  const callable = httpsCallable<{ eventId: string; targetTeamId: string }>(functions, "castContestVote");
-  await callable({ eventId, targetTeamId });
+export async function castContestVotes(eventId: string, targetTeamIds: string[]): Promise<void> {
+  const callable = httpsCallable<{ eventId: string; targetTeamIds: string[] }>(functions, "castContestVote");
+  await callable({ eventId, targetTeamIds });
 }
 
 export async function clearContestVote(eventId: string, voterTeamId: string): Promise<void> {

@@ -95,7 +95,7 @@ async function createPage(
     context.fillRect(x + 24, y + 298, cardWidth - 48, 1);
     context.fillStyle = "#475569";
     context.font = `700 15px ${FONT}`;
-    context.fillText("가족별 한 표 · 다른 가족에게 코드를 공유하지 마세요", x + 24, y + 334);
+    context.fillText("가족별 두 표 · 다른 가족에게 코드를 공유하지 마세요", x + 24, y + 334);
   });
 
   return canvas.toDataURL("image/png");
