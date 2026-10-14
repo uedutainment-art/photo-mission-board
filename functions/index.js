@@ -45,6 +45,12 @@ exports.joinParticipantGroup = onCall({ region }, async (request) => {
   const uid = requireUser(request);
   const eventId = requiredString(request.data?.eventId, "이벤트");
   const accessCode = requiredString(request.data?.accessCode, "참가 코드");
+  const familyName = requiredString(request.data?.familyName, "가족 이름");
+
+  if (familyName.length > 30) {
+    throw new HttpsError("invalid-argument", "가족 이름은 30자 이하로 입력해주세요.");
+  }
+
   const eventRef = db.doc(`events/${eventId}`);
   const eventSnapshot = await eventRef.get();
 
@@ -64,19 +70,36 @@ exports.joinParticipantGroup = onCall({ region }, async (request) => {
   }
 
   const teamId = codeDocument.get("teamId");
-  const teamSnapshot = await eventRef.collection("teams").doc(teamId).get();
+  const teamRef = eventRef.collection("teams").doc(teamId);
+  const team = await db.runTransaction(async (transaction) => {
+    const teamSnapshot = await transaction.get(teamRef);
 
-  if (!teamSnapshot.exists) {
-    throw new HttpsError("not-found", "참가 단위를 찾을 수 없습니다.");
-  }
+    if (!teamSnapshot.exists) {
+      throw new HttpsError("not-found", "참가 단위를 찾을 수 없습니다.");
+    }
+
+    const defaultName = teamSnapshot.get("name");
+    const currentDisplayName = teamSnapshot.get("displayName");
+    const canClaimName = !currentDisplayName || currentDisplayName === defaultName;
+    const displayName = canClaimName ? familyName : currentDisplayName;
+
+    if (canClaimName) {
+      transaction.update(teamRef, { displayName });
+    }
+
+    return {
+      displayName,
+      token: teamSnapshot.get("token"),
+    };
+  });
 
   await saveParticipantSession({ eventId, teamId, uid });
 
   return {
     eventId,
     teamId,
-    teamToken: teamSnapshot.get("token"),
-    teamName: teamSnapshot.get("displayName") || teamSnapshot.get("name"),
+    teamToken: team.token,
+    teamName: team.displayName,
   };
 });
 
