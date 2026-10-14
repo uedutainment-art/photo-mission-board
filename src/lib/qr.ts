@@ -14,6 +14,10 @@ export function getEventHubUrl(eventId: string): string {
   return `${host}/e/${eventId}`;
 }
 
+export function getEventJoinUrl(eventId: string): string {
+  return `${getEventHubUrl(eventId)}/join`;
+}
+
 export async function createQrDataUrl(url: string, size = 220): Promise<string> {
   return QRCode.toDataURL(url, {
     errorCorrectionLevel: "M",

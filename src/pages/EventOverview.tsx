@@ -129,9 +129,9 @@ export function EventOverview() {
                     <div className="grid h-11 w-11 flex-none place-items-center rounded-2xl bg-amber-100 text-amber-800"><Trophy className="h-5 w-5" aria-hidden="true" /></div>
                     <div className="min-w-0 flex-1"><h2 className="text-sm font-black">사진 콘테스트 운영</h2><p className="mt-1 text-xs font-bold text-app-muted">접수·투표·집계·결과 공개를 관리합니다.</p></div><span className="text-xl font-black">→</span>
                   </Link>
-                  <Link to={`/e/${eventId}`} target="_blank" className="card flex items-center gap-3 p-4">
+                  <Link to={`/e/${eventId}/join`} target="_blank" className="card flex items-center gap-3 p-4">
                     <div className="grid h-11 w-11 flex-none place-items-center rounded-2xl bg-blue-100 text-blue-800"><ExternalLink className="h-5 w-5" aria-hidden="true" /></div>
-                    <div className="min-w-0 flex-1"><h2 className="text-sm font-black">참가자 공통 QR 화면</h2><p className="mt-1 text-xs font-bold text-app-muted">행사 메뉴와 가족 코드 입장을 확인합니다.</p></div>
+                    <div className="min-w-0 flex-1"><h2 className="text-sm font-black">참가자 공통 QR 화면</h2><p className="mt-1 text-xs font-bold text-app-muted">가족 이름과 코드로 바로 입장하는 화면입니다.</p></div>
                   </Link>
                 </>
               )}

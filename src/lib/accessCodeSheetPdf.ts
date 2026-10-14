@@ -1,4 +1,4 @@
-import { createQrDataUrl, getEventHubUrl } from "./qr";
+import { createQrDataUrl, getEventJoinUrl } from "./qr";
 import { formatKoreanDate } from "./formatDate";
 import { getTeamLabel } from "./teamLabel";
 import type { ParticipantAccessCode } from "../hooks/useAccessCodes";
@@ -46,7 +46,7 @@ async function createPage(
   context.fillText(`${pageNumber}/${pageCount}`, WIDTH - 70, 108);
   context.textAlign = "left";
 
-  const qrUrl = getEventHubUrl(eventId);
+  const qrUrl = getEventJoinUrl(eventId);
   const qrDataUrl = await createQrDataUrl(qrUrl, 320);
   const qrImage = await new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
@@ -89,7 +89,7 @@ async function createPage(
     context.fillText(code, x + 270, y + 222);
     context.fillStyle = "#64748b";
     context.font = `700 15px ${FONT}`;
-    context.fillText("QR → 사진 콘테스트 → 코드 입력", x + 270, y + 262);
+    context.fillText("QR → 가족 이름·코드 입력 → 바로 입장", x + 270, y + 262);
 
     context.fillStyle = "#f1f5f9";
     context.fillRect(x + 24, y + 298, cardWidth - 48, 1);
