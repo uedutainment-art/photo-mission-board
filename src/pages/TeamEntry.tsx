@@ -122,7 +122,7 @@ export function TeamEntry() {
           )}
 
           {!loading && !error && context && (
-            context.event.preset === "family-photo-contest" && teamToken ? (
+            (context.event.preset === "family-photo-contest" || context.event.modules?.photoContest) && teamToken ? (
               <FamilyEventMenu context={context} teamToken={teamToken} />
             ) : <>
               <section className="rounded-panel bg-gradient-to-br from-app-ink to-slate-700 p-6 text-white">
