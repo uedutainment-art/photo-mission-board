@@ -19,8 +19,8 @@ export function ParticipantJoin() {
     ? "Sonova Consumer Hearing Korea"
     : event?.externalEvent?.brandName || event?.title || "Family Photo Day";
   const familyDayLabel = isSonovaFamilyDay ? "Family Day" : "가족 사진 콘테스트";
-  const eventDate = formatKoreanDate(event?.scheduledAt) || (isSonovaFamilyDay ? "2026.10.17 SAT" : "");
-  const eventVenue = event?.guide?.venue || (isSonovaFamilyDay ? "더드림핑" : "");
+  const eventDate = isSonovaFamilyDay ? "2026.10.17 SAT" : formatKoreanDate(event?.scheduledAt);
+  const eventVenue = isSonovaFamilyDay ? "더드림핑" : event?.guide?.venue || "";
 
   async function handleJoin() {
     if (!eventId || !code.trim() || !familyName.trim()) return;
