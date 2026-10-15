@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { KeyRound, Loader2, Users } from "lucide-react";
 import { usePublicEvent } from "../hooks/usePublicEvent";
+import { getEventBrandName, isSonovaFamilyDay } from "../lib/eventBrand";
 import { formatKoreanDate } from "../lib/formatDate";
 import { joinParticipantGroup } from "../lib/participantAccess";
 
@@ -13,12 +14,9 @@ export function ParticipantJoin() {
   const [familyName, setFamilyName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const eventIdentity = `${event?.title ?? ""} ${event?.externalEvent?.brandName ?? ""}`;
-  const isSonovaFamilyDay = /sonova|소노바/i.test(eventIdentity);
-  const brandName = isSonovaFamilyDay
-    ? "Sonova Consumer Hearing Korea"
-    : event?.externalEvent?.brandName || event?.title || "Family Photo Day";
-  const familyDayLabel = isSonovaFamilyDay ? "Family Day" : "가족 사진 콘테스트";
+  const sonovaFamilyDay = isSonovaFamilyDay(event);
+  const brandName = getEventBrandName(event);
+  const familyDayLabel = sonovaFamilyDay ? "Family Day" : "가족 사진 콘테스트";
   const eventDate = formatKoreanDate(event?.scheduledAt);
   const eventVenue = event?.guide?.venue || "";
 

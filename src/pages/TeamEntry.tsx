@@ -1,6 +1,8 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CalendarDays, Camera, ChevronRight, Gamepad2, Images, Loader2, Music2, Share2, Target, Users } from "lucide-react";
+import { EventBrandMark } from "../components/EventBrandMark";
 import { useTeamSession, type TeamSessionContext } from "../hooks/useTeamSession";
+import { isSonovaFamilyDay } from "../lib/eventBrand";
 import { formatKoreanDate } from "../lib/formatDate";
 import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
@@ -19,16 +21,36 @@ function getStartLabel(selfieMode: string): string {
 
 function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; teamToken: string }) {
   const modules = context.event.modules;
+  const sonova = isSonovaFamilyDay(context.event);
 
   return (
     <>
-      <section className="rounded-panel bg-app-ink p-6 text-white">
-        <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">FAMILY DAY</p>
-        <h1 className="mt-2 text-2xl font-black tracking-normal">{context.event.title}</h1>
-        <div className="mt-5 border-t border-slate-700 pt-4">
-          <p className="text-xs font-bold text-slate-400">로그인한 가족</p>
-          <p className="mt-1 text-lg font-black">{getTeamLabel(context.team)}</p>
-        </div>
+      <section className={sonova ? "overflow-hidden rounded-[8px] border border-white/80 bg-white/90 shadow-[0_18px_45px_rgba(31,65,47,0.14)]" : "rounded-panel bg-app-ink p-6 text-white"}>
+        {sonova ? (
+          <>
+            <div className="flex items-start justify-between gap-4 border-b border-[#d9dfd2] px-5 py-5">
+              <EventBrandMark event={context.event} />
+              <span className="rounded-full border border-[#9eb4a5] px-3 py-1 text-[9px] font-black uppercase text-[#385444]">Family Day</span>
+            </div>
+            <div className="px-5 py-5">
+              <p className="text-[10px] font-black uppercase text-[#78877c]">Welcome to</p>
+              <h1 className="mt-2 text-2xl font-black leading-8 text-[#173c2c]">{context.event.title}</h1>
+              <div className="mt-5 flex items-center justify-between border-t border-[#d9dfd2] pt-4">
+                <p className="text-xs font-bold text-[#617466]">함께하는 가족</p>
+                <p className="text-lg font-black text-[#173c2c]">{getTeamLabel(context.team)}</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">FAMILY DAY</p>
+            <h1 className="mt-2 text-2xl font-black tracking-normal">{context.event.title}</h1>
+            <div className="mt-5 border-t border-slate-700 pt-4">
+              <p className="text-xs font-bold text-slate-400">로그인한 가족</p>
+              <p className="mt-1 text-lg font-black">{getTeamLabel(context.team)}</p>
+            </div>
+          </>
+        )}
       </section>
 
       <section>
@@ -82,6 +104,7 @@ export function TeamEntry() {
   const { context, error, loading } = useTeamSession(teamToken);
   const eventDateText = context ? formatKoreanDate(context.event.scheduledAt) || context.event.subtitle : "";
   const participantLabels = getParticipantLabels(context?.event);
+  const sonova = isSonovaFamilyDay(context?.event);
 
   function handleStart() {
     if (!context || !teamToken) {
@@ -102,19 +125,18 @@ export function TeamEntry() {
   }
 
   return (
-    <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
-      <section className="phone-surface overflow-hidden rounded-[28px] border border-app-border shadow-phone">
-        <header className="border-b border-app-border bg-white/95 px-4 pb-4 pt-3">
+    <main className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
+      <section className={`phone-surface relative overflow-hidden rounded-[28px] border shadow-phone ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]" : "border-app-border"}`}>
+        {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-65" />}
+        <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white/95"}`}>
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between">
-            <div className="text-[11px] font-black tracking-[0.08em] text-app-muted">
-              PHOTO MISSION BOARD
-            </div>
+            {sonova && context ? <EventBrandMark event={context.event} /> : <div className="text-[11px] font-black tracking-[0.08em] text-app-muted">PHOTO MISSION BOARD</div>}
             <div className="grid h-10 w-10 place-items-center rounded-xl text-app-muted">···</div>
           </div>
         </header>
 
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto bg-slate-50 p-4">
+        <div className={`relative z-10 flex flex-1 flex-col gap-4 overflow-y-auto p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && (
             <section className="card flex items-center justify-center gap-3 p-5 text-sm font-black text-app-muted">
               <Loader2 className="h-5 w-5 animate-spin text-app-primary" aria-hidden="true" />
