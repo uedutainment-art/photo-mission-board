@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import type { DragEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { deleteField, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Download,
   Eye,
@@ -16,7 +19,6 @@ import {
   Trophy,
   X,
 } from "lucide-react";
-import JSZip from "jszip";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventLive } from "../hooks/useEventLive";
@@ -100,7 +102,6 @@ export function EventContest() {
   const [photoTeamFilter, setPhotoTeamFilter] = useState("all");
   const [photoPromptFilter, setPhotoPromptFilter] = useState("all");
   const [previewSubmissionId, setPreviewSubmissionId] = useState<string | null>(null);
-  const [zipProgress, setZipProgress] = useState<{ completed: number; total: number } | null>(null);
   const selectionLimit = event?.voting?.selectionsPerVoter
     ?? (event?.preset === "family-photo-contest" ? 2 : 1);
   const minimumPhotos = event?.preset === "family-photo-contest"
@@ -171,6 +172,9 @@ export function EventContest() {
     [photoPromptFilter, photoTeamFilter, submissions],
   );
   const previewSubmission = submissions.find((item) => item.id === previewSubmissionId) ?? null;
+  const previewIndex = previewSubmission
+    ? filteredSubmissions.findIndex((item) => item.id === previewSubmission.id)
+    : -1;
   const sortedSongRequests = useMemo(
     () => [...songRequests].sort((a, b) => Number(Boolean(a.playedAt)) - Number(Boolean(b.playedAt))),
     [songRequests],
@@ -409,54 +413,21 @@ export function EventContest() {
     return `${String(team?.index ?? 0).padStart(2, "0")}-${safeFilename(teamLabel)}-${safeFilename(item.title)}.${safeExtension}`;
   }
 
-  async function downloadOriginals() {
-    if (!event || submissions.length === 0) return;
-    setBusy("zip");
-    setLocalError(null);
-    setNotice(null);
-    setZipProgress({ completed: 0, total: submissions.length });
-    try {
-      const zip = new JSZip();
-      const failures: string[] = [];
-      let completed = 0;
+  function setOriginalDragData(
+    dragEvent: DragEvent<HTMLElement>,
+    item: (typeof submissions)[number],
+  ) {
+    const filename = getOriginalFilename(item);
+    dragEvent.dataTransfer.effectAllowed = "copy";
+    dragEvent.dataTransfer.setData("DownloadURL", `application/octet-stream:${filename}:${item.originalUrl}`);
+    dragEvent.dataTransfer.setData("text/uri-list", item.originalUrl);
+    dragEvent.dataTransfer.setData("text/plain", item.originalUrl);
+  }
 
-      for (let offset = 0; offset < submissions.length; offset += 4) {
-        const batch = submissions.slice(offset, offset + 4);
-        const results = await Promise.all(batch.map(async (item) => {
-          try {
-            const response = await fetch(item.originalUrl);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const blob = await response.blob();
-            return { blob, item };
-          } catch {
-            failures.push(getOriginalFilename(item));
-            return null;
-          } finally {
-            completed += 1;
-            setZipProgress({ completed, total: submissions.length });
-          }
-        }));
-
-        results.forEach((result) => {
-          if (!result) return;
-          zip.file(getOriginalFilename(result.item, getImageExtension(result.blob, result.item.originalPath)), result.blob);
-        });
-      }
-
-      if (Object.keys(zip.files).length === 0) throw new Error("저장할 수 있는 원본 사진이 없습니다.");
-      downloadBlob(
-        await zip.generateAsync({ type: "blob" }),
-        `${safeFilename(event.title)}-contest-originals.zip`,
-      );
-      setNotice(failures.length > 0
-        ? `원본 ZIP을 저장했습니다. 불러오지 못한 사진 ${failures.length}장은 개별 저장해주세요.`
-        : `원본 사진 ${submissions.length}장을 ZIP으로 저장했습니다.`);
-    } catch (zipError) {
-      setLocalError(zipError instanceof Error ? zipError.message : "원본 ZIP을 만들지 못했습니다.");
-    } finally {
-      setBusy(null);
-      setZipProgress(null);
-    }
+  function showAdjacentPhoto(direction: -1 | 1) {
+    if (filteredSubmissions.length === 0 || previewIndex < 0) return;
+    const nextIndex = (previewIndex + direction + filteredSubmissions.length) % filteredSubmissions.length;
+    setPreviewSubmissionId(filteredSubmissions[nextIndex].id);
   }
 
   const pageLoading = loading || submissionsLoading;
@@ -699,18 +670,12 @@ export function EventContest() {
                     return (
                       <div key={item.id} className="overflow-hidden rounded-2xl border border-app-border bg-white">
                         <div className="relative">
-                          <button type="button" onClick={() => setPreviewSubmissionId(item.id)} className="block w-full" aria-label={`${teamLabel} ${item.title} 크게 보기`}>
+                          <button type="button" draggable onDragStart={(dragEvent) => setOriginalDragData(dragEvent, item)} onClick={() => setPreviewSubmissionId(item.id)} className="block w-full cursor-grab active:cursor-grabbing" aria-label={`${teamLabel} ${item.title} 크게 보기`}>
                           <img
                             src={item.thumbUrl}
                             alt={item.title}
-                            draggable
-                            onDragStart={(dragEvent) => {
-                              const filename = getOriginalFilename(item);
-                              dragEvent.dataTransfer.effectAllowed = "copy";
-                              dragEvent.dataTransfer.setData("DownloadURL", `application/octet-stream:${filename}:${item.originalUrl}`);
-                              dragEvent.dataTransfer.setData("text/uri-list", item.originalUrl);
-                            }}
-                            className="aspect-square w-full cursor-zoom-in object-cover"
+                            draggable={false}
+                            className="aspect-square w-full object-cover"
                             title="끌어서 원본 저장"
                           />
                           </button>
@@ -855,14 +820,10 @@ export function EventContest() {
                 )}
               </section>
 
-              <section className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={downloadResultsCsv} className="card flex items-center justify-center gap-2 p-4 text-xs font-black">
+              <section>
+                <button type="button" onClick={downloadResultsCsv} className="card flex w-full items-center justify-center gap-2 p-4 text-xs font-black">
                   <Download className="h-4 w-4" aria-hidden="true" />
                   집계 CSV
-                </button>
-                <button type="button" onClick={() => void downloadOriginals()} disabled={busy === "zip" || submissions.length === 0} className="card flex items-center justify-center gap-2 p-4 text-xs font-black disabled:opacity-50">
-                  {busy === "zip" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
-                  {zipProgress ? `원본 ${zipProgress.completed}/${zipProgress.total}` : "원본 ZIP"}
                 </button>
               </section>
 
@@ -902,12 +863,19 @@ export function EventContest() {
           <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
             <div className="min-w-0">
               <p className="truncate text-sm font-black">{getTeamLabel(teamById.get(previewSubmission.teamId) ?? { name: previewSubmission.teamId })}</p>
-              <p className="truncate text-xs font-bold text-slate-300">{previewSubmission.promptId ? promptById.get(previewSubmission.promptId)?.title : previewSubmission.title}</p>
+              <p className="truncate text-xs font-bold text-slate-300">{previewSubmission.promptId ? promptById.get(previewSubmission.promptId)?.title : previewSubmission.title} · {previewIndex + 1}/{filteredSubmissions.length}</p>
             </div>
             <button type="button" onClick={() => setPreviewSubmissionId(null)} className="grid h-10 w-10 flex-none place-items-center rounded-full bg-white/15" aria-label="사진 닫기"><X className="h-5 w-5" aria-hidden="true" /></button>
           </div>
-          <div className="flex min-h-0 flex-1 items-center justify-center p-4">
-            <img src={previewSubmission.originalUrl} alt={previewSubmission.title} className="max-h-full max-w-full object-contain" />
+          <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
+            {filteredSubmissions.length > 1 && (
+              <button type="button" onClick={() => showAdjacentPhoto(-1)} className="absolute left-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white" aria-label="이전 사진"><ChevronLeft className="h-6 w-6" aria-hidden="true" /></button>
+            )}
+            <img src={previewSubmission.originalUrl} alt={previewSubmission.title} draggable onDragStart={(dragEvent) => setOriginalDragData(dragEvent, previewSubmission)} className="max-h-full max-w-full cursor-grab object-contain active:cursor-grabbing" title="바탕화면이나 폴더로 끌어서 저장" />
+            {filteredSubmissions.length > 1 && (
+              <button type="button" onClick={() => showAdjacentPhoto(1)} className="absolute right-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white" aria-label="다음 사진"><ChevronRight className="h-6 w-6" aria-hidden="true" /></button>
+            )}
+            <span className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[11px] font-black text-white"><GripVertical className="h-3.5 w-3.5" aria-hidden="true" />끌어서 저장</span>
           </div>
           <div className="grid grid-cols-2 gap-2 border-t border-white/10 bg-slate-950 p-4">
             <button type="button" onClick={() => setPreviewSubmissionId(null)} className="rounded-2xl border border-white/20 px-4 py-3 text-sm font-black text-white">닫기</button>
