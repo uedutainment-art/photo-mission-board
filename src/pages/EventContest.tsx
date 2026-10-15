@@ -171,9 +171,21 @@ export function EventContest() {
     )),
     [photoPromptFilter, photoTeamFilter, submissions],
   );
+  const reviewGroups = useMemo(
+    () => teams
+      .map((team) => ({
+        team,
+        submissions: filteredSubmissions.filter((item) => item.teamId === team.id),
+      }))
+      .filter((group) => group.submissions.length > 0),
+    [filteredSubmissions, teams],
+  );
   const previewSubmission = submissions.find((item) => item.id === previewSubmissionId) ?? null;
+  const previewFamilySubmissions = previewSubmission
+    ? filteredSubmissions.filter((item) => item.teamId === previewSubmission.teamId)
+    : [];
   const previewIndex = previewSubmission
-    ? filteredSubmissions.findIndex((item) => item.id === previewSubmission.id)
+    ? previewFamilySubmissions.findIndex((item) => item.id === previewSubmission.id)
     : -1;
   const sortedSongRequests = useMemo(
     () => [...songRequests].sort((a, b) => Number(Boolean(a.playedAt)) - Number(Boolean(b.playedAt))),
@@ -425,9 +437,9 @@ export function EventContest() {
   }
 
   function showAdjacentPhoto(direction: -1 | 1) {
-    if (filteredSubmissions.length === 0 || previewIndex < 0) return;
-    const nextIndex = (previewIndex + direction + filteredSubmissions.length) % filteredSubmissions.length;
-    setPreviewSubmissionId(filteredSubmissions[nextIndex].id);
+    if (previewFamilySubmissions.length === 0 || previewIndex < 0) return;
+    const nextIndex = (previewIndex + direction + previewFamilySubmissions.length) % previewFamilySubmissions.length;
+    setPreviewSubmissionId(previewFamilySubmissions[nextIndex].id);
   }
 
   const pageLoading = loading || submissionsLoading;
@@ -664,63 +676,61 @@ export function EventContest() {
                     </select>
                   </label>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  {filteredSubmissions.map((item) => {
-                    const teamLabel = getTeamLabel(teamById.get(item.teamId) ?? { name: item.teamId });
+                <div className="mt-4 space-y-5">
+                  {reviewGroups.map(({ team, submissions: familySubmissions }) => {
+                    const teamLabel = getTeamLabel(team);
                     return (
-                      <div key={item.id} className="overflow-hidden rounded-2xl border border-app-border bg-white">
-                        <div className="relative">
-                          <button type="button" draggable onDragStart={(dragEvent) => setOriginalDragData(dragEvent, item)} onClick={() => setPreviewSubmissionId(item.id)} className="block w-full cursor-grab active:cursor-grabbing" aria-label={`${teamLabel} ${item.title} 크게 보기`}>
-                          <img
-                            src={item.thumbUrl}
-                            alt={item.title}
-                            draggable={false}
-                            className="aspect-square w-full object-cover"
-                            title="끌어서 원본 저장"
-                          />
-                          </button>
-                          <span className="pointer-events-none absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-lg bg-slate-950/70 text-white" title="끌어서 원본 저장">
-                            <GripVertical className="h-4 w-4" aria-hidden="true" />
-                          </span>
+                      <section key={team.id} className="border-t border-app-border pt-4 first:border-t-0 first:pt-0">
+                        <div className="mb-2 flex items-center justify-between gap-3">
+                          <h3 className="truncate text-sm font-black">{teamLabel}</h3>
+                          <span className="flex-none rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-app-muted">{familySubmissions.length}장</span>
                         </div>
-                        <div className="p-2">
-                          <p className="truncate text-xs font-black">{teamLabel}</p>
-                          {item.promptId && promptById.get(item.promptId) && <p className="truncate text-[10px] font-black text-app-primary">미션 · {promptById.get(item.promptId)?.title}</p>}
-                          <p className="truncate text-[11px] font-bold text-app-muted">{item.title}</p>
-                          <div className="mt-2 grid grid-cols-2 gap-1">
-                            <button type="button" onClick={() => void downloadOriginal(item)} disabled={busy === `download-${item.id}`} className="flex items-center justify-center gap-1 rounded-xl bg-app-ink px-2 py-2 text-[11px] font-black text-white disabled:opacity-50">
-                              {busy === `download-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
-                              원본 저장
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (item.hidden) {
-                                  void toggleHidden(item.id, false);
-                                  return;
-                                }
-                                requestConfirmation({
-                                  action: () => toggleHidden(item.id, true),
-                                  confirmLabel: "사진 숨기기",
-                                  description: `${teamLabel}의 사진이 포토 보드와 투표 대상에서 숨겨집니다. 나중에 다시 표시할 수 있습니다.`,
-                                  title: "이 사진을 숨길까요?",
-                                  tone: "danger",
-                                });
-                              }}
-                              disabled={busy === `hide-${item.id}`}
-                              className={`flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-black ${item.hidden ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-app-muted"}`}
-                            >
-                              {item.hidden ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
-                              {item.hidden ? "다시 표시" : "숨기기"}
-                            </button>
-                          </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {familySubmissions.map((item) => (
+                            <div key={item.id} className="overflow-hidden rounded-2xl border border-app-border bg-white">
+                              <div className="relative">
+                                <button type="button" draggable onDragStart={(dragEvent) => setOriginalDragData(dragEvent, item)} onClick={() => setPreviewSubmissionId(item.id)} className="block w-full cursor-grab active:cursor-grabbing" aria-label={`${teamLabel} ${item.title} 크게 보기`}>
+                                  <img src={item.thumbUrl} alt={item.title} draggable={false} className="aspect-square w-full object-cover" title="끌어서 원본 저장" />
+                                </button>
+                                <span className="pointer-events-none absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-lg bg-slate-950/70 text-white" title="끌어서 원본 저장"><GripVertical className="h-4 w-4" aria-hidden="true" /></span>
+                              </div>
+                              <div className="p-2">
+                                {item.promptId && promptById.get(item.promptId) && <p className="truncate text-[10px] font-black text-app-primary">미션 · {promptById.get(item.promptId)?.title}</p>}
+                                <p className="truncate text-[11px] font-bold text-app-muted">{item.title}</p>
+                                <div className="mt-2 grid grid-cols-2 gap-1">
+                                  <button type="button" onClick={() => void downloadOriginal(item)} disabled={busy === `download-${item.id}`} className="flex items-center justify-center gap-1 rounded-xl bg-app-ink px-2 py-2 text-[11px] font-black text-white disabled:opacity-50">
+                                    {busy === `download-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Download className="h-3.5 w-3.5" aria-hidden="true" />}원본 저장
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (item.hidden) {
+                                        void toggleHidden(item.id, false);
+                                        return;
+                                      }
+                                      requestConfirmation({
+                                        action: () => toggleHidden(item.id, true),
+                                        confirmLabel: "사진 숨기기",
+                                        description: `${teamLabel}의 사진이 포토 보드와 투표 대상에서 숨겨집니다. 나중에 다시 표시할 수 있습니다.`,
+                                        title: "이 사진을 숨길까요?",
+                                        tone: "danger",
+                                      });
+                                    }}
+                                    disabled={busy === `hide-${item.id}`}
+                                    className={`flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-black ${item.hidden ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-app-muted"}`}
+                                  >
+                                    {item.hidden ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
+                                    {item.hidden ? "다시 표시" : "숨기기"}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      </div>
+                      </section>
                     );
                   })}
-                  {filteredSubmissions.length === 0 && (
-                    <p className="col-span-2 rounded-xl bg-slate-100 px-3 py-5 text-center text-xs font-bold text-app-muted">조건에 맞는 사진이 없습니다.</p>
-                  )}
+                  {reviewGroups.length === 0 && <p className="rounded-xl bg-slate-100 px-3 py-5 text-center text-xs font-bold text-app-muted">조건에 맞는 사진이 없습니다.</p>}
                 </div>
               </section>
 
@@ -863,16 +873,16 @@ export function EventContest() {
           <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
             <div className="min-w-0">
               <p className="truncate text-sm font-black">{getTeamLabel(teamById.get(previewSubmission.teamId) ?? { name: previewSubmission.teamId })}</p>
-              <p className="truncate text-xs font-bold text-slate-300">{previewSubmission.promptId ? promptById.get(previewSubmission.promptId)?.title : previewSubmission.title} · {previewIndex + 1}/{filteredSubmissions.length}</p>
+              <p className="truncate text-xs font-bold text-slate-300">{previewSubmission.promptId ? promptById.get(previewSubmission.promptId)?.title : previewSubmission.title} · 이 가족 {previewIndex + 1}/{previewFamilySubmissions.length}</p>
             </div>
             <button type="button" onClick={() => setPreviewSubmissionId(null)} className="grid h-10 w-10 flex-none place-items-center rounded-full bg-white/15" aria-label="사진 닫기"><X className="h-5 w-5" aria-hidden="true" /></button>
           </div>
           <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
-            {filteredSubmissions.length > 1 && (
+            {previewFamilySubmissions.length > 1 && (
               <button type="button" onClick={() => showAdjacentPhoto(-1)} className="absolute left-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white" aria-label="이전 사진"><ChevronLeft className="h-6 w-6" aria-hidden="true" /></button>
             )}
             <img src={previewSubmission.originalUrl} alt={previewSubmission.title} draggable onDragStart={(dragEvent) => setOriginalDragData(dragEvent, previewSubmission)} className="max-h-full max-w-full cursor-grab object-contain active:cursor-grabbing" title="바탕화면이나 폴더로 끌어서 저장" />
-            {filteredSubmissions.length > 1 && (
+            {previewFamilySubmissions.length > 1 && (
               <button type="button" onClick={() => showAdjacentPhoto(1)} className="absolute right-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white" aria-label="다음 사진"><ChevronRight className="h-6 w-6" aria-hidden="true" /></button>
             )}
             <span className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[11px] font-black text-white"><GripVertical className="h-3.5 w-3.5" aria-hidden="true" />끌어서 저장</span>
