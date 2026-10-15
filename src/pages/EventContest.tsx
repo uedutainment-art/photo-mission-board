@@ -7,6 +7,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  GripVertical,
   Loader2,
   MessageCircle,
   Phone,
@@ -61,6 +62,21 @@ function getSubmissionStatusLabel(status: ModuleStatus | undefined): string {
   if (status === "open") return "접수 중";
   if (status === "closed") return "마감";
   return "대기";
+}
+
+function getImageExtension(blob: Blob, originalPath: string): string {
+  const contentTypeExtension = {
+    "image/avif": "avif",
+    "image/heic": "heic",
+    "image/heif": "heif",
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  }[blob.type.toLowerCase()];
+
+  if (contentTypeExtension) return contentTypeExtension;
+  const pathExtension = originalPath.split(".").pop()?.toLowerCase();
+  return pathExtension && /^[a-z0-9]{2,5}$/.test(pathExtension) ? pathExtension : "jpg";
 }
 
 export function EventContest() {
@@ -331,6 +347,31 @@ export function EventContest() {
     );
   }
 
+  async function downloadOriginal(item: (typeof submissions)[number]) {
+    const busyKey = `download-${item.id}`;
+    setBusy(busyKey);
+    setLocalError(null);
+    try {
+      const response = await fetch(item.originalUrl);
+      if (!response.ok) throw new Error(`${item.title} 원본을 불러오지 못했습니다.`);
+      const blob = await response.blob();
+      const extension = getImageExtension(blob, item.originalPath);
+      downloadBlob(blob, getOriginalFilename(item, extension));
+    } catch (downloadError) {
+      setLocalError(downloadError instanceof Error ? downloadError.message : "사진 원본을 저장하지 못했습니다.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function getOriginalFilename(item: (typeof submissions)[number], extension?: string): string {
+    const team = teamById.get(item.teamId);
+    const teamLabel = getTeamLabel(team ?? { name: item.teamId });
+    const pathExtension = item.originalPath.split(".").pop()?.toLowerCase();
+    const safeExtension = extension ?? (pathExtension && /^[a-z0-9]{2,5}$/.test(pathExtension) ? pathExtension : "jpg");
+    return `${String(team?.index ?? 0).padStart(2, "0")}-${safeFilename(teamLabel)}-${safeFilename(item.title)}.${safeExtension}`;
+  }
+
   async function downloadOriginals() {
     if (!event) return;
     setBusy("zip");
@@ -561,31 +602,54 @@ export function EventContest() {
                     const teamLabel = getTeamLabel(teamById.get(item.teamId) ?? { name: item.teamId });
                     return (
                       <div key={item.id} className="overflow-hidden rounded-2xl border border-app-border bg-white">
-                        <img src={item.thumbUrl} alt={item.title} className="aspect-square w-full object-cover" />
+                        <div className="relative">
+                          <img
+                            src={item.thumbUrl}
+                            alt={item.title}
+                            draggable
+                            onDragStart={(dragEvent) => {
+                              const filename = getOriginalFilename(item);
+                              dragEvent.dataTransfer.effectAllowed = "copy";
+                              dragEvent.dataTransfer.setData("DownloadURL", `application/octet-stream:${filename}:${item.originalUrl}`);
+                              dragEvent.dataTransfer.setData("text/uri-list", item.originalUrl);
+                            }}
+                            className="aspect-square w-full cursor-grab object-cover active:cursor-grabbing"
+                            title="끌어서 원본 저장"
+                          />
+                          <span className="pointer-events-none absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-lg bg-slate-950/70 text-white" title="끌어서 원본 저장">
+                            <GripVertical className="h-4 w-4" aria-hidden="true" />
+                          </span>
+                        </div>
                         <div className="p-2">
                           <p className="truncate text-xs font-black">{teamLabel}</p>
                           <p className="truncate text-[11px] font-bold text-app-muted">{item.title}</p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (item.hidden) {
-                                void toggleHidden(item.id, false);
-                                return;
-                              }
-                              requestConfirmation({
-                                action: () => toggleHidden(item.id, true),
-                                confirmLabel: "사진 숨기기",
-                                description: `${teamLabel}의 사진이 포토 보드와 투표 대상에서 숨겨집니다. 나중에 다시 표시할 수 있습니다.`,
-                                title: "이 사진을 숨길까요?",
-                                tone: "danger",
-                              });
-                            }}
-                            disabled={busy === `hide-${item.id}`}
-                            className={`mt-2 flex w-full items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-black ${item.hidden ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-app-muted"}`}
-                          >
-                            {item.hidden ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
-                            {item.hidden ? "다시 표시" : "숨기기"}
-                          </button>
+                          <div className="mt-2 grid grid-cols-2 gap-1">
+                            <button type="button" onClick={() => void downloadOriginal(item)} disabled={busy === `download-${item.id}`} className="flex items-center justify-center gap-1 rounded-xl bg-app-ink px-2 py-2 text-[11px] font-black text-white disabled:opacity-50">
+                              {busy === `download-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Download className="h-3.5 w-3.5" aria-hidden="true" />}
+                              원본 저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (item.hidden) {
+                                  void toggleHidden(item.id, false);
+                                  return;
+                                }
+                                requestConfirmation({
+                                  action: () => toggleHidden(item.id, true),
+                                  confirmLabel: "사진 숨기기",
+                                  description: `${teamLabel}의 사진이 포토 보드와 투표 대상에서 숨겨집니다. 나중에 다시 표시할 수 있습니다.`,
+                                  title: "이 사진을 숨길까요?",
+                                  tone: "danger",
+                                });
+                              }}
+                              disabled={busy === `hide-${item.id}`}
+                              className={`flex items-center justify-center gap-1 rounded-xl px-2 py-2 text-[11px] font-black ${item.hidden ? "bg-amber-100 text-amber-900" : "bg-slate-100 text-app-muted"}`}
+                            >
+                              {item.hidden ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
+                              {item.hidden ? "다시 표시" : "숨기기"}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
