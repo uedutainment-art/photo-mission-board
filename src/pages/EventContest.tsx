@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import type { DragEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { deleteField, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
@@ -8,7 +7,6 @@ import {
   Download,
   Eye,
   EyeOff,
-  GripVertical,
   Loader2,
   MessageCircle,
   Music2,
@@ -24,6 +22,7 @@ import { clearContestVote } from "../lib/contest";
 import { downloadBlob, safeFilename } from "../lib/download";
 import { db } from "../lib/firebase";
 import { formatPhone, smsHref, telHref } from "../lib/phone";
+import { createSelphyJpeg } from "../lib/selphy";
 import { getTeamLabel } from "../lib/teamLabel";
 import type { ContestWinner, MissionEvent, ModuleStatus } from "../lib/types";
 
@@ -63,21 +62,6 @@ function getSubmissionStatusLabel(status: ModuleStatus | undefined): string {
   if (status === "open") return "접수 중";
   if (status === "closed") return "마감";
   return "대기";
-}
-
-function getImageExtension(blob: Blob, originalPath: string): string {
-  const contentTypeExtension = {
-    "image/avif": "avif",
-    "image/heic": "heic",
-    "image/heif": "heif",
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-  }[blob.type.toLowerCase()];
-
-  if (contentTypeExtension) return contentTypeExtension;
-  const pathExtension = originalPath.split(".").pop()?.toLowerCase();
-  return pathExtension && /^[a-z0-9]{2,5}$/.test(pathExtension) ? pathExtension : "jpg";
 }
 
 export function EventContest() {
@@ -389,40 +373,27 @@ export function EventContest() {
     );
   }
 
-  async function downloadOriginal(item: (typeof submissions)[number]) {
+  async function downloadPrintJpeg(item: (typeof submissions)[number]) {
     const busyKey = `download-${item.id}`;
     setBusy(busyKey);
     setLocalError(null);
     try {
-      const response = await fetch(item.originalUrl);
-      if (!response.ok) throw new Error(`${item.title} 원본을 불러오지 못했습니다.`);
-      const blob = await response.blob();
-      const extension = getImageExtension(blob, item.originalPath);
-      downloadBlob(blob, getOriginalFilename(item, extension));
+      const { blob, usedFallback } = await createSelphyJpeg(item.originalUrl, item.thumbUrl);
+      downloadBlob(blob, getPrintFilename(item));
+      setNotice(usedFallback
+        ? "원본 형식을 읽지 못해 미리보기로 출력용 JPG를 만들었습니다. 출력 전 화질을 확인해주세요."
+        : "캐논 SELPHY용 JPG를 저장했습니다. SD카드에 옮겨 출력할 수 있습니다.");
     } catch (downloadError) {
-      setLocalError(downloadError instanceof Error ? downloadError.message : "사진 원본을 저장하지 못했습니다.");
+      setLocalError(downloadError instanceof Error ? downloadError.message : "출력용 JPG를 만들지 못했습니다.");
     } finally {
       setBusy(null);
     }
   }
 
-  function getOriginalFilename(item: (typeof submissions)[number], extension?: string): string {
+  function getPrintFilename(item: (typeof submissions)[number]): string {
     const team = teamById.get(item.teamId);
     const teamLabel = getTeamLabel(team ?? { name: item.teamId });
-    const pathExtension = item.originalPath.split(".").pop()?.toLowerCase();
-    const safeExtension = extension ?? (pathExtension && /^[a-z0-9]{2,5}$/.test(pathExtension) ? pathExtension : "jpg");
-    return `${String(team?.index ?? 0).padStart(2, "0")}-${safeFilename(teamLabel)}-${safeFilename(item.title)}.${safeExtension}`;
-  }
-
-  function setOriginalDragData(
-    dragEvent: DragEvent<HTMLElement>,
-    item: (typeof submissions)[number],
-  ) {
-    const filename = getOriginalFilename(item);
-    dragEvent.dataTransfer.effectAllowed = "copy";
-    dragEvent.dataTransfer.setData("DownloadURL", `application/octet-stream:${filename}:${item.originalUrl}`);
-    dragEvent.dataTransfer.setData("text/uri-list", item.originalUrl);
-    dragEvent.dataTransfer.setData("text/plain", item.originalUrl);
+    return `${String(team?.index ?? 0).padStart(2, "0")}-${safeFilename(teamLabel)}-${safeFilename(item.title)}-SELPHY.jpg`;
   }
 
   const pageLoading = loading || submissionsLoading;
@@ -671,18 +642,17 @@ export function EventContest() {
                         <div className="grid grid-cols-2 gap-2">
                           {familySubmissions.map((item) => (
                             <div key={item.id} className="overflow-hidden rounded-2xl border border-app-border bg-white">
-                              <div className="relative">
-                                <a href={item.originalUrl} target="_blank" rel="noreferrer" draggable onDragStart={(dragEvent) => setOriginalDragData(dragEvent, item)} className="block w-full cursor-grab active:cursor-grabbing" aria-label={`${teamLabel} ${item.title} 원본 크게 보기`}>
-                                  <img src={item.thumbUrl} alt={item.title} draggable={false} className="aspect-square w-full object-cover" title="끌어서 원본 저장" />
+                              <div>
+                                <a href={item.originalUrl} target="_blank" rel="noreferrer" className="block w-full" aria-label={`${teamLabel} ${item.title} 원본 크게 보기`}>
+                                  <img src={item.thumbUrl} alt={item.title} className="aspect-square w-full object-cover" title="눌러서 원본 크게 보기" />
                                 </a>
-                                <span className="pointer-events-none absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-lg bg-slate-950/70 text-white" title="끌어서 원본 저장"><GripVertical className="h-4 w-4" aria-hidden="true" /></span>
                               </div>
                               <div className="p-2">
                                 {item.promptId && promptById.get(item.promptId) && <p className="truncate text-[10px] font-black text-app-primary">미션 · {promptById.get(item.promptId)?.title}</p>}
                                 <p className="truncate text-[11px] font-bold text-app-muted">{item.title}</p>
                                 <div className="mt-2 grid grid-cols-2 gap-1">
-                                  <button type="button" onClick={() => void downloadOriginal(item)} disabled={busy === `download-${item.id}`} className="flex items-center justify-center gap-1 rounded-xl bg-app-ink px-2 py-2 text-[11px] font-black text-white disabled:opacity-50">
-                                    {busy === `download-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Download className="h-3.5 w-3.5" aria-hidden="true" />}원본 저장
+                                  <button type="button" onClick={() => void downloadPrintJpeg(item)} disabled={busy === `download-${item.id}`} className="flex items-center justify-center gap-1 rounded-xl bg-app-ink px-2 py-2 text-[11px] font-black text-white disabled:opacity-50">
+                                    {busy === `download-${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Download className="h-3.5 w-3.5" aria-hidden="true" />}출력 JPG
                                   </button>
                                   <button
                                     type="button"
