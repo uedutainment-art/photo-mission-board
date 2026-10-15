@@ -131,7 +131,7 @@ export function TeamEntry() {
         <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white/95"}`}>
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between">
-            {sonova && context ? <EventBrandMark event={context.event} /> : <div className="text-[11px] font-black tracking-[0.08em] text-app-muted">PHOTO MISSION BOARD</div>}
+            {sonova && context ? <EventBrandMark event={context.event} compact /> : <div className="text-[11px] font-black tracking-[0.08em] text-app-muted">PHOTO MISSION BOARD</div>}
             <div className="grid h-10 w-10 place-items-center rounded-xl text-app-muted">···</div>
           </div>
         </header>

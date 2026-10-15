@@ -46,7 +46,7 @@ export function EventActivities() {
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
             <h1 className="text-base font-black">전통놀이 자유 체험</h1>
-            <div className="flex h-10 w-16 items-center justify-end">{event && sonova ? <EventBrandMark event={event} /> : null}</div>
+            <div className="flex h-10 w-20 items-center justify-end">{event && sonova ? <EventBrandMark event={event} compact /> : null}</div>
           </div>
         </header>
 
