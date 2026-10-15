@@ -27,6 +27,8 @@ export async function saveContestSubmission({
   title,
   uploaderId,
   submissionId,
+  promptId,
+  maxSubmissions = 6,
 }: {
   eventId: string;
   file: File;
@@ -34,6 +36,8 @@ export async function saveContestSubmission({
   title: string;
   uploaderId: string;
   submissionId?: string;
+  promptId?: string;
+  maxSubmissions?: number;
 }): Promise<void> {
   const cleanTitle = title.trim();
 
@@ -54,8 +58,8 @@ export async function saveContestSubmission({
 
   if (!previous) {
     const ownSubmissions = await getDocs(query(submissionsRef, where("teamId", "==", teamId)));
-    if (ownSubmissions.size >= 6) {
-      throw new Error("사진은 가족당 최대 6장까지 등록할 수 있습니다.");
+    if (ownSubmissions.size >= maxSubmissions) {
+      throw new Error(`사진은 가족당 최대 ${maxSubmissions}장까지 등록할 수 있습니다.`);
     }
   }
   const image = await uploadContestImage(
@@ -68,6 +72,7 @@ export async function saveContestSubmission({
       eventId,
       teamId,
       uploaderId,
+      ...(promptId ? { promptId } : previous?.promptId ? { promptId: previous.promptId } : {}),
       title: cleanTitle,
       originalPath: image.originalPath,
       thumbPath: image.thumbPath,

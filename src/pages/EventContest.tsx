@@ -30,7 +30,7 @@ const prizeAmounts = [50000, 30000, 20000] as const;
 
 const operationStages = [
   { id: "prepare", label: "준비", description: "가족·코드 확인" },
-  { id: "submission", label: "접수", description: "가족 사진 4~6장" },
+  { id: "submission", label: "접수", description: "미션 사진 등록" },
   { id: "voting", label: "투표", description: "가족당 2표" },
   { id: "results", label: "결과", description: "순위 확정·공개" },
 ] as const;
@@ -100,6 +100,7 @@ export function EventContest() {
   const minimumPhotos = event?.preset === "family-photo-contest"
     ? event.submission?.minimum ?? 4
     : 1;
+  const promptById = useMemo(() => new Map((event?.submission?.prompts ?? []).map((prompt) => [prompt.id, prompt])), [event?.submission?.prompts]);
 
   const teamById = useMemo(() => new Map(teams.map((team) => [team.id, team])), [teams]);
   const votesByVoterTeam = useMemo(() => {
@@ -622,6 +623,7 @@ export function EventContest() {
                         </div>
                         <div className="p-2">
                           <p className="truncate text-xs font-black">{teamLabel}</p>
+                          {item.promptId && promptById.get(item.promptId) && <p className="truncate text-[10px] font-black text-app-primary">미션 · {promptById.get(item.promptId)?.title}</p>}
                           <p className="truncate text-[11px] font-bold text-app-muted">{item.title}</p>
                           <div className="mt-2 grid grid-cols-2 gap-1">
                             <button type="button" onClick={() => void downloadOriginal(item)} disabled={busy === `download-${item.id}`} className="flex items-center justify-center gap-1 rounded-xl bg-app-ink px-2 py-2 text-[11px] font-black text-white disabled:opacity-50">

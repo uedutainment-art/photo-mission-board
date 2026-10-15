@@ -7,6 +7,7 @@ import { useTeamSession } from "../hooks/useTeamSession";
 import { deleteContestSubmission, saveContestSubmission } from "../lib/contest";
 import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
+import type { PhotoPrompt } from "../lib/types";
 
 export function TeamContest() {
   const { teamToken } = useParams();
@@ -21,25 +22,34 @@ export function TeamContest() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activePromptId, setActivePromptId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<FamilySubmissionWithId | null>(null);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const submissionOpen = context?.event.submission?.status === "open";
-  const photoLimit = context?.event.preset === "family-photo-contest"
-    ? Math.max(6, context.event.submission?.limit ?? 0)
-    : context?.event.submission?.limit ?? 1;
+  const photoPrompts = context?.event.submission?.prompts ?? [];
+  const photoLimit = photoPrompts.length || (context?.event.submission?.limit ?? (context?.event.preset === "family-photo-contest" ? 6 : 1));
   const minimumPhotos = context?.event.preset === "family-photo-contest"
     ? context.event.submission?.minimum ?? 4
     : 1;
   const participantLabels = getParticipantLabels(context?.event);
   const editingSubmission = ownSubmissions.find((item) => item.id === editingId);
+  const promptSlots = useMemo(() => {
+    const legacy = ownSubmissions.filter((submission) => !submission.promptId);
+    return photoPrompts.map((prompt) => ({
+      prompt,
+      submission: ownSubmissions.find((submission) => submission.promptId === prompt.id) ?? legacy.shift(),
+    }));
+  }, [ownSubmissions, photoPrompts]);
+  const activePrompt = photoPrompts.find((prompt) => prompt.id === activePromptId);
 
   function clearEditor() {
     if (preview) URL.revokeObjectURL(preview);
     setFile(null);
     setPreview(null);
     setEditingId(null);
+    setActivePromptId(null);
     setTitle("");
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -51,15 +61,17 @@ export function TeamContest() {
     setPreview(URL.createObjectURL(nextFile));
   }
 
-  function chooseNewPhoto() {
+  function chooseNewPhoto(prompt?: PhotoPrompt) {
     clearEditor();
-    setTitle(`우리 가족의 순간 ${ownSubmissions.length + 1}`);
+    setActivePromptId(prompt?.id ?? null);
+    setTitle(prompt?.title ?? `우리 가족의 순간 ${ownSubmissions.length + 1}`);
     fileRef.current?.click();
   }
 
-  function chooseReplacement(submission: FamilySubmissionWithId) {
+  function chooseReplacement(submission: FamilySubmissionWithId, promptId?: string) {
     clearEditor();
     setEditingId(submission.id);
+    setActivePromptId(promptId ?? submission.promptId ?? null);
     setTitle(submission.title);
     fileRef.current?.click();
   }
@@ -78,6 +90,8 @@ export function TeamContest() {
         title,
         file,
         submissionId: editingId ?? undefined,
+        promptId: activePromptId ?? undefined,
+        maxSubmissions: photoLimit,
       });
       clearEditor();
       setNotice(replacing ? "사진을 교체했습니다." : "사진을 추가했습니다.");
@@ -118,15 +132,37 @@ export function TeamContest() {
           {!loading && context && (
             <>
               <section className="card p-4">
-                <div className="flex items-start justify-between gap-3"><div><h2 className="text-base font-black">오늘의 즐거운 순간</h2><p className="mt-2 text-sm font-bold leading-6 text-app-muted">{participantLabels.singular}의 사진을 {minimumPhotos}~{photoLimit}장 등록해주세요.</p></div><strong className={enoughPhotos ? "text-emerald-700" : "text-app-primary"}>{ownSubmissions.length}/{photoLimit}</strong></div>
-                {context.event.guide?.activities?.length ? <Link to={`/e/${context.eventId}/games?team=${encodeURIComponent(teamToken ?? "")}`} className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black leading-5 text-emerald-800"><Gamepad2 className="h-4 w-4 flex-none" aria-hidden="true" /><span>전통놀이를 즐기는 장면도 한 장 정도 남겨보세요.</span></Link> : null}
+                <div className="flex items-start justify-between gap-3"><div><h2 className="text-base font-black">우리 가족 사진 미션</h2><p className="mt-2 text-sm font-bold leading-6 text-app-muted">{photoPrompts.length > 0 ? `${photoPrompts.length}개 미션에 사진을 한 장씩 등록해주세요.` : `${participantLabels.singular}의 사진을 ${minimumPhotos}~${photoLimit}장 등록해주세요.`}</p></div><strong className={enoughPhotos ? "text-emerald-700" : "text-app-primary"}>{ownSubmissions.length}/{photoLimit}</strong></div>
+                {context.event.guide?.activities?.length && photoPrompts.length === 0 ? <Link to={`/e/${context.eventId}/games?team=${encodeURIComponent(teamToken ?? "")}`} className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black leading-5 text-emerald-800"><Gamepad2 className="h-4 w-4 flex-none" aria-hidden="true" /><span>전통놀이를 즐기는 장면도 한 장 정도 남겨보세요.</span></Link> : null}
                 <span className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-black ${submissionOpen ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-app-muted"}`}>{submissionOpen ? "사진 접수 중" : context.event.submission?.status === "closed" ? "사진 접수 마감" : "접수 대기"}</span>
                 {ownSubmissions.length > 0 && !enoughPhotos && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-black text-amber-800">사진을 {minimumPhotos - ownSubmissions.length}장 더 등록해주세요.</p>}
               </section>
 
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(event) => { handleFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
 
-              {ownSubmissions.length > 0 && (
+              {photoPrompts.length > 0 && (
+                <section className="space-y-3">
+                  {promptSlots.map(({ prompt, submission }, index) => (
+                    <article key={prompt.id} className="overflow-hidden rounded-[8px] border border-app-border bg-white shadow-card">
+                      <div className="flex items-start gap-3 p-4">
+                        <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-[#173c2c] text-xs font-black text-white">{index + 1}</span>
+                        <div className="min-w-0"><h3 className="text-sm font-black">{prompt.title}</h3><p className="mt-1 text-xs font-bold leading-5 text-app-muted">{prompt.description}</p></div>
+                      </div>
+                      {submission ? (
+                        <div className="border-t border-app-border p-3">
+                          <img src={submission.thumbUrl} alt={submission.title} className="aspect-[4/3] w-full rounded-[6px] object-cover" />
+                          <p className="mt-2 truncate text-xs font-black">{submission.title}</p>
+                          {submissionOpen && <div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => chooseReplacement(submission, prompt.id)} className="flex items-center justify-center gap-1 rounded-xl bg-slate-100 px-2 py-2 text-[11px] font-black"><Pencil className="h-3 w-3" />교체</button><button type="button" onClick={() => setPendingDelete(submission)} className="flex items-center justify-center gap-1 rounded-xl bg-red-50 px-2 py-2 text-[11px] font-black text-red-700"><Trash2 className="h-3 w-3" />삭제</button></div>}
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => chooseNewPhoto(prompt)} disabled={!submissionOpen} className="flex w-full items-center justify-center gap-2 border-t border-dashed border-app-border px-4 py-4 text-sm font-black text-app-primary disabled:text-app-muted"><Camera className="h-5 w-5" />{submissionOpen ? "사진 찍기·선택" : "사진 접수 대기"}</button>
+                      )}
+                    </article>
+                  ))}
+                </section>
+              )}
+
+              {photoPrompts.length === 0 && ownSubmissions.length > 0 && (
                 <section className="card p-3">
                   <div className="grid grid-cols-2 gap-2">
                     {ownSubmissions.map((submission, index) => (
@@ -139,13 +175,13 @@ export function TeamContest() {
                 </section>
               )}
 
-              {submissionOpen && ownSubmissions.length < photoLimit && !preview && (
-                <button type="button" onClick={chooseNewPhoto} className="card flex w-full items-center justify-center gap-2 border-dashed p-5 text-sm font-black text-app-primary"><Plus className="h-5 w-5" />사진 추가</button>
+              {photoPrompts.length === 0 && submissionOpen && ownSubmissions.length < photoLimit && !preview && (
+                <button type="button" onClick={() => chooseNewPhoto()} className="card flex w-full items-center justify-center gap-2 border-dashed p-5 text-sm font-black text-app-primary"><Plus className="h-5 w-5" />사진 추가</button>
               )}
 
               {submissionOpen && preview && (
                 <section className="card p-4">
-                  <div className="flex items-center justify-between"><h2 className="text-sm font-black">{editingSubmission ? "사진 교체" : "새 사진 추가"}</h2><button type="button" onClick={clearEditor} className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100" aria-label="취소"><X className="h-4 w-4" /></button></div>
+                  <div className="flex items-center justify-between"><div><h2 className="text-sm font-black">{editingSubmission ? "사진 교체" : "새 사진 추가"}</h2>{activePrompt && <p className="mt-1 text-xs font-bold text-app-primary">미션 · {activePrompt.title}</p>}</div><button type="button" onClick={clearEditor} className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100" aria-label="취소"><X className="h-4 w-4" /></button></div>
                   <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="mt-3 grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-2xl bg-slate-100 disabled:opacity-60"><img src={preview} alt="선택한 사진 미리보기" className="h-full w-full object-cover" /></button>
                   <input value={title} onChange={(event) => setTitle(event.target.value.slice(0, 30))} placeholder="사진 제목 (30자 이하)" className="mt-3 w-full rounded-2xl border border-app-border bg-white px-4 py-3 text-sm font-bold outline-none focus:border-app-primary" />
                   <button type="button" onClick={() => void handleSubmit()} disabled={!file || !title.trim() || busy} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-app-primary px-4 py-4 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : localError ? <RotateCw className="h-4 w-4" /> : <Camera className="h-4 w-4" />}{busy ? "업로드 중 · 잠시만 기다려주세요" : editingSubmission ? "이 사진 교체" : "사진 등록"}</button>

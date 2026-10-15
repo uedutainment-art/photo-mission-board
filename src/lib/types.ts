@@ -67,10 +67,17 @@ export interface SubmissionSettings {
   status: ModuleStatus;
   limit: number;
   minimum?: number;
+  prompts?: PhotoPrompt[];
   titleRequired: boolean;
   allowReplacement: boolean;
   openedAt?: Timestamp;
   closedAt?: Timestamp;
+}
+
+export interface PhotoPrompt {
+  id: string;
+  title: string;
+  description: string;
 }
 
 export interface ContestWinner {
@@ -249,6 +256,7 @@ export interface PhotoVote {
 }
 
 export interface FamilySubmission extends StoredImage {
+  promptId?: string;
   title: string;
   hidden: boolean;
   submittedAt: Timestamp;
