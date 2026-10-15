@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { DragEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { deleteField, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
@@ -43,6 +44,12 @@ interface Confirmation {
   tone?: "default" | "danger";
 }
 
+interface PrintAsset {
+  blob: Blob;
+  url: string;
+  usedFallback: boolean;
+}
+
 function getOperationStage(event: MissionEvent): number {
   if (event.submission?.status === "open") return 2;
   if (event.voting?.status === "open") return 3;
@@ -82,6 +89,9 @@ export function EventContest() {
   const [winnerIds, setWinnerIds] = useState<string[]>(["", "", ""]);
   const [photoTeamFilter, setPhotoTeamFilter] = useState("all");
   const [photoPromptFilter, setPhotoPromptFilter] = useState("all");
+  const printAssetsRef = useRef(new Map<string, PrintAsset>());
+  const preparingPrintIdsRef = useRef(new Set<string>());
+  const [, setPrintAssetVersion] = useState(0);
   const selectionLimit = event?.voting?.selectionsPerVoter
     ?? (event?.preset === "family-photo-contest" ? 2 : 1);
   const minimumPhotos = event?.preset === "family-photo-contest"
@@ -142,6 +152,8 @@ export function EventContest() {
   const hasDuplicateWinners = winnerIds.filter(Boolean).length !== new Set(winnerIds.filter(Boolean)).size;
   const resultsVisible = event?.voting?.status === "closed"
     && event.results?.status === "published";
+  const revealedRanks = event?.results?.revealedRanks
+    ?? (event?.results?.status === "published" ? [3, 2, 1] : []);
   const operationStage = event ? getOperationStage(event) : 1;
   const stageAction = getStageAction(operationStage);
   const filteredSubmissions = useMemo(
@@ -181,6 +193,11 @@ export function EventContest() {
   useEffect(() => {
     setTieBreakNote(event?.results?.tieBreak?.note ?? "");
   }, [event?.results?.tieBreak?.note]);
+
+  useEffect(() => () => {
+    printAssetsRef.current.forEach((asset) => URL.revokeObjectURL(asset.url));
+    printAssetsRef.current.clear();
+  }, []);
 
   function requestConfirmation(nextConfirmation: Confirmation) {
     setLocalError(null);
@@ -317,7 +334,7 @@ export function EventContest() {
     }
   }
 
-  async function publishResults(published: boolean) {
+  async function publishResults(published: boolean, revealRank?: 1 | 2 | 3) {
     if (!eventId || !event) return;
     const selected = winnerIds.filter(Boolean);
     const requiredCount = Math.min(3, rankedSubmissions.length);
@@ -332,11 +349,15 @@ export function EventContest() {
       teamId,
       prizeAmount: prizeAmounts[index],
     }));
-    setBusy("results");
+    setBusy(revealRank ? `results-${revealRank}` : "results");
     try {
+      const nextRevealedRanks = revealRank
+        ? [3, 2, 1].filter((rank) => rank >= revealRank) as Array<1 | 2 | 3>
+        : [];
       const resultUpdate: Record<string, unknown> = {
         "results.status": published ? "published" : "hidden",
         "results.winners": winners,
+        "results.revealedRanks": published ? nextRevealedRanks : [],
         "results.publishedAt": published ? serverTimestamp() : deleteField(),
         updatedAt: serverTimestamp(),
       };
@@ -347,7 +368,9 @@ export function EventContest() {
         };
       }
       await updateDoc(doc(db, "events", eventId), resultUpdate);
-      setNotice(published ? "결과를 참가자에게 공개했습니다." : "결과를 비공개로 전환했습니다.");
+      setNotice(published && revealRank
+        ? `${revealRank}등을 참가자 화면에 공개했습니다.`
+        : "결과를 비공개로 전환했습니다.");
     } finally {
       setBusy(null);
     }
@@ -373,12 +396,35 @@ export function EventContest() {
     );
   }
 
+  async function preparePrintAsset(item: (typeof submissions)[number]): Promise<PrintAsset> {
+    const existing = printAssetsRef.current.get(item.id);
+    if (existing) return existing;
+
+    while (preparingPrintIdsRef.current.has(item.id)) {
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+      const prepared = printAssetsRef.current.get(item.id);
+      if (prepared) return prepared;
+    }
+
+    preparingPrintIdsRef.current.add(item.id);
+    setPrintAssetVersion((version) => version + 1);
+    try {
+      const result = await createSelphyJpeg(item.originalUrl, item.thumbUrl);
+      const asset = { ...result, url: URL.createObjectURL(result.blob) };
+      printAssetsRef.current.set(item.id, asset);
+      return asset;
+    } finally {
+      preparingPrintIdsRef.current.delete(item.id);
+      setPrintAssetVersion((version) => version + 1);
+    }
+  }
+
   async function downloadPrintJpeg(item: (typeof submissions)[number]) {
     const busyKey = `download-${item.id}`;
     setBusy(busyKey);
     setLocalError(null);
     try {
-      const { blob, usedFallback } = await createSelphyJpeg(item.originalUrl, item.thumbUrl);
+      const { blob, usedFallback } = await preparePrintAsset(item);
       downloadBlob(blob, getPrintFilename(item));
       setNotice(usedFallback
         ? "원본 형식을 읽지 못해 미리보기로 출력용 JPG를 만들었습니다. 출력 전 화질을 확인해주세요."
@@ -394,6 +440,25 @@ export function EventContest() {
     const team = teamById.get(item.teamId);
     const teamLabel = getTeamLabel(team ?? { name: item.teamId });
     return `${String(team?.index ?? 0).padStart(2, "0")}-${safeFilename(teamLabel)}-${safeFilename(item.title)}-SELPHY.jpg`;
+  }
+
+  function setPrintDragData(
+    dragEvent: DragEvent<HTMLAnchorElement>,
+    item: (typeof submissions)[number],
+  ) {
+    const asset = printAssetsRef.current.get(item.id);
+    if (!asset) {
+      dragEvent.preventDefault();
+      setNotice("출력용 JPG를 준비 중입니다. 잠시 후 다시 끌어주세요.");
+      void preparePrintAsset(item);
+      return;
+    }
+
+    const filename = getPrintFilename(item);
+    dragEvent.dataTransfer.effectAllowed = "copy";
+    dragEvent.dataTransfer.setData("DownloadURL", `image/jpeg:${filename}:${asset.url}`);
+    dragEvent.dataTransfer.setData("text/uri-list", asset.url);
+    dragEvent.dataTransfer.setData("text/plain", asset.url);
   }
 
   const pageLoading = loading || submissionsLoading;
@@ -640,12 +705,42 @@ export function EventContest() {
                           <span className="flex-none rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-black text-app-muted">{familySubmissions.length}장</span>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                          {familySubmissions.map((item) => (
+                          {familySubmissions.map((item) => {
+                            const printAsset = printAssetsRef.current.get(item.id);
+                            const printPreparing = preparingPrintIdsRef.current.has(item.id);
+                            return (
                             <div key={item.id} className="overflow-hidden rounded-2xl border border-app-border bg-white">
-                              <div>
-                                <a href={item.originalUrl} target="_blank" rel="noreferrer" className="block w-full" aria-label={`${teamLabel} ${item.title} 원본 크게 보기`}>
-                                  <img src={item.thumbUrl} alt={item.title} className="aspect-square w-full object-cover" title="눌러서 원본 크게 보기" />
+                              <div className="relative">
+                                <a
+                                  href={printAsset?.url ?? item.thumbUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  draggable={Boolean(printAsset)}
+                                  onDragStart={(dragEvent) => setPrintDragData(dragEvent, item)}
+                                  onMouseEnter={() => void preparePrintAsset(item)}
+                                  onFocus={() => void preparePrintAsset(item)}
+                                  onClick={(clickEvent) => {
+                                    if (printAsset) return;
+                                    clickEvent.preventDefault();
+                                    void preparePrintAsset(item);
+                                    setNotice("출력용 JPG를 준비하고 있습니다. 잠시 후 사진을 다시 눌러주세요.");
+                                  }}
+                                  className={`block w-full ${printAsset ? "cursor-grab active:cursor-grabbing" : "cursor-wait"}`}
+                                  aria-label={`${teamLabel} ${item.title} 출력용 JPG 크게 보기`}
+                                >
+                                  <img
+                                    src={item.thumbUrl}
+                                    alt={item.title}
+                                    draggable={false}
+                                    loading="lazy"
+                                    onLoad={() => void preparePrintAsset(item)}
+                                    className="aspect-square w-full object-cover"
+                                    title={printAsset ? "끌어서 출력용 JPG 저장" : "출력용 JPG 준비 중"}
+                                  />
                                 </a>
+                                <span className={`pointer-events-none absolute right-2 top-2 rounded-lg px-2 py-1 text-[10px] font-black text-white ${printAsset ? "bg-emerald-600" : "bg-slate-950/70"}`}>
+                                  {printAsset ? "JPG 끌기" : printPreparing ? "JPG 준비 중" : "JPG 준비"}
+                                </span>
                               </div>
                               <div className="p-2">
                                 {item.promptId && promptById.get(item.promptId) && <p className="truncate text-[10px] font-black text-app-primary">미션 · {promptById.get(item.promptId)?.title}</p>}
@@ -678,7 +773,8 @@ export function EventContest() {
                                 </div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </section>
                     );
@@ -736,7 +832,7 @@ export function EventContest() {
                   ))}
                 </div>
                 {hasDuplicateWinners && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-center text-[11px] font-black text-red-700">같은 가족을 여러 순위에 선택할 수 없습니다.</p>}
-                <div className="mt-4 grid grid-cols-2 gap-2">
+                <div className="mt-4">
                   <button
                     type="button"
                     onClick={() => requestConfirmation({
@@ -747,25 +843,33 @@ export function EventContest() {
                       tone: "danger",
                     })}
                     disabled={event.results?.status !== "published"}
-                    className="rounded-2xl border border-app-border bg-white px-3 py-3 text-xs font-black disabled:opacity-40"
+                    className="w-full rounded-2xl border border-app-border bg-white px-3 py-3 text-xs font-black disabled:opacity-40"
                   >
-                    결과 비공개
+                    발표 초기화 · 결과 숨기기
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => requestConfirmation({
-                      action: () => publishResults(true),
-                      confirmLabel: "결과 공개",
-                      description: hasAwardTie
-                        ? "입력한 운영팀 선정 사유와 선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 반영됩니다."
-                        : "선택한 1·2·3등이 모든 참가자의 결과 화면에 즉시 표시됩니다.",
-                      title: "최종 결과를 공개할까요?",
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {([3, 2, 1] as const).map((rank) => {
+                      const prerequisiteRank = rank === 3 ? null : rank + 1;
+                      const canReveal = prerequisiteRank === null || revealedRanks.includes(prerequisiteRank as 2 | 3);
+                      const alreadyRevealed = revealedRanks.includes(rank);
+                      return (
+                        <button
+                          key={rank}
+                          type="button"
+                          onClick={() => requestConfirmation({
+                            action: () => publishResults(true, rank),
+                            confirmLabel: `${rank}등 공개`,
+                            description: `${rank}등 가족과 사진이 모든 참가자의 결과 화면에 즉시 표시됩니다.`,
+                            title: `${rank}등을 공개할까요?`,
+                          })}
+                          disabled={Boolean(busy) || event.voting?.status !== "closed" || hasDuplicateWinners || (hasAwardTie && !tieBreakNote.trim()) || !canReveal || alreadyRevealed}
+                          className="rounded-2xl bg-app-primary px-2 py-3 text-xs font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
+                        >
+                          {alreadyRevealed ? `${rank}등 공개됨` : `${rank}등 공개`}
+                        </button>
+                      );
                     })}
-                    disabled={busy === "results" || event.voting?.status !== "closed" || hasDuplicateWinners || (hasAwardTie && !tieBreakNote.trim())}
-                    className="rounded-2xl bg-app-primary px-3 py-3 text-xs font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
-                  >
-                    결과 공개
-                  </button>
+                  </div>
                 </div>
                 {event.voting?.status !== "closed" && (
                   <p className="mt-2 text-center text-[11px] font-bold text-app-muted">투표 마감 후 결과를 공개할 수 있습니다.</p>
@@ -773,7 +877,7 @@ export function EventContest() {
                 {resultsVisible && (
                   <div className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">
                     <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                    참가자에게 결과 공개 중
+                    참가자에게 {revealedRanks.join("·")}등 공개 중
                   </div>
                 )}
                 {!resultsVisible && event.results?.status === "published" && (

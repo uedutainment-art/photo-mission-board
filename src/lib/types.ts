@@ -90,6 +90,7 @@ export interface ResultSettings {
   status: ResultStatus;
   winnerCount: number;
   winners?: ContestWinner[];
+  revealedRanks?: Array<1 | 2 | 3>;
   publishedAt?: Timestamp;
   tieBreak?: {
     note: string;
