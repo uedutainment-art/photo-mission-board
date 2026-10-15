@@ -452,7 +452,7 @@ export function EventContest() {
 
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
-      <section className="phone-surface overflow-hidden rounded-[28px] border border-app-border shadow-phone">
+      <section className="phone-surface relative overflow-hidden rounded-[28px] border border-app-border shadow-phone">
         <header className="border-b border-app-border bg-white px-4 pb-4 pt-3">
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between">
@@ -872,10 +872,9 @@ export function EventContest() {
             </>
           )}
         </div>
-      </section>
 
-      {previewSubmission && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950" role="dialog" aria-modal="true" aria-label="사진 크게 보기">
+        {previewSubmission && (
+        <div className="absolute inset-0 z-50 flex flex-col bg-slate-950" role="dialog" aria-modal="true" aria-label="사진 크게 보기">
           <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
             <div className="min-w-0">
               <p className="truncate text-sm font-black">{getTeamLabel(teamById.get(previewSubmission.teamId) ?? { name: previewSubmission.teamId })}</p>
@@ -898,7 +897,8 @@ export function EventContest() {
             <button type="button" onClick={() => void downloadOriginal(previewSubmission)} className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950"><Download className="h-4 w-4" aria-hidden="true" />원본 저장</button>
           </div>
         </div>
-      )}
+        )}
+      </section>
 
       <ConfirmActionDialog
         busy={confirmBusy}
