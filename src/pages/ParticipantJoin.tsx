@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { KeyRound, Loader2, Users } from "lucide-react";
+import { EventBrandMark } from "../components/EventBrandMark";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { getEventBrandName, isSonovaFamilyDay } from "../lib/eventBrand";
 import { formatKoreanDate } from "../lib/formatDate";
@@ -40,7 +41,13 @@ export function ParticipantJoin() {
         <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center" />
         <div className="relative z-10 flex min-h-dvh flex-1 flex-col px-5 pb-10 pt-8">
           <header className="text-center">
-            <p className="text-[10px] font-bold uppercase text-[#385444]">{brandName}</p>
+            {sonovaFamilyDay && event ? (
+              <div className="mb-5 flex justify-center">
+                <EventBrandMark event={event} />
+              </div>
+            ) : (
+              <p className="text-[10px] font-bold uppercase text-[#385444]">{brandName}</p>
+            )}
             <p className="mt-3 text-lg font-black text-[#234936]">{familyDayLabel}</p>
             <h1 className="mt-5 text-3xl font-black leading-[1.25] tracking-normal text-[#173c2c]">우리 가족의 오늘을<br />남겨주세요</h1>
             <p className="mt-3 text-sm font-black text-[#385444]">QR 하나로 함께해요</p>
