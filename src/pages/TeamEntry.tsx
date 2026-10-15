@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CalendarDays, Camera, ChevronRight, Gamepad2, Images, Loader2, Music2, Share2, Target, Users } from "lucide-react";
+import { CalendarDays, Camera, ChevronRight, Clock3, Gamepad2, Home, Images, Loader2, MapPin, Menu, Music2, Share2, Target, Users } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
 import { useTeamSession, type TeamSessionContext } from "../hooks/useTeamSession";
 import { isSonovaFamilyDay } from "../lib/eventBrand";
@@ -22,47 +22,92 @@ function getStartLabel(selfieMode: string): string {
 function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; teamToken: string }) {
   const modules = context.event.modules;
   const sonova = isSonovaFamilyDay(context.event);
+  const schedulePreview = context.event.guide?.schedule?.slice(0, 2) ?? [];
+  const eventDate = formatKoreanDate(context.event.scheduledAt);
+  const venue = context.event.guide?.venue;
+  const resultsPublished = context.event.results?.status === "published";
+  const votingOpen = context.event.voting?.status === "open";
+  const submissionOpen = context.event.submission?.status === "open";
+  const photoAction = resultsPublished
+    ? { eyebrow: "결과 공개", title: "베스트 포토 결과 확인하기", description: "우리 가족과 수상 가족의 사진을 확인해보세요.", href: `/t/${teamToken}/results` }
+    : votingOpen
+      ? { eyebrow: "투표 진행 중", title: "마음에 드는 가족사진 투표하기", description: "우리 가족을 제외한 다른 가족 사진을 선택해주세요.", href: `/t/${teamToken}/gallery` }
+      : submissionOpen
+        ? { eyebrow: "사진 접수 중", title: "우리 가족사진 등록하기", description: "접수 마감 전까지 사진을 추가하거나 변경할 수 있어요.", href: `/t/${teamToken}/contest` }
+        : { eyebrow: "사진 콘테스트", title: "가족사진 콘테스트 보기", description: "운영팀 안내에 따라 사진 접수와 투표가 열립니다.", href: `/t/${teamToken}/contest` };
 
   return (
     <>
       <section className={sonova ? "overflow-hidden rounded-[8px] border border-white/80 bg-white/90 shadow-[0_18px_45px_rgba(31,65,47,0.14)]" : "rounded-panel bg-app-ink p-6 text-white"}>
         {sonova ? (
           <>
-            <div className="flex items-start justify-between gap-4 border-b border-[#d9dfd2] px-5 py-5">
-              <EventBrandMark event={context.event} />
-              <span className="rounded-full border border-[#9eb4a5] px-3 py-1 text-[9px] font-black uppercase text-[#385444]">Family Day</span>
-            </div>
             <div className="px-5 py-5">
-              <p className="text-[10px] font-black uppercase text-[#78877c]">Welcome to</p>
-              <h1 className="mt-2 text-2xl font-black leading-8 text-[#173c2c]">{context.event.title}</h1>
-              <div className="mt-5 flex items-center justify-between border-t border-[#d9dfd2] pt-4">
-                <p className="text-xs font-bold text-[#617466]">함께하는 가족</p>
-                <p className="text-lg font-black text-[#173c2c]">{getTeamLabel(context.team)}</p>
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-[10px] font-black uppercase text-[#78877c]">Welcome to</p>
+                <span className="rounded-full border border-[#9eb4a5] px-3 py-1 text-[9px] font-black uppercase text-[#385444]">Family Day</span>
               </div>
+              <h1 className="mt-2 text-2xl font-black leading-8 text-[#173c2c]">{context.event.title}</h1>
+              {(eventDate || venue) && (
+                <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-[#d9dfd2] pt-4 text-xs font-black text-[#385444]">
+                  {eventDate && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" aria-hidden="true" />{eventDate}</span>}
+                  {venue && <span className="inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden="true" />{venue}</span>}
+                </div>
+              )}
             </div>
           </>
         ) : (
           <>
             <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">FAMILY DAY</p>
             <h1 className="mt-2 text-2xl font-black tracking-normal">{context.event.title}</h1>
-            <div className="mt-5 border-t border-slate-700 pt-4">
-              <p className="text-xs font-bold text-slate-400">로그인한 가족</p>
-              <p className="mt-1 text-lg font-black">{getTeamLabel(context.team)}</p>
-            </div>
+            {(eventDate || venue) && (
+              <div className="mt-5 border-t border-slate-700 pt-4 text-xs font-bold text-slate-300">
+                {eventDate && <p>{eventDate}</p>}
+                {venue && <p className="mt-1">{venue}</p>}
+              </div>
+            )}
           </>
         )}
       </section>
 
-      <section>
-        <h2 className="mb-3 text-sm font-black">행사 메뉴</h2>
+      {(modules?.guide ?? true) && (
+        <section className="overflow-hidden rounded-[8px] border border-white/80 bg-white/90 shadow-card">
+          <div className="flex items-center justify-between border-b border-[#e2e7df] px-4 py-3">
+            <div>
+              <p className="text-[10px] font-black uppercase text-[#78877c]">Today</p>
+              <h2 className="mt-0.5 text-sm font-black text-[#173c2c]">오늘의 행사 일정</h2>
+            </div>
+            <Link to={`/e/${context.eventId}/guide?team=${encodeURIComponent(teamToken)}`} className="text-xs font-black text-[#47765c]">전체 일정</Link>
+          </div>
+          <div className="divide-y divide-[#e2e7df] px-4">
+            {schedulePreview.length > 0 ? schedulePreview.map((item) => (
+              <div key={item.id} className="grid grid-cols-[58px_1fr] gap-3 py-3">
+                <span className="inline-flex items-center gap-1 text-xs font-black text-[#47765c]"><Clock3 className="h-3.5 w-3.5" aria-hidden="true" />{item.time}</span>
+                <div><p className="text-sm font-black text-[#173c2c]">{item.title}</p>{item.description && <p className="mt-1 text-[11px] font-bold leading-4 text-[#78877c]">{item.description}</p>}</div>
+              </div>
+            )) : (
+              <p className="py-4 text-xs font-bold leading-5 text-[#617466]">전체 일정과 이용 안내를 확인해주세요.</p>
+            )}
+          </div>
+        </section>
+      )}
+
+      {modules?.photoContest && (
+        <Link to={photoAction.href} className="overflow-hidden rounded-[8px] bg-[#173c2c] p-5 text-white shadow-[0_18px_45px_rgba(31,65,47,0.18)]">
+          <p className="text-[10px] font-black uppercase text-emerald-300">{photoAction.eyebrow}</p>
+          <div className="mt-2 flex items-center gap-4">
+            <div className="grid h-12 w-12 flex-none place-items-center rounded-[8px] bg-white/10"><Camera className="h-6 w-6" aria-hidden="true" /></div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-black leading-6">{photoAction.title}</h2>
+              <p className="mt-1 text-xs font-bold leading-5 text-white/65">{photoAction.description}</p>
+            </div>
+            <ChevronRight className="h-5 w-5 flex-none text-white/60" aria-hidden="true" />
+          </div>
+        </Link>
+      )}
+
+      <section id="event-menu">
+        <h2 className="mb-3 text-sm font-black">더 즐기기</h2>
         <div className="grid grid-cols-2 gap-3">
-          {(modules?.guide ?? true) && (
-            <Link to={`/e/${context.eventId}/guide?team=${encodeURIComponent(teamToken)}`} className="card p-4">
-              <CalendarDays className="h-6 w-6 text-app-primary" aria-hidden="true" />
-              <h3 className="mt-4 text-sm font-black">행사 안내</h3>
-              <p className="mt-1 text-xs font-bold leading-5 text-app-muted">시간표·장소·이용 안내</p>
-            </Link>
-          )}
           {context.event.guide?.activities?.length ? (
             <Link to={`/e/${context.eventId}/games?team=${encodeURIComponent(teamToken)}`} className="card p-4">
               <Gamepad2 className="h-6 w-6 text-emerald-600" aria-hidden="true" />
@@ -75,16 +120,6 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
               <Music2 className="h-6 w-6 text-rose-500" aria-hidden="true" />
               <h3 className="mt-4 text-sm font-black">신청곡</h3>
               <p className="mt-1 text-xs font-bold leading-5 text-app-muted">곡명·가수·짧은 사연</p>
-            </Link>
-          )}
-          {modules?.photoContest && (
-            <Link to={`/t/${teamToken}/contest`} className="card col-span-2 flex items-center gap-4 p-4">
-              <div className="grid h-12 w-12 flex-none place-items-center rounded-xl bg-amber-100 text-amber-700"><Camera className="h-6 w-6" aria-hidden="true" /></div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-black">사진 콘테스트</h3>
-                <p className="mt-1 text-xs font-bold leading-5 text-app-muted">우리 가족 사진 등록·감상·투표</p>
-              </div>
-              <ChevronRight className="h-5 w-5 flex-none text-app-muted" aria-hidden="true" />
             </Link>
           )}
         </div>
@@ -136,7 +171,7 @@ export function TeamEntry() {
           </div>
         </header>
 
-        <div className={`relative z-10 flex flex-1 flex-col gap-4 overflow-y-auto p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
+        <div className={`relative z-10 flex flex-1 flex-col gap-4 overflow-y-auto p-4 pb-28 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && (
             <section className="card flex items-center justify-center gap-3 p-5 text-sm font-black text-app-muted">
               <Loader2 className="h-5 w-5 animate-spin text-app-primary" aria-hidden="true" />
@@ -245,6 +280,15 @@ export function TeamEntry() {
             </>
           )}
         </div>
+
+        {!loading && !error && context && teamToken && (context.event.preset === "family-photo-contest" || context.event.modules?.photoContest) && (
+          <nav className={`fixed inset-x-0 bottom-0 z-30 mx-auto grid w-full max-w-[430px] grid-cols-4 border-t px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_30px_rgba(31,65,47,0.08)] ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/95" : "border-app-border bg-white/95"}`} aria-label="참가자 메뉴">
+            <Link to={`/t/${teamToken}`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[#173c2c]"><Home className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-black">홈</span></Link>
+            <Link to={`/e/${context.eventId}/guide?team=${encodeURIComponent(teamToken)}`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[#617466]"><CalendarDays className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-black">일정</span></Link>
+            <Link to={`/t/${teamToken}/contest`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[#617466]"><Camera className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-black">사진</span></Link>
+            <a href="#event-menu" className="flex min-h-12 flex-col items-center justify-center gap-1 text-[#617466]"><Menu className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-black">더보기</span></a>
+          </nav>
+        )}
       </section>
     </main>
   );
