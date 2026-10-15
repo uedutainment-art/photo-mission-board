@@ -881,20 +881,20 @@ export function EventContest() {
               <p className="truncate text-sm font-black">{getTeamLabel(teamById.get(previewSubmission.teamId) ?? { name: previewSubmission.teamId })}</p>
               <p className="truncate text-xs font-bold text-slate-300">{previewSubmission.promptId ? promptById.get(previewSubmission.promptId)?.title : previewSubmission.title} · 이 가족 {previewIndex + 1}/{previewFamilySubmissions.length}</p>
             </div>
-            <button type="button" onClick={() => setPreviewSubmissionId(null)} className="grid h-10 w-10 flex-none place-items-center rounded-full bg-white/15" aria-label="사진 닫기"><X className="h-5 w-5" aria-hidden="true" /></button>
+            <button type="button" onPointerDown={() => setPreviewSubmissionId(null)} className="grid h-10 w-10 flex-none place-items-center rounded-full bg-white/15" aria-label="사진 닫기"><X className="h-5 w-5" aria-hidden="true" /></button>
           </div>
           <div className="relative flex min-h-0 flex-1 items-center justify-center p-4">
             {previewFamilySubmissions.length > 1 && (
-              <button type="button" onClick={() => showAdjacentPhoto(-1)} className="absolute left-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white" aria-label="이전 사진"><ChevronLeft className="h-6 w-6" aria-hidden="true" /></button>
+              <button type="button" onPointerDown={() => showAdjacentPhoto(-1)} className="absolute left-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white" aria-label="이전 사진"><ChevronLeft className="h-6 w-6" aria-hidden="true" /></button>
             )}
             <img src={previewSubmission.originalUrl} alt={previewSubmission.title} draggable onDragStart={(dragEvent) => setOriginalDragData(dragEvent, previewSubmission)} className="max-h-full max-w-full cursor-grab object-contain active:cursor-grabbing" title="바탕화면이나 폴더로 끌어서 저장" />
             {previewFamilySubmissions.length > 1 && (
-              <button type="button" onClick={() => showAdjacentPhoto(1)} className="absolute right-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white" aria-label="다음 사진"><ChevronRight className="h-6 w-6" aria-hidden="true" /></button>
+              <button type="button" onPointerDown={() => showAdjacentPhoto(1)} className="absolute right-3 z-10 grid h-11 w-11 place-items-center rounded-full bg-black/60 text-white" aria-label="다음 사진"><ChevronRight className="h-6 w-6" aria-hidden="true" /></button>
             )}
             <span className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-[11px] font-black text-white"><GripVertical className="h-3.5 w-3.5" aria-hidden="true" />끌어서 저장</span>
           </div>
           <div className="grid grid-cols-2 gap-2 border-t border-white/10 bg-slate-950 p-4">
-            <button type="button" onClick={() => setPreviewSubmissionId(null)} className="rounded-2xl border border-white/20 px-4 py-3 text-sm font-black text-white">닫기</button>
+            <button type="button" onPointerDown={() => setPreviewSubmissionId(null)} className="rounded-2xl border border-white/20 px-4 py-3 text-sm font-black text-white">닫기</button>
             <button type="button" onClick={() => void downloadOriginal(previewSubmission)} className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950"><Download className="h-4 w-4" aria-hidden="true" />원본 저장</button>
           </div>
         </div>
