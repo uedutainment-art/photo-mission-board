@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CalendarDays, Camera, ChevronRight, Images, Loader2, Music2, Share2, Target, Users } from "lucide-react";
+import { CalendarDays, Camera, ChevronRight, Gamepad2, Images, Loader2, Music2, Share2, Target, Users } from "lucide-react";
 import { useTeamSession, type TeamSessionContext } from "../hooks/useTeamSession";
 import { formatKoreanDate } from "../lib/formatDate";
 import { getParticipantLabels } from "../lib/participantTerms";
@@ -41,6 +41,13 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
               <p className="mt-1 text-xs font-bold leading-5 text-app-muted">시간표·장소·이용 안내</p>
             </Link>
           )}
+          {context.event.guide?.activities?.length ? (
+            <Link to={`/e/${context.eventId}/games?team=${encodeURIComponent(teamToken)}`} className="card p-4">
+              <Gamepad2 className="h-6 w-6 text-emerald-600" aria-hidden="true" />
+              <h3 className="mt-4 text-sm font-black">전통놀이</h3>
+              <p className="mt-1 text-xs font-bold leading-5 text-app-muted">8가지 자유 체험 안내</p>
+            </Link>
+          ) : null}
           {modules?.songRequest && (
             <Link to={`/e/${context.eventId}/songs?team=${encodeURIComponent(teamToken)}`} className="card p-4">
               <Music2 className="h-6 w-6 text-rose-500" aria-hidden="true" />

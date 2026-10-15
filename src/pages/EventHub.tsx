@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { Album, CalendarDays, Camera, Loader2, Music2 } from "lucide-react";
+import { Album, CalendarDays, Camera, Gamepad2, Loader2, Music2 } from "lucide-react";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { readLatestTeamSessionForEvent } from "../lib/teamSession";
 
@@ -24,6 +24,7 @@ export function EventHub() {
           {!loading && event && eventId && (
             <div className="grid grid-cols-2 gap-3">
               {(modules?.guide ?? true) && <Link to={`/e/${eventId}/guide`} className="card p-4"><CalendarDays className="h-6 w-6 text-app-primary" /><h2 className="mt-4 text-sm font-black">행사 안내</h2><p className="mt-1 text-xs font-bold text-app-muted">시간표·장소·이용 안내</p></Link>}
+              {event.guide?.activities?.length ? <Link to={`/e/${eventId}/games`} className="card p-4"><Gamepad2 className="h-6 w-6 text-emerald-600" /><h2 className="mt-4 text-sm font-black">전통놀이</h2><p className="mt-1 text-xs font-bold text-app-muted">8가지 자유 체험 안내</p></Link> : null}
               {modules?.songRequest && <Link to={`/e/${eventId}/songs`} className="card p-4"><Music2 className="h-6 w-6 text-rose-500" /><h2 className="mt-4 text-sm font-black">신청곡</h2><p className="mt-1 text-xs font-bold text-app-muted">곡명·가수·짧은 사연</p></Link>}
               {modules?.photoContest && <Link to={storedTeamSession ? `/t/${storedTeamSession.token}/contest` : `/e/${eventId}/join`} className="card p-4"><Camera className="h-6 w-6 text-amber-600" /><h2 className="mt-4 text-sm font-black">사진 콘테스트</h2><p className="mt-1 text-xs font-bold text-app-muted">사진 등록·감상·투표</p></Link>}
               {event.preset !== "family-photo-contest" && !modules?.photoContest && (modules?.archive ?? true) && <Link to={`/e/${eventId}/archive`} className="card p-4"><Album className="h-6 w-6 text-emerald-600" /><h2 className="mt-4 text-sm font-black">행사 후 기록</h2><p className="mt-1 text-xs font-bold text-app-muted">준비되면 공개됩니다</p></Link>}

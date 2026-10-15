@@ -48,11 +48,19 @@ export interface EventGuideScheduleItem {
   description?: string;
 }
 
+export interface EventGuideActivity {
+  id: string;
+  title: string;
+  instruction: string;
+  notice?: string;
+}
+
 export interface EventGuideSettings {
   intro?: string;
   venue?: string;
   schedule: EventGuideScheduleItem[];
   notices: string[];
+  activities?: EventGuideActivity[];
 }
 
 export interface SubmissionSettings {

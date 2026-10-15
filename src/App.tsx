@@ -26,6 +26,7 @@ import { ParticipantJoin } from "./pages/ParticipantJoin";
 import { TeamContest } from "./pages/TeamContest";
 import { ContestGallery } from "./pages/ContestGallery";
 import { ContestResults } from "./pages/ContestResults";
+import { EventActivities } from "./pages/EventActivities";
 
 export default function App() {
   return (
@@ -114,6 +115,7 @@ export default function App() {
       <Route path="/events/:eventId/public" element={<PublicBoard />} />
       <Route path="/e/:eventId" element={<EventHub />} />
       <Route path="/e/:eventId/guide" element={<EventGuide />} />
+      <Route path="/e/:eventId/games" element={<EventActivities />} />
       <Route path="/e/:eventId/songs" element={<SongRequestPage />} />
       <Route path="/e/:eventId/archive" element={<EventArchive />} />
       <Route path="/e/:eventId/join" element={<ParticipantJoin />} />

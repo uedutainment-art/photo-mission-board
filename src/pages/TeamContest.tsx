@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Camera, Images, Loader2, Pencil, Plus, RotateCw, Trash2, Trophy, X } from "lucide-react";
+import { ArrowLeft, Camera, Gamepad2, Images, Loader2, Pencil, Plus, RotateCw, Trash2, Trophy, X } from "lucide-react";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { useContestSubmissions, type FamilySubmissionWithId } from "../hooks/useContestSubmissions";
 import { useTeamSession } from "../hooks/useTeamSession";
@@ -110,7 +110,7 @@ export function TeamContest() {
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
       <section className="phone-surface overflow-hidden rounded-[28px] border border-app-border shadow-phone">
-        <header className="bg-app-ink px-5 pb-5 pt-5 text-white"><p className="text-[11px] font-black text-slate-400">PHOTO CONTEST</p><h1 className="mt-1 text-xl font-black">{context ? getTeamLabel(context.team) : "사진 콘테스트"}</h1></header>
+        <header className="bg-app-ink px-5 pb-5 pt-5 text-white"><div className="flex items-center gap-3"><Link to={`/t/${teamToken}`} className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-white/10" aria-label="가족 행사 메뉴로 돌아가기"><ArrowLeft className="h-5 w-5" /></Link><div><p className="text-[11px] font-black text-slate-400">PHOTO CONTEST</p><h1 className="mt-1 text-xl font-black">{context ? getTeamLabel(context.team) : "사진 콘테스트"}</h1></div></div></header>
         <div className="flex-1 space-y-4 bg-slate-50 p-4">
           {loading && <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 불러오는 중</div>}
           {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
@@ -119,6 +119,7 @@ export function TeamContest() {
             <>
               <section className="card p-4">
                 <div className="flex items-start justify-between gap-3"><div><h2 className="text-base font-black">오늘의 즐거운 순간</h2><p className="mt-2 text-sm font-bold leading-6 text-app-muted">{participantLabels.singular}의 사진을 {minimumPhotos}~{photoLimit}장 등록해주세요.</p></div><strong className={enoughPhotos ? "text-emerald-700" : "text-app-primary"}>{ownSubmissions.length}/{photoLimit}</strong></div>
+                {context.event.guide?.activities?.length ? <Link to={`/e/${context.eventId}/games?team=${encodeURIComponent(teamToken ?? "")}`} className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black leading-5 text-emerald-800"><Gamepad2 className="h-4 w-4 flex-none" aria-hidden="true" /><span>전통놀이를 즐기는 장면도 한 장 정도 남겨보세요.</span></Link> : null}
                 <span className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-black ${submissionOpen ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-app-muted"}`}>{submissionOpen ? "사진 접수 중" : context.event.submission?.status === "closed" ? "사진 접수 마감" : "접수 대기"}</span>
                 {ownSubmissions.length > 0 && !enoughPhotos && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-black text-amber-800">사진을 {minimumPhotos - ownSubmissions.length}장 더 등록해주세요.</p>}
               </section>
