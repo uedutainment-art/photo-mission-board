@@ -437,9 +437,15 @@ export function EventContest() {
   }
 
   function showAdjacentPhoto(direction: -1 | 1) {
-    if (previewFamilySubmissions.length === 0 || previewIndex < 0) return;
-    const nextIndex = (previewIndex + direction + previewFamilySubmissions.length) % previewFamilySubmissions.length;
-    setPreviewSubmissionId(previewFamilySubmissions[nextIndex].id);
+    setPreviewSubmissionId((currentId) => {
+      const current = filteredSubmissions.find((item) => item.id === currentId);
+      if (!current) return currentId;
+      const familyPhotos = filteredSubmissions.filter((item) => item.teamId === current.teamId);
+      const currentIndex = familyPhotos.findIndex((item) => item.id === currentId);
+      if (currentIndex < 0 || familyPhotos.length < 2) return currentId;
+      const nextIndex = (currentIndex + direction + familyPhotos.length) % familyPhotos.length;
+      return familyPhotos[nextIndex].id;
+    });
   }
 
   const pageLoading = loading || submissionsLoading;
