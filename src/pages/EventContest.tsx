@@ -10,9 +10,11 @@ import {
   GripVertical,
   Loader2,
   MessageCircle,
+  Music2,
   Phone,
   RotateCcw,
   Trophy,
+  X,
 } from "lucide-react";
 import JSZip from "jszip";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
@@ -95,6 +97,10 @@ export function EventContest() {
   const [notice, setNotice] = useState<string | null>(null);
   const [tieBreakNote, setTieBreakNote] = useState("");
   const [winnerIds, setWinnerIds] = useState<string[]>(["", "", ""]);
+  const [photoTeamFilter, setPhotoTeamFilter] = useState("all");
+  const [photoPromptFilter, setPhotoPromptFilter] = useState("all");
+  const [previewSubmissionId, setPreviewSubmissionId] = useState<string | null>(null);
+  const [zipProgress, setZipProgress] = useState<{ completed: number; total: number } | null>(null);
   const selectionLimit = event?.voting?.selectionsPerVoter
     ?? (event?.preset === "family-photo-contest" ? 2 : 1);
   const minimumPhotos = event?.preset === "family-photo-contest"
@@ -157,6 +163,19 @@ export function EventContest() {
     && event.results?.status === "published";
   const operationStage = event ? getOperationStage(event) : 1;
   const stageAction = getStageAction(operationStage);
+  const filteredSubmissions = useMemo(
+    () => submissions.filter((item) => (
+      (photoTeamFilter === "all" || item.teamId === photoTeamFilter)
+      && (photoPromptFilter === "all" || item.promptId === photoPromptFilter)
+    )),
+    [photoPromptFilter, photoTeamFilter, submissions],
+  );
+  const previewSubmission = submissions.find((item) => item.id === previewSubmissionId) ?? null;
+  const sortedSongRequests = useMemo(
+    () => [...songRequests].sort((a, b) => Number(Boolean(a.playedAt)) - Number(Boolean(b.playedAt))),
+    [songRequests],
+  );
+  const playedSongCount = songRequests.filter((request) => Boolean(request.playedAt)).length;
 
   useEffect(() => {
     if (event?.results?.winners?.length) {
@@ -292,6 +311,23 @@ export function EventContest() {
     }
   }
 
+  async function toggleSongPlayed(requestId: string, played: boolean) {
+    if (!eventId) return;
+    const busyKey = `song-${requestId}`;
+    setBusy(busyKey);
+    setLocalError(null);
+    try {
+      await updateDoc(doc(db, "events", eventId, "songRequests", requestId), {
+        playedAt: played ? serverTimestamp() : deleteField(),
+      });
+      setNotice(played ? "신청곡을 재생 완료로 표시했습니다." : "신청곡을 미재생으로 되돌렸습니다.");
+    } catch (songError) {
+      setLocalError(songError instanceof Error ? songError.message : "신청곡 상태를 바꾸지 못했습니다.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function publishResults(published: boolean) {
     if (!eventId || !event) return;
     const selected = winnerIds.filter(Boolean);
@@ -374,29 +410,52 @@ export function EventContest() {
   }
 
   async function downloadOriginals() {
-    if (!event) return;
+    if (!event || submissions.length === 0) return;
     setBusy("zip");
     setLocalError(null);
+    setNotice(null);
+    setZipProgress({ completed: 0, total: submissions.length });
     try {
       const zip = new JSZip();
-      for (const item of submissions) {
-        const response = await fetch(item.originalUrl);
-        if (!response.ok) throw new Error(`${item.title} 원본을 불러오지 못했습니다.`);
-        const team = teamById.get(item.teamId);
-        const name = getTeamLabel(team ?? { name: item.teamId });
-        zip.file(
-          `${String(team?.index ?? 0).padStart(2, "0")}-${safeFilename(name)}-${safeFilename(item.title)}.jpg`,
-          await response.blob(),
-        );
+      const failures: string[] = [];
+      let completed = 0;
+
+      for (let offset = 0; offset < submissions.length; offset += 4) {
+        const batch = submissions.slice(offset, offset + 4);
+        const results = await Promise.all(batch.map(async (item) => {
+          try {
+            const response = await fetch(item.originalUrl);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            return { blob, item };
+          } catch {
+            failures.push(getOriginalFilename(item));
+            return null;
+          } finally {
+            completed += 1;
+            setZipProgress({ completed, total: submissions.length });
+          }
+        }));
+
+        results.forEach((result) => {
+          if (!result) return;
+          zip.file(getOriginalFilename(result.item, getImageExtension(result.blob, result.item.originalPath)), result.blob);
+        });
       }
+
+      if (Object.keys(zip.files).length === 0) throw new Error("저장할 수 있는 원본 사진이 없습니다.");
       downloadBlob(
         await zip.generateAsync({ type: "blob" }),
         `${safeFilename(event.title)}-contest-originals.zip`,
       );
+      setNotice(failures.length > 0
+        ? `원본 ZIP을 저장했습니다. 불러오지 못한 사진 ${failures.length}장은 개별 저장해주세요.`
+        : `원본 사진 ${submissions.length}장을 ZIP으로 저장했습니다.`);
     } catch (zipError) {
       setLocalError(zipError instanceof Error ? zipError.message : "원본 ZIP을 만들지 못했습니다.");
     } finally {
       setBusy(null);
+      setZipProgress(null);
     }
   }
 
@@ -472,6 +531,20 @@ export function EventContest() {
                 </button>
               </section>
 
+              <nav className="grid grid-cols-5 gap-1 rounded-2xl border border-app-border bg-white p-1.5" aria-label="운영 화면 바로가기">
+                {[
+                  ["접수", "submission-operations"],
+                  ["투표", "voting-operations"],
+                  ["사진", "photo-review"],
+                  ["결과", "result-operations"],
+                  ["신청곡", "song-requests"],
+                ].map(([label, targetId]) => (
+                  <button key={targetId} type="button" onClick={() => document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })} className="min-w-0 rounded-xl px-1 py-2 text-[11px] font-black text-app-muted hover:bg-slate-100 hover:text-app-ink">
+                    {label}
+                  </button>
+                ))}
+              </nav>
+
               <section id="submission-operations" className="card scroll-mt-4 p-4">
                 <h2 className="text-sm font-black">사진 접수</h2>
                 <p className="mt-1 text-xs font-bold text-app-muted">
@@ -483,13 +556,16 @@ export function EventContest() {
                       key={status}
                       type="button"
                       onClick={() => requestPhaseChange("submission.status", status)}
-                      disabled={busy === "submission.status" || event.submission?.status === status}
+                      disabled={busy === "submission.status" || event.submission?.status === status || event.results?.status === "published"}
                       className={event.submission?.status === status ? "rounded-xl bg-white px-2 py-2 text-xs font-black shadow-sm" : "rounded-xl px-2 py-2 text-xs font-black text-app-muted disabled:opacity-50"}
                     >
                       {status === "waiting" ? "대기" : status === "open" ? "접수 시작" : "접수 마감"}
                     </button>
                   ))}
                 </div>
+                {event.results?.status === "published" && (
+                  <p className="mt-2 text-center text-[11px] font-bold text-app-muted">결과를 비공개로 전환해야 접수 단계를 다시 열 수 있습니다.</p>
+                )}
                 <div className="mt-4 border-t border-app-border pt-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="text-xs font-black">사진 {minimumPhotos}장 미충족 가족</h3>
@@ -536,7 +612,7 @@ export function EventContest() {
                   <button
                     type="button"
                     onClick={() => requestPhaseChange("voting.status", "open")}
-                    disabled={event.submission?.status !== "closed" || event.voting?.status === "open"}
+                    disabled={event.submission?.status !== "closed" || event.voting?.status === "open" || event.results?.status === "published"}
                     className="rounded-2xl bg-app-ink px-4 py-3 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-500"
                   >
                     투표 시작
@@ -550,6 +626,9 @@ export function EventContest() {
                     투표 마감
                   </button>
                 </div>
+                {event.results?.status === "published" && (
+                  <p className="mt-2 text-center text-[11px] font-bold text-app-muted">결과를 비공개로 전환해야 투표를 다시 시작할 수 있습니다.</p>
+                )}
                 <div className="mt-4 divide-y divide-app-border">
                   {teams.map((team) => {
                     const teamVotes = votesByVoterTeam.get(team.id) ?? [];
@@ -590,20 +669,37 @@ export function EventContest() {
                 </div>
               </section>
 
-              <section className="card p-4">
+              <section id="photo-review" className="card scroll-mt-4 p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-sm font-black">사진 검수</h2>
                     <p className="mt-1 text-xs font-bold text-app-muted">부적절한 사진은 투표 대상에서 숨깁니다.</p>
                   </div>
-                  <span className="text-sm font-black">{submissions.length}</span>
+                  <span className="text-sm font-black">{filteredSubmissions.length}/{submissions.length}</span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  {submissions.map((item) => {
+                  <label className="text-[11px] font-black text-app-muted">
+                    가족
+                    <select value={photoTeamFilter} onChange={(changeEvent) => setPhotoTeamFilter(changeEvent.target.value)} className="mt-1 w-full rounded-xl border border-app-border bg-white px-2 py-2 text-xs font-bold text-app-ink">
+                      <option value="all">전체 가족</option>
+                      {teams.map((team) => <option key={team.id} value={team.id}>{getTeamLabel(team)}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-[11px] font-black text-app-muted">
+                    사진 미션
+                    <select value={photoPromptFilter} onChange={(changeEvent) => setPhotoPromptFilter(changeEvent.target.value)} className="mt-1 w-full rounded-xl border border-app-border bg-white px-2 py-2 text-xs font-bold text-app-ink">
+                      <option value="all">전체 미션</option>
+                      {(event.submission?.prompts ?? []).map((prompt) => <option key={prompt.id} value={prompt.id}>{prompt.title}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {filteredSubmissions.map((item) => {
                     const teamLabel = getTeamLabel(teamById.get(item.teamId) ?? { name: item.teamId });
                     return (
                       <div key={item.id} className="overflow-hidden rounded-2xl border border-app-border bg-white">
                         <div className="relative">
+                          <button type="button" onClick={() => setPreviewSubmissionId(item.id)} className="block w-full" aria-label={`${teamLabel} ${item.title} 크게 보기`}>
                           <img
                             src={item.thumbUrl}
                             alt={item.title}
@@ -614,9 +710,10 @@ export function EventContest() {
                               dragEvent.dataTransfer.setData("DownloadURL", `application/octet-stream:${filename}:${item.originalUrl}`);
                               dragEvent.dataTransfer.setData("text/uri-list", item.originalUrl);
                             }}
-                            className="aspect-square w-full cursor-grab object-cover active:cursor-grabbing"
+                            className="aspect-square w-full cursor-zoom-in object-cover"
                             title="끌어서 원본 저장"
                           />
+                          </button>
                           <span className="pointer-events-none absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-lg bg-slate-950/70 text-white" title="끌어서 원본 저장">
                             <GripVertical className="h-4 w-4" aria-hidden="true" />
                           </span>
@@ -656,6 +753,9 @@ export function EventContest() {
                       </div>
                     );
                   })}
+                  {filteredSubmissions.length === 0 && (
+                    <p className="col-span-2 rounded-xl bg-slate-100 px-3 py-5 text-center text-xs font-bold text-app-muted">조건에 맞는 사진이 없습니다.</p>
+                  )}
                 </div>
               </section>
 
@@ -760,26 +860,32 @@ export function EventContest() {
                   <Download className="h-4 w-4" aria-hidden="true" />
                   집계 CSV
                 </button>
-                <button type="button" onClick={() => void downloadOriginals()} disabled={busy === "zip"} className="card flex items-center justify-center gap-2 p-4 text-xs font-black disabled:opacity-50">
+                <button type="button" onClick={() => void downloadOriginals()} disabled={busy === "zip" || submissions.length === 0} className="card flex items-center justify-center gap-2 p-4 text-xs font-black disabled:opacity-50">
                   {busy === "zip" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
-                  원본 ZIP
+                  {zipProgress ? `원본 ${zipProgress.completed}/${zipProgress.total}` : "원본 ZIP"}
                 </button>
               </section>
 
               {event.modules?.songRequest && (
-                <section className="card p-4">
+                <section id="song-requests" className="card scroll-mt-4 p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-sm font-black">신청곡</h2>
-                      <p className="mt-1 text-xs font-bold text-app-muted">공통 QR에서 접수된 곡입니다.</p>
+                      <p className="mt-1 text-xs font-bold text-app-muted">재생 완료 {playedSongCount}/{songRequests.length}</p>
                     </div>
                     <strong className="text-lg font-black">{songRequests.length}</strong>
                   </div>
                   <div className="mt-3 divide-y divide-app-border">
-                    {songRequests.map((request) => (
-                      <div key={request.id} className="py-3">
-                        <p className="text-sm font-black">{request.songTitle} · {request.artist}</p>
-                        {request.story && <p className="mt-1 text-xs font-bold text-app-muted">{request.story}</p>}
+                    {sortedSongRequests.map((request) => (
+                      <div key={request.id} className={`flex items-start gap-3 py-3 ${request.playedAt ? "opacity-60" : ""}`}>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-sm font-black ${request.playedAt ? "line-through" : ""}`}>{request.songTitle} · {request.artist}</p>
+                          {request.story && <p className="mt-1 text-xs font-bold text-app-muted">{request.story}</p>}
+                        </div>
+                        <button type="button" onClick={() => void toggleSongPlayed(request.id, !request.playedAt)} disabled={busy === `song-${request.id}`} className={`flex flex-none items-center gap-1 rounded-xl px-2.5 py-2 text-[11px] font-black ${request.playedAt ? "bg-slate-100 text-app-muted" : "bg-app-ink text-white"}`}>
+                          {busy === `song-${request.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Music2 className="h-3.5 w-3.5" aria-hidden="true" />}
+                          {request.playedAt ? "완료 취소" : "재생 완료"}
+                        </button>
                       </div>
                     ))}
                     {songRequests.length === 0 && <p className="py-4 text-center text-xs font-bold text-app-muted">아직 신청곡이 없습니다.</p>}
@@ -790,6 +896,25 @@ export function EventContest() {
           )}
         </div>
       </section>
+
+      {previewSubmission && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950" role="dialog" aria-modal="true" aria-label="사진 크게 보기">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 text-white">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black">{getTeamLabel(teamById.get(previewSubmission.teamId) ?? { name: previewSubmission.teamId })}</p>
+              <p className="truncate text-xs font-bold text-slate-300">{previewSubmission.promptId ? promptById.get(previewSubmission.promptId)?.title : previewSubmission.title}</p>
+            </div>
+            <button type="button" onClick={() => setPreviewSubmissionId(null)} className="grid h-10 w-10 flex-none place-items-center rounded-full bg-white/15" aria-label="사진 닫기"><X className="h-5 w-5" aria-hidden="true" /></button>
+          </div>
+          <div className="flex min-h-0 flex-1 items-center justify-center p-4">
+            <img src={previewSubmission.originalUrl} alt={previewSubmission.title} className="max-h-full max-w-full object-contain" />
+          </div>
+          <div className="grid grid-cols-2 gap-2 border-t border-white/10 bg-slate-950 p-4">
+            <button type="button" onClick={() => setPreviewSubmissionId(null)} className="rounded-2xl border border-white/20 px-4 py-3 text-sm font-black text-white">닫기</button>
+            <button type="button" onClick={() => void downloadOriginal(previewSubmission)} className="flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-slate-950"><Download className="h-4 w-4" aria-hidden="true" />원본 저장</button>
+          </div>
+        </div>
+      )}
 
       <ConfirmActionDialog
         busy={confirmBusy}

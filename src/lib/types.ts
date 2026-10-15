@@ -270,6 +270,7 @@ export interface SongRequest {
   story?: string;
   requesterId: string;
   submittedAt: Timestamp;
+  playedAt?: Timestamp;
 }
 
 export interface FaceDetectionBox {
