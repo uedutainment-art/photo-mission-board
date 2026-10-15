@@ -4,8 +4,13 @@ export function downloadBlob(blob: Blob, filename: string): void {
 
   anchor.href = objectUrl;
   anchor.download = filename;
+  anchor.style.display = "none";
+  document.body.append(anchor);
   anchor.click();
-  URL.revokeObjectURL(objectUrl);
+  anchor.remove();
+
+  // Large ZIP files may still be reading the object URL after click returns.
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
 export function safeFilename(value: string): string {
