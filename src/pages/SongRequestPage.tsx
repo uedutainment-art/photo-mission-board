@@ -1,11 +1,26 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Music2 } from "lucide-react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { EventBrandMark } from "../components/EventBrandMark";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { auth, db } from "../lib/firebase";
 import { isSonovaFamilyDay } from "../lib/eventBrand";
+import { getTeamLabel } from "../lib/teamLabel";
+import { readLatestTeamSessionForEvent, readStoredTeamSession } from "../lib/teamSession";
+
+// Tags the request with the family this phone joined as, so operators can see who asked for the song.
+async function readRequestingFamily(eventId: string, teamToken: string | null): Promise<{ teamId?: string; familyName?: string }> {
+  const session = (teamToken ? readStoredTeamSession(teamToken) : null) ?? readLatestTeamSessionForEvent(eventId);
+  if (!session || session.eventId !== eventId) return {};
+  try {
+    const team = await getDoc(doc(db, "events", eventId, "teams", session.teamId));
+    const data = team.data() as { name: string; displayName?: string } | undefined;
+    return data ? { teamId: session.teamId, familyName: getTeamLabel(data) } : { teamId: session.teamId };
+  } catch {
+    return { teamId: session.teamId };
+  }
+}
 
 export function SongRequestPage() {
   const { eventId } = useParams();
@@ -23,7 +38,8 @@ export function SongRequestPage() {
     if (!eventId || !auth.currentUser || !songTitle.trim() || !artist.trim()) return;
     setBusy(true); setError(null);
     try {
-      await addDoc(collection(db, "events", eventId, "songRequests"), { eventId, songTitle: songTitle.trim(), artist: artist.trim(), story: story.trim(), requesterId: auth.currentUser.uid, submittedAt: serverTimestamp() });
+      const family = await readRequestingFamily(eventId, teamToken);
+      await addDoc(collection(db, "events", eventId, "songRequests"), { eventId, songTitle: songTitle.trim(), artist: artist.trim(), story: story.trim(), requesterId: auth.currentUser.uid, ...family, submittedAt: serverTimestamp() });
       setDone(true);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "신청곡을 접수하지 못했습니다.");

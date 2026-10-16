@@ -20,7 +20,7 @@ import { ContestAdminNav } from "../components/ContestAdminNav";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventLive } from "../hooks/useEventLive";
 import { useSongRequests } from "../hooks/useSongRequests";
-import { clearContestVote } from "../lib/contest";
+import { clearContestVote, countFilledSlots } from "../lib/contest";
 import { downloadBlob, safeFilename } from "../lib/download";
 import { db } from "../lib/firebase";
 import { formatPhone, smsHref, telHref } from "../lib/phone";
@@ -132,9 +132,9 @@ export function EventContest() {
   );
   const unvotedTeams = teams.filter((team) => (votesByVoterTeam.get(team.id)?.length ?? 0) < selectionLimit);
   const submissionCountByTeam = useMemo(() => {
-    const counts = new Map<string, number>();
-    submissions.forEach((item) => counts.set(item.teamId, (counts.get(item.teamId) ?? 0) + 1));
-    return counts;
+    const byTeam = new Map<string, typeof submissions>();
+    submissions.forEach((item) => byTeam.set(item.teamId, [...(byTeam.get(item.teamId) ?? []), item]));
+    return new Map([...byTeam].map(([teamId, items]) => [teamId, countFilledSlots(items)]));
   }, [submissions]);
   const completedSubmissionTeams = teams.filter((team) => (submissionCountByTeam.get(team.id) ?? 0) >= minimumPhotos);
   const unregisteredTeams = teams.filter((team) => (submissionCountByTeam.get(team.id) ?? 0) < minimumPhotos);
@@ -910,6 +910,7 @@ export function EventContest() {
                     {sortedSongRequests.map((request) => (
                       <div key={request.id} className={`flex items-start gap-3 py-3 ${request.playedAt ? "opacity-60" : ""}`}>
                         <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-black text-app-primary">{request.familyName ?? "가족 미확인"}</p>
                           <p className={`text-sm font-black ${request.playedAt ? "line-through" : ""}`}>{request.songTitle} · {request.artist}</p>
                           {request.story && <p className="mt-1 text-xs font-bold text-app-muted">{request.story}</p>}
                         </div>

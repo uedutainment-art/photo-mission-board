@@ -270,6 +270,8 @@ export interface SongRequest {
   artist: string;
   story?: string;
   requesterId: string;
+  teamId?: string;
+  familyName?: string;
   submittedAt: Timestamp;
   playedAt?: Timestamp;
 }

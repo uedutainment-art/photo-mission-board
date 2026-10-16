@@ -11,6 +11,12 @@ function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
+// Counts distinct missions (plus legacy photos without a mission) so duplicate uploads never use up a slot.
+export function countFilledSlots(submissions: Array<{ promptId?: string }>): number {
+  const prompts = new Set(submissions.filter((item) => item.promptId).map((item) => item.promptId));
+  return prompts.size + submissions.filter((item) => !item.promptId).length;
+}
+
 async function uploadContestImage(file: File, basePath: string) {
   try {
     return await uploadImage(file, basePath);
@@ -50,17 +56,19 @@ export async function saveContestSubmission({
   }
 
   const submissionsRef = collection(db, "events", eventId, "familySubmissions");
-  const submissionRef = submissionId
-    ? doc(submissionsRef, submissionId)
+  const ownSnapshot = await getDocs(query(submissionsRef, where("teamId", "==", teamId)));
+  const ownSubmissions = ownSnapshot.docs.map((item) => ({ id: item.id, promptId: item.get("promptId") as string | undefined }));
+  // One document per family mission, so two phones filling the same mission replace each other instead of duplicating.
+  const targetId = submissionId
+    ?? (promptId ? ownSubmissions.find((item) => item.promptId === promptId)?.id ?? `${teamId}_${promptId}` : undefined);
+  const submissionRef = targetId
+    ? doc(submissionsRef, targetId)
     : doc(submissionsRef);
   const previousSnapshot = await getDoc(submissionRef);
   const previous = previousSnapshot.exists() ? previousSnapshot.data() as FamilySubmission : null;
 
-  if (!previous) {
-    const ownSubmissions = await getDocs(query(submissionsRef, where("teamId", "==", teamId)));
-    if (ownSubmissions.size >= maxSubmissions) {
-      throw new Error(`사진은 가족당 최대 ${maxSubmissions}장까지 등록할 수 있습니다.`);
-    }
+  if (!previous && countFilledSlots(ownSubmissions) >= maxSubmissions) {
+    throw new Error(`사진은 가족당 최대 ${maxSubmissions}장까지 등록할 수 있습니다.`);
   }
   const image = await uploadContestImage(
     file,
