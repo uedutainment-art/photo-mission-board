@@ -182,6 +182,21 @@ export function TeamContest() {
                 {filledCount > 0 && !enoughPhotos && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-black text-amber-800">사진을 {minimumPhotos - filledCount}장 더 등록해주세요.</p>}
               </section>
 
+              {photoPrompts.length > 0 && (
+                <details className="rounded-[8px] border border-[#b9c9bd] bg-white p-4" open>
+                  <summary className="cursor-pointer text-base font-black text-[#173c2c]">사진 미션 안내</summary>
+                  <p className="mt-3 border-l-4 border-[#47765c] pl-3 text-sm font-bold leading-6 text-[#173c2c]">휴대폰을 가로로 돌려 찍어주세요.<br /><span className="font-normal">가족 모두가 나오도록 좌우에 여유를 두면 인쇄할 때도 좋아요. 세로 사진도 올릴 수 있어요.</span></p>
+                  <ol className="mt-3 divide-y divide-app-border">
+                    {promptSlots.map(({ prompt, submission }, index) => (
+                      <li key={prompt.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                        <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-[#173c2c] text-xs font-black text-white">{index + 1}</span>
+                        <div className="min-w-0 flex-1"><h3 className="text-base font-black leading-6">{prompt.title}</h3><p className="mt-1 whitespace-pre-line break-words text-sm leading-6 text-app-muted">{prompt.description}</p><p className={`mt-1 text-xs font-bold ${submission ? "text-emerald-700" : "text-app-muted"}`}>{submission ? "사진 등록 완료" : "아직 사진이 없어요"}</p></div>
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
+
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(event) => { handleFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
               <input ref={cameraRef} type="file" accept="image/*" capture={promptUploadTarget?.prompt.id.includes("selfie") ? "user" : "environment"} className="hidden" onChange={(event) => void handlePromptFile(event.target.files?.[0])} />
               <input ref={libraryRef} type="file" accept="image/*" className="hidden" onChange={(event) => void handlePromptFile(event.target.files?.[0])} />
@@ -192,7 +207,7 @@ export function TeamContest() {
                     <article key={prompt.id} className="flex min-h-[250px] flex-col overflow-hidden rounded-[8px] border border-app-border bg-white shadow-card">
                       <div className="flex items-start gap-2 p-3">
                         <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-[#173c2c] text-[11px] font-black text-white">{index + 1}</span>
-                        <div className="min-w-0"><h3 className="text-sm font-black leading-5">{prompt.title}</h3><p className="mt-1 line-clamp-2 text-[11px] font-bold leading-4 text-app-muted">{prompt.description}</p></div>
+                        <div className="min-w-0"><h3 className="text-sm font-black leading-5">{prompt.title}</h3><p className="mt-1 break-words text-xs leading-5 text-app-muted">{prompt.description}</p></div>
                       </div>
                       {submission ? (
                         <div className="mt-auto border-t border-app-border p-2">
@@ -246,11 +261,13 @@ export function TeamContest() {
         </div>
         {promptUploadTarget && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-3" role="dialog" aria-modal="true" aria-label={`${promptUploadTarget.prompt.title} 사진 선택`}>
-            <div className="w-full max-w-[406px] rounded-[12px] bg-white p-3 shadow-2xl">
+            <div className="max-h-[85dvh] w-full max-w-[406px] overflow-y-auto rounded-[12px] bg-white p-4 shadow-2xl">
               <div className="flex items-start justify-between gap-3">
                 <div><p className="text-[11px] font-black text-[#617466]">사진 미션</p><h2 className="mt-1 text-lg font-black text-[#173c2c]">{promptUploadTarget.prompt.title}</h2></div>
                 <button type="button" onClick={() => setPromptUploadTarget(null)} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100" aria-label="사진 선택 닫기"><X className="h-4 w-4" /></button>
               </div>
+              <p className="my-3 whitespace-pre-line break-words text-base leading-7 text-app-ink">{promptUploadTarget.prompt.description}</p>
+              <p className="mb-3 border-l-4 border-[#47765c] pl-3 text-sm font-bold leading-6 text-[#173c2c]">촬영할 때 휴대폰을 가로로 돌려주세요.<br /><span className="font-normal">가족의 얼굴과 발끝이 잘리지 않게 여유 있게 담아주세요.</span></p>
               <p className="mt-1 text-xs font-bold leading-5 text-app-muted">사진을 고르면 이 미션 칸에 바로 저장됩니다.</p>
               <button type="button" onClick={() => cameraRef.current?.click()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#173c2c] px-4 py-3 text-sm font-black text-white"><Camera className="h-5 w-5" />카메라로 촬영</button>
               <button type="button" onClick={() => libraryRef.current?.click()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-[8px] border border-[#ccd6ca] bg-white px-4 py-3 text-sm font-black text-[#173c2c]"><Images className="h-5 w-5" />앨범에서 선택</button>
