@@ -2,6 +2,8 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Box,
+  Camera,
+  ChevronRight,
   CircleDot,
   Cookie,
   Dices,
@@ -61,6 +63,11 @@ export function EventActivities() {
                 <p className="mt-3 text-sm font-bold leading-6 text-slate-300">횟수·점수·완료 확인 없이 가족과 편하게 체험하는 시간입니다.</p>
               </section>
 
+              <section className="rounded-[8px] border border-amber-200 bg-amber-50 p-4">
+                <p className="text-sm font-black text-amber-950">마음에 드는 놀이 3개만 골라도 충분해요</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-amber-800">잘하는 모습보다 함께 웃는 순간을 즐겨보세요. 가장 즐거운 장면은 사진 미션으로 남길 수 있습니다.</p>
+              </section>
+
               <section className="grid grid-cols-2 gap-3">
                 {activities.map((activity, index) => {
                   const Icon = activityIcons[activity.id] ?? CircleDot;
@@ -83,10 +90,18 @@ export function EventActivities() {
                 <p className="mt-2 text-xs font-bold leading-5 text-emerald-800">다른 가족도 이용할 수 있도록 차례를 지키고, 놀이 도구는 사용 후 제자리에 놓아주세요. 주변 가족과 안전거리를 유지해주세요.</p>
               </section>
 
-              <section className="card flex items-center gap-3 p-4">
-                <CircleDot className="h-5 w-5 flex-none text-app-primary" aria-hidden="true" />
-                <p className="text-xs font-bold leading-5 text-app-muted">사진 콘테스트에는 전통놀이를 함께 즐기는 장면도 한 장 정도 자유롭게 남겨보세요.</p>
-              </section>
+              {teamToken && event.modules?.photoContest ? (
+                <Link to={`/t/${teamToken}/contest`} className="card flex items-center gap-3 p-4">
+                  <div className="grid h-10 w-10 flex-none place-items-center rounded-[8px] bg-[#173c2c] text-white"><Camera className="h-5 w-5" aria-hidden="true" /></div>
+                  <div className="min-w-0 flex-1"><p className="text-sm font-black">전통놀이 사진 미션 채우기</p><p className="mt-1 text-xs font-bold leading-5 text-app-muted">함께 즐기는 장면 한 장을 바로 남겨보세요.</p></div>
+                  <ChevronRight className="h-5 w-5 flex-none text-app-muted" aria-hidden="true" />
+                </Link>
+              ) : (
+                <section className="card flex items-center gap-3 p-4">
+                  <CircleDot className="h-5 w-5 flex-none text-app-primary" aria-hidden="true" />
+                  <p className="text-xs font-bold leading-5 text-app-muted">사진 콘테스트에는 전통놀이를 함께 즐기는 장면도 한 장 정도 자유롭게 남겨보세요.</p>
+                </section>
+              )}
             </>
           )}
         </div>

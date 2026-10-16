@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { CalendarDays, Camera, ChevronRight, Clock3, Gamepad2, Home, Images, Loader2, MapPin, Menu, Music2, Share2, Target, Users } from "lucide-react";
+import { CalendarDays, Camera, ChevronRight, Clock3, Gamepad2, Home, Images, Loader2, MapPin, Menu, Music2, Share2, Target, Trophy, Users } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
 import { useTeamSession, type TeamSessionContext } from "../hooks/useTeamSession";
 import { getEventSchedule, isSonovaFamilyDay } from "../lib/eventBrand";
@@ -33,7 +33,7 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
     : votingOpen
       ? { eyebrow: "투표 진행 중", title: "마음에 드는 가족사진 투표하기", description: "우리 가족을 제외한 다른 가족 사진을 선택해주세요.", href: `/t/${teamToken}/gallery` }
       : submissionOpen
-        ? { eyebrow: "사진 접수 중", title: "우리 가족사진 등록하기", description: "접수 마감 전까지 사진을 추가하거나 변경할 수 있어요.", href: `/t/${teamToken}/contest` }
+        ? { eyebrow: "사진 접수 중 · 베스트 포토 선물", title: "우리 가족사진 4장 채우기", description: "네 가지 순간을 잘 담아 1·2·3등 선물에 도전하세요.", href: `/t/${teamToken}/contest` }
         : { eyebrow: "사진 콘테스트", title: "가족사진 콘테스트 보기", description: "운영팀 안내에 따라 사진 접수와 투표가 열립니다.", href: `/t/${teamToken}/contest` };
 
   return (
@@ -102,6 +102,12 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
             </div>
             <ChevronRight className="h-5 w-5 flex-none text-white/60" aria-hidden="true" />
           </div>
+          {submissionOpen && (
+            <div className="mt-4 flex items-center gap-2 border-t border-white/15 pt-3 text-xs font-black text-amber-200">
+              <Trophy className="h-4 w-4 flex-none" aria-hidden="true" />
+              <span>행사 마지막에 베스트 포토 1·2·3등을 발표합니다.</span>
+            </div>
+          )}
         </Link>
       )}
 
