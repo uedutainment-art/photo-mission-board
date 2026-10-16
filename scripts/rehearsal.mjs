@@ -15,7 +15,9 @@ if (eventId !== liveId && !eventId.startsWith('rehearsal-qa-')) throw new Error(
 const env = loadEnv('production', process.cwd(), 'VITE_');
 const project = 'photo-mission-board-prod';
 const root = `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents`;
-const login = execFileSync('firebase', ['login:list', '--json'], { encoding: 'utf8' });
+let login;
+try { login = execFileSync('firebase', ['login:list', '--json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); }
+catch { throw new Error('Firebase CLI authentication unavailable. Retry with authorized CLI access.'); }
 const accessToken = JSON.parse(login.slice(login.indexOf('{'))).result[0].tokens.access_token;
 const headers = { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' };
 async function request(path, method = 'GET', body) {
@@ -67,7 +69,9 @@ async function client(team) {
   if(team) await httpsCallable(functions,'joinParticipantGroup')({eventId,accessCode:codes.find(c=>c.teamId===team.id).displayCode,familyName:team.displayName});
   return { app,auth,db,functions,storage:getStorage(app), close:async()=>{await terminate(db);await deleteApp(app);} };
 }
-const others=teams.filter(t=>t.index!==1);
+const includeDaniel = process.argv.includes('--all-qa');
+if (includeDaniel && !eventId.startsWith('rehearsal-qa-')) throw new Error('Including Daniel is allowed only in isolated QA');
+const others=teams.filter(t=>includeDaniel || t.index!==1);
 
 if(action==='status') {
   const counts={};for(const id of ids)counts[id]=(await list(`events/${eventId}/${id}`)).length;
@@ -113,7 +117,7 @@ if(action==='status') {
 } else if(action==='songs') {
   const existing=new Set((await list(`events/${eventId}/songRequests`)).map(d=>d.name.split('/').at(-1)));
   for(const team of others){if(existing.has(`rehearsal-${team.id}`))continue;const c=await client(team);try{await setDoc(doc(c.db,'events',eventId,'songRequests',`rehearsal-${team.id}`),{eventId,teamId:team.id,familyName:team.displayName,songTitle:'행복',artist:'H.O.T.',story:`[리허설] ${team.displayName}의 즐거운 하루를 기억하고 싶습니다. 함께해 주셔서 감사합니다.`,requesterId:c.auth.currentUser.uid,submittedAt:serverTimestamp()});}finally{await c.close();}}
-  console.log('Nine song requests added. Daniel excluded.');
+  console.log(`${others.length} song requests ready.`);
 } else if(action==='votes') {
   if(event.voting.status!=='open')throw new Error('운영자에서 투표를 시작해주세요.');
   const photos=(await list(`events/${eventId}/familySubmissions`)).map(data).filter(p=>!p.hidden);
