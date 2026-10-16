@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -44,6 +45,7 @@ export function EventActivities() {
   const sonova = isSonovaFamilyDay(event);
   const selected = activities.find((activity) => activity.id === searchParams.get("activity"));
   const page = sonova && selected ? guidePages[selected.id] : undefined;
+  useEffect(() => { window.scrollTo(0, 0); }, [page]);
   const listParams = new URLSearchParams(searchParams);
   listParams.delete("activity");
   const listUrl = `/e/${eventId}/games?${listParams}`;
