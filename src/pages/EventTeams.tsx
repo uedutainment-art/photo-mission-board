@@ -32,7 +32,7 @@ import {
 import { formatKoreanDate } from "../lib/formatDate";
 import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
-import { updateParticipantDisplayName, updateTeamLeader } from "../lib/teams";
+import { addParticipantTeam, updateParticipantDisplayName, updateTeamLeader } from "../lib/teams";
 import { regenerateParticipantCode } from "../lib/participantAccess";
 import { bulkUpdateParticipants, parseParticipantImport } from "../lib/participantImport";
 import { downloadFamilyAccessSheetPdf } from "../lib/accessCodeSheetPdf";
@@ -358,6 +358,7 @@ export function EventTeams() {
   const [bulkImportText, setBulkImportText] = useState("");
   const [bulkImportBusy, setBulkImportBusy] = useState(false);
   const [bulkImportError, setBulkImportError] = useState<string | null>(null);
+  const [addingParticipant, setAddingParticipant] = useState(false);
   const bulkImportRows = useMemo(() => parseParticipantImport(bulkImportText), [bulkImportText]);
 
   function clearNoticeTimeout() {
@@ -492,6 +493,20 @@ export function EventTeams() {
     }
   }
 
+  async function handleAddParticipant() {
+    if (!eventId || !event) return;
+    setAddingParticipant(true);
+    setSheetError(null);
+    try {
+      const added = await addParticipantTeam(eventId, event, teams);
+      showNotice(`${added.index}${participantLabels.singular}을 추가하고 접속 정보를 발급했습니다.`);
+    } catch (addError) {
+      setSheetError(addError instanceof Error ? addError.message : `${participantLabels.singular}을 추가하지 못했습니다.`);
+    } finally {
+      setAddingParticipant(false);
+    }
+  }
+
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
       <section className="phone-surface overflow-hidden rounded-[28px] border border-app-border shadow-phone">
@@ -539,6 +554,15 @@ export function EventTeams() {
                 <p className="mt-3 text-xs font-bold text-slate-300">
                   {event.teamCount}{participantLabels.singular} · {participantLabels.singular}당 {event.modules?.photoContest ? `${event.submission?.minimum ?? 1}~${event.submission?.limit ?? 1}` : event.perTeamCount}장 · QR 자동 발급
                 </p>
+                <button
+                  type="button"
+                  onClick={() => void handleAddParticipant()}
+                  disabled={addingParticipant}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-app-ink disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  {addingParticipant ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <UserPlus className="h-4 w-4" aria-hidden="true" />}
+                  {participantLabels.singular} 1개 추가
+                </button>
               </section>
 
               <section className="mb-4 overflow-hidden rounded-2xl border border-app-border bg-white shadow-card">
