@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
+import { ParticipantNav } from "../components/ParticipantNav";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { isSonovaFamilyDay } from "../lib/eventBrand";
 import { readLatestTeamSessionForEvent } from "../lib/teamSession";
@@ -67,7 +68,7 @@ export function EventActivities() {
           </div>
         </header>
 
-        <div key={page ?? "list"} className={`relative z-10 flex-1 space-y-4 overflow-y-auto p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
+        <div key={page ?? "list"} className={`relative z-10 flex-1 space-y-4 overflow-y-auto p-4 pb-28 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <section className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 안내 불러오는 중</section>}
           {error && <section className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</section>}
           {!loading && !error && page && selected && (
@@ -134,6 +135,7 @@ export function EventActivities() {
           )}
         </div>
       </section>
+      {eventId && teamToken && <ParticipantNav eventId={eventId} teamToken={teamToken} active="more" sonova={sonova} />}
     </main>
   );
 }
