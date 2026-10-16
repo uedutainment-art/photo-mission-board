@@ -11,6 +11,10 @@ export function EventHub() {
   const modules = event?.modules;
   const storedTeamSession = eventId ? readLatestTeamSessionForEvent(eventId) : null;
 
+  if (loading) {
+    return <main className="grid min-h-dvh place-items-center bg-app-background text-app-muted"><p role="status" className="flex items-center gap-2 text-sm font-bold"><Loader2 className="h-5 w-5 animate-spin" />행사 연결 중</p></main>;
+  }
+
   if (!loading && !error && event && eventId && (isSonovaFamilyDay(event) || event.participantConfig?.accessMethod === "code")) {
     return <Navigate replace to={storedTeamSession ? `/t/${storedTeamSession.token}` : `/e/${eventId}/join`} />;
   }
