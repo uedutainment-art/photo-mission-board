@@ -135,7 +135,7 @@ export function EventActivities() {
           )}
         </div>
       </section>
-      {eventId && teamToken && <ParticipantNav eventId={eventId} teamToken={teamToken} active="more" sonova={sonova} />}
+      {eventId && teamToken && <ParticipantNav eventId={eventId} teamToken={teamToken} active="games" sonova={sonova} />}
     </main>
   );
 }
