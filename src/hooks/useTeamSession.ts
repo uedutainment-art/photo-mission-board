@@ -66,6 +66,18 @@ export function useTeamSession(teamToken: string | undefined): UseTeamSessionRes
     async function resolveSession() {
       setLoading(true);
       setError(null);
+      setSession(null);
+      setEvent(null);
+      setTeam(null);
+      let eventError: string | null = null;
+      let teamError: string | null = null;
+      let eventReady = false;
+      let teamReady = false;
+      const updateStatus = () => {
+        if (!mounted) return;
+        setError(eventError || teamError);
+        setLoading(!(eventReady && teamReady) && !eventError && !teamError);
+      };
 
       try {
         const uploader = await ensureUploaderUser();
@@ -93,42 +105,59 @@ export function useTeamSession(teamToken: string | undefined): UseTeamSessionRes
         unsubscribeEvent = onSnapshot(
           doc(db, "events", teamMatch.eventId),
           (snapshot) => {
+            if (!mounted) return;
             if (!snapshot.exists()) {
-              setError("이벤트를 찾을 수 없습니다.");
+              if (snapshot.metadata.fromCache) return;
+              eventError = "이벤트를 찾을 수 없습니다.";
+              eventReady = false;
               setEvent(null);
+              updateStatus();
               return;
             }
 
+            eventError = null;
+            eventReady = true;
             setEvent({
               ...(snapshot.data() as MissionEvent),
               id: snapshot.id,
             });
+            updateStatus();
           },
-          () => {
-            setError("이벤트 정보를 불러오지 못했습니다.");
+          (snapshotError) => {
+            console.error("Participant event subscription failed", snapshotError);
+            eventError = "이벤트 정보를 불러오지 못했습니다.";
+            updateStatus();
           },
         );
 
         unsubscribeTeam = onSnapshot(
           teamMatch.teamRef,
           (snapshot) => {
+            if (!mounted) return;
             if (!snapshot.exists()) {
-              setError("팀 정보를 찾을 수 없습니다.");
+              if (snapshot.metadata.fromCache) return;
+              teamError = "팀 정보를 찾을 수 없습니다.";
+              teamReady = false;
               setTeam(null);
+              updateStatus();
               return;
             }
 
+            teamError = null;
+            teamReady = true;
             setTeam({
               ...(snapshot.data() as Team),
               id: snapshot.id,
             });
+            updateStatus();
           },
-          () => {
-            setError("팀 정보를 불러오지 못했습니다.");
+          (snapshotError) => {
+            console.error("Participant team subscription failed", snapshotError);
+            teamError = "팀 정보를 불러오지 못했습니다.";
+            updateStatus();
           },
         );
 
-        setLoading(false);
       } catch (sessionError) {
         if (!mounted) {
           return;
