@@ -23,6 +23,7 @@ import {
 import { useEventTeams, type TeamWithId } from "../hooks/useEventTeams";
 import { useAccessCodes } from "../hooks/useAccessCodes";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
+import { ContestAdminNav } from "../components/ContestAdminNav";
 import { formatPhone, sanitizePhone, smsHref, telHref } from "../lib/phone";
 import { createQrDataUrl, getTeamQrUrl } from "../lib/qr";
 import {
@@ -514,13 +515,16 @@ export function EventTeams() {
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between gap-3">
             <Link
-              to={eventId ? `/events/${eventId}` : "/events"}
+              to={eventId ? `/events/${eventId}/contest` : "/events"}
               className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-app-muted"
               aria-label="뒤로"
             >
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
-            <h1 className="text-base font-black">{participantLabels.singular} QR 관리</h1>
+            <div className="min-w-0 text-center">
+              <p className="truncate text-[11px] font-black text-app-muted">{event?.title}</p>
+              <h1 className="text-base font-black">행사 운영 콘솔</h1>
+            </div>
             <div className="h-10 w-10" />
           </div>
         </header>
@@ -541,6 +545,7 @@ export function EventTeams() {
 
           {!loading && !error && event && eventId && (
             <>
+              <div className="mb-4"><ContestAdminNav active="teams" eventId={eventId} /></div>
               <section className="mb-4 rounded-panel bg-app-ink p-5 text-white">
                 <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400">
                   PARTICIPANT QR

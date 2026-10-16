@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { useEventLive } from "../hooks/useEventLive";
 import { db } from "../lib/firebase";
+import { ContestAdminNav } from "../components/ContestAdminNav";
 import type { EventGuideScheduleItem, EventGuideSettings } from "../lib/types";
 
 function newScheduleItem(): EventGuideScheduleItem {
@@ -69,12 +70,12 @@ export function EventGuideEditor() {
         <header className="border-b border-app-border bg-white px-4 pb-4 pt-3">
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between gap-3">
-            <Link to={eventId ? `/events/${eventId}` : "/events"} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label="이벤트로 돌아가기">
+            <Link to={eventId ? `/events/${eventId}/contest` : "/events"} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label="운영 콘솔로 돌아가기">
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
             <div className="min-w-0 text-center">
               <p className="truncate text-[11px] font-black text-app-muted">{event?.title}</p>
-              <h1 className="text-base font-black">행사 안내 편집</h1>
+              <h1 className="text-base font-black">행사 운영 콘솔</h1>
             </div>
             <div className="h-10 w-10" />
           </div>
@@ -87,6 +88,7 @@ export function EventGuideEditor() {
 
           {!loading && event && (
             <>
+              {eventId && <ContestAdminNav active="guide" eventId={eventId} />}
               <section className="card p-4">
                 <label className="block text-xs font-black text-app-muted">첫 안내 문구</label>
                 <textarea value={intro} onChange={(changeEvent) => setIntro(changeEvent.target.value)} rows={3} placeholder="예: 오늘 우리 가족의 즐거운 순간을 사진으로 남겨주세요." className="mt-2 w-full resize-none rounded-xl border border-app-border px-3 py-3 text-sm font-bold leading-6 outline-none focus:border-app-primary" />

@@ -16,6 +16,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
+import { ContestAdminNav } from "../components/ContestAdminNav";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventLive } from "../hooks/useEventLive";
 import { useSongRequests } from "../hooks/useSongRequests";
@@ -500,6 +501,8 @@ export function EventContest() {
 
           {!pageLoading && event && eventId && (
             <>
+              <ContestAdminNav active="contest" eventId={eventId} />
+
               <section className="card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -539,7 +542,7 @@ export function EventContest() {
                   ["투표", "voting-operations"],
                   ["사진", "photo-review"],
                   ["결과", "result-operations"],
-                  ["신청곡", "song-requests"],
+                  [`신청곡 ${songRequests.length}`, "song-requests"],
                 ].map(([label, targetId]) => (
                   <button key={targetId} type="button" onClick={() => document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })} className="min-w-0 rounded-xl px-1 py-2 text-[11px] font-black text-app-muted hover:bg-slate-100 hover:text-app-ink">
                     {label}

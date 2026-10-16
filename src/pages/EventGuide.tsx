@@ -1,6 +1,8 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, Clock3, MapPin } from "lucide-react";
+import { EventBrandMark } from "../components/EventBrandMark";
 import { usePublicEvent } from "../hooks/usePublicEvent";
+import { getEventSchedule, isSonovaFamilyDay } from "../lib/eventBrand";
 import { formatKoreanDate } from "../lib/formatDate";
 
 export function EventGuide() {
@@ -8,28 +10,31 @@ export function EventGuide() {
   const [searchParams] = useSearchParams();
   const { event, loading, error } = usePublicEvent(eventId);
   const teamToken = searchParams.get("team");
+  const sonova = isSonovaFamilyDay(event);
+  const schedule = getEventSchedule(event);
 
   return (
-    <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
-      <section className="phone-surface overflow-hidden rounded-[28px] border border-app-border shadow-phone">
-        <header className="border-b border-app-border bg-white px-4 pb-4 pt-3">
+    <main className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
+      <section className={`phone-surface relative overflow-hidden rounded-[28px] border shadow-phone ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]" : "border-app-border"}`}>
+        {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-55" />}
+        <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white"}`}>
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between">
             <Link to={teamToken ? `/t/${teamToken}` : `/e/${eventId}`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label="행사 메뉴로 돌아가기">
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
-            <h1 className="text-base font-black">행사 안내</h1>
-            <div className="h-10 w-10" />
+            <h1 className="text-base font-black">전체 일정</h1>
+            <div className="flex h-10 w-24 items-center justify-end">{event && sonova ? <EventBrandMark event={event} compact /> : null}</div>
           </div>
         </header>
 
-        <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4">
+        <div className={`relative z-10 flex-1 space-y-4 overflow-y-auto p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card p-5 text-center text-sm font-black text-app-muted">불러오는 중</div>}
           {error && <div className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
           {event && (
             <>
-              <section className="rounded-panel bg-app-ink p-5 text-white">
-                <p className="text-[11px] font-black text-slate-400">EVENT GUIDE</p>
+              <section className={sonova ? "rounded-[8px] border border-white/80 bg-[#173c2c]/95 p-5 text-white shadow-[0_18px_45px_rgba(31,65,47,0.14)]" : "rounded-panel bg-app-ink p-5 text-white"}>
+                <p className="text-[11px] font-black text-emerald-300">EVENT GUIDE</p>
                 <h2 className="mt-2 text-2xl font-black">{event.title}</h2>
                 {(event.guide?.intro || event.subtitle) && <p className="mt-3 text-sm font-bold leading-6 text-slate-300">{event.guide?.intro || event.subtitle}</p>}
               </section>
@@ -51,13 +56,13 @@ export function EventGuide() {
                 </section>
               )}
 
-              {event.guide?.schedule && event.guide.schedule.length > 0 && (
+              {schedule.length > 0 && (
                 <section className="card p-4">
                   <h2 className="text-sm font-black">시간표</h2>
                   <div className="mt-3 divide-y divide-app-border">
-                    {event.guide.schedule.map((item) => (
+                    {schedule.map((item) => (
                       <div key={item.id} className="grid grid-cols-[64px_1fr] gap-3 py-3 first:pt-0 last:pb-0">
-                        <span className="inline-flex items-start gap-1 text-xs font-black text-app-primary"><Clock3 className="mt-0.5 h-3.5 w-3.5" aria-hidden="true" />{item.time}</span>
+                        <span className={`inline-flex items-start gap-1 text-xs font-black ${sonova ? "text-[#47765c]" : "text-app-primary"}`}><Clock3 className="mt-0.5 h-3.5 w-3.5" aria-hidden="true" />{item.time}</span>
                         <div><p className="text-sm font-black">{item.title}</p>{item.description && <p className="mt-1 text-xs font-bold leading-5 text-app-muted">{item.description}</p>}</div>
                       </div>
                     ))}

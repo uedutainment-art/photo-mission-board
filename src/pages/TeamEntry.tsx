@@ -2,7 +2,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { CalendarDays, Camera, ChevronRight, Clock3, Gamepad2, Home, Images, Loader2, MapPin, Menu, Music2, Share2, Target, Users } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
 import { useTeamSession, type TeamSessionContext } from "../hooks/useTeamSession";
-import { isSonovaFamilyDay } from "../lib/eventBrand";
+import { getEventSchedule, isSonovaFamilyDay } from "../lib/eventBrand";
 import { formatKoreanDate } from "../lib/formatDate";
 import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
@@ -22,7 +22,7 @@ function getStartLabel(selfieMode: string): string {
 function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; teamToken: string }) {
   const modules = context.event.modules;
   const sonova = isSonovaFamilyDay(context.event);
-  const schedulePreview = context.event.guide?.schedule?.slice(0, 2) ?? [];
+  const schedulePreview = getEventSchedule(context.event).slice(0, 2);
   const eventDate = formatKoreanDate(context.event.scheduledAt);
   const venue = context.event.guide?.venue;
   const resultsPublished = context.event.results?.status === "published";

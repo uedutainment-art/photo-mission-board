@@ -2,9 +2,11 @@ import { useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Camera, Gamepad2, Images, Loader2, Pencil, Plus, RotateCw, Trash2, Trophy, X } from "lucide-react";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
+import { EventBrandMark } from "../components/EventBrandMark";
 import { useContestSubmissions, type FamilySubmissionWithId } from "../hooks/useContestSubmissions";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { deleteContestSubmission, saveContestSubmission } from "../lib/contest";
+import { isSonovaFamilyDay } from "../lib/eventBrand";
 import { getParticipantLabels } from "../lib/participantTerms";
 import { getTeamLabel } from "../lib/teamLabel";
 import type { PhotoPrompt } from "../lib/types";
@@ -43,6 +45,7 @@ export function TeamContest() {
     }));
   }, [ownSubmissions, photoPrompts]);
   const activePrompt = photoPrompts.find((prompt) => prompt.id === activePromptId);
+  const sonova = isSonovaFamilyDay(context?.event);
 
   function clearEditor() {
     if (preview) URL.revokeObjectURL(preview);
@@ -122,10 +125,11 @@ export function TeamContest() {
   const enoughPhotos = ownSubmissions.length >= minimumPhotos;
 
   return (
-    <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
-      <section className="phone-surface overflow-hidden rounded-[28px] border border-app-border shadow-phone">
-        <header className="bg-app-ink px-5 pb-5 pt-5 text-white"><div className="flex items-center gap-3"><Link to={`/t/${teamToken}`} className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-white/10" aria-label="가족 행사 메뉴로 돌아가기"><ArrowLeft className="h-5 w-5" /></Link><div><p className="text-[11px] font-black text-slate-400">PHOTO CONTEST</p><h1 className="mt-1 text-xl font-black">{context ? getTeamLabel(context.team) : "사진 콘테스트"}</h1></div></div></header>
-        <div className="flex-1 space-y-4 bg-slate-50 p-4">
+    <main className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
+      <section className={`phone-surface relative overflow-hidden rounded-[28px] border shadow-phone ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]" : "border-app-border"}`}>
+        {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-55" />}
+        <header className={`relative z-10 px-5 pb-5 pt-5 ${sonova ? "border-b border-[#d9dfd2] bg-[#f8f5e9]/90 text-[#173c2c]" : "bg-app-ink text-white"}`}><div className="flex items-center gap-3"><Link to={`/t/${teamToken}`} className={`grid h-10 w-10 flex-none place-items-center rounded-xl ${sonova ? "bg-white/80" : "bg-white/10"}`} aria-label="가족 행사 메뉴로 돌아가기"><ArrowLeft className="h-5 w-5" /></Link><div className="min-w-0 flex-1"><p className={`text-[11px] font-black ${sonova ? "text-[#617466]" : "text-slate-400"}`}>PHOTO CONTEST</p><h1 className="mt-1 truncate text-xl font-black">{context ? getTeamLabel(context.team) : "사진 콘테스트"}</h1></div>{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></header>
+        <div className={`relative z-10 flex-1 space-y-4 p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 불러오는 중</div>}
           {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
           {notice && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-700">{notice}</div>}

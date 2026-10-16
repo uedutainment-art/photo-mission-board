@@ -1,4 +1,4 @@
-import type { MissionEvent } from "./types";
+import type { EventGuideScheduleItem, MissionEvent } from "./types";
 
 type BrandableEvent = Pick<MissionEvent, "title" | "externalEvent">;
 
@@ -12,4 +12,17 @@ export function getEventBrandName(event?: BrandableEvent | null): string {
   if (isSonovaFamilyDay(event)) return "Sonova Consumer Hearing Korea";
 
   return event?.externalEvent?.brandName || event?.title || "Photo Mission Board";
+}
+
+const SONOVA_DEFAULT_SCHEDULE: EventGuideScheduleItem[] = [
+  { id: "sonova-arrival", time: "13:00", title: "입장 및 가족 확인", description: "공통 QR로 가족 이름과 코드를 입력하고 행사 안내를 확인합니다." },
+  { id: "sonova-activity", time: "14:10", title: "가족 자유 활동", description: "전통놀이를 즐기며 네 가지 가족 사진 미션을 진행합니다." },
+  { id: "sonova-dinner", time: "16:00", title: "저녁 식사 · 포토 보드", description: "등록된 가족 사진을 함께 감상하고 미등록 사진을 마무리합니다." },
+  { id: "sonova-vote", time: "17:20", title: "사진 접수 마감 · 투표", description: "우리 가족을 제외하고 마음에 드는 두 가족에게 투표합니다." },
+  { id: "sonova-awards", time: "17:50", title: "베스트 포토 발표", description: "운영팀이 3등, 2등, 1등 순서로 결과를 공개합니다." },
+];
+
+export function getEventSchedule(event?: MissionEvent | null): EventGuideScheduleItem[] {
+  if (event?.guide?.schedule?.length) return event.guide.schedule;
+  return isSonovaFamilyDay(event) ? SONOVA_DEFAULT_SCHEDULE : [];
 }

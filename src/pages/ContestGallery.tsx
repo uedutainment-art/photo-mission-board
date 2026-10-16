@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Loader2, Vote, X } from "lucide-react";
+import { EventBrandMark } from "../components/EventBrandMark";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventTeams } from "../hooks/useEventTeams";
 import { useContestVote } from "../hooks/useContestVote";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { castContestVotes } from "../lib/contest";
+import { isSonovaFamilyDay } from "../lib/eventBrand";
 import { getTeamLabel } from "../lib/teamLabel";
 
 function stableOrder(value: string): number {
@@ -56,6 +58,7 @@ export function ContestGallery() {
   const savedTeamIds = useMemo(() => myVotes.map((vote) => vote.teamId), [myVotes]);
   const voteComplete = savedTeamIds.length === selectionLimit;
   const selectionChanged = !sameSelection(selectedTeamIds, savedTeamIds);
+  const sonova = isSonovaFamilyDay(context?.event);
 
   useEffect(() => {
     setSelectedTeamIds(savedTeamIds);
@@ -92,13 +95,14 @@ export function ContestGallery() {
   const loading = sessionLoading || submissionLoading;
 
   return (
-    <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
-      <section className="phone-surface relative overflow-hidden rounded-[28px] border border-app-border shadow-phone">
-        <header className="border-b border-app-border bg-white px-4 pb-4 pt-3">
+    <main className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
+      <section className={`phone-surface relative overflow-hidden rounded-[28px] border shadow-phone ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]" : "border-app-border"}`}>
+        {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-55" />}
+        <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white"}`}>
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
-          <div className="flex items-center justify-between"><Link to={`/t/${teamToken}/contest`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><ArrowLeft className="h-5 w-5" /></Link><div className="text-center"><h1 className="text-base font-black">가족 포토 보드</h1><p className="text-[11px] font-bold text-app-muted">{familyGroups.length}가족 · 사진 {visibleSubmissions.length}장</p></div><div className="h-10 w-10" /></div>
+          <div className="flex items-center justify-between"><Link to={`/t/${teamToken}/contest`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><ArrowLeft className="h-5 w-5" /></Link><div className="text-center"><h1 className="text-base font-black">가족 포토 보드</h1><p className="text-[11px] font-bold text-app-muted">{familyGroups.length}가족 · 사진 {visibleSubmissions.length}장</p></div><div className="flex h-10 w-24 items-center justify-end">{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></div>
         </header>
-        <div className="flex-1 bg-slate-50 p-4">
+        <div className={`relative z-10 flex-1 p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 사진 불러오는 중</div>}
           {(sessionError || submissionError || error) && <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{sessionError || submissionError || error}</div>}
           {notice && <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-700">{notice}</div>}

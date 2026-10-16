@@ -9,9 +9,9 @@ export function EventBrandMark({ event, compact = false, light = false }: { even
   if (sonova) {
     return (
       <img
-        src="/assets/sonova-hear-the-world.jpg"
+        src="/assets/sonova-hear-the-world-transparent.png"
         alt="Sonova - Hear the World"
-        className={`${compact ? "w-[78px]" : "w-[148px]"} h-auto mix-blend-multiply`}
+        className={`${compact ? "w-[92px]" : "w-[164px]"} h-auto`}
       />
     );
   }
