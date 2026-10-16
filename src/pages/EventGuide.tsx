@@ -1,6 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, Clock3, MapPin } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
+import { ParticipantNav } from "../components/ParticipantNav";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { getEventSchedule, isSonovaFamilyDay } from "../lib/eventBrand";
 import { formatKoreanDate } from "../lib/formatDate";
@@ -29,14 +30,15 @@ export function EventGuide() {
           </div>
         </header>
 
-        <div className={`relative z-10 flex-1 space-y-4 overflow-y-auto p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
+        <div className={`relative z-10 flex-1 space-y-4 overflow-y-auto p-4 pb-28 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card p-5 text-center text-sm font-black text-app-muted">불러오는 중</div>}
           {error && <div className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
           {event && (
             <>
               <section className={sonova ? "rounded-[8px] border border-white/80 bg-[#173c2c]/95 p-5 text-white shadow-[0_18px_45px_rgba(31,65,47,0.14)]" : "rounded-panel bg-app-ink p-5 text-white"}>
                 <p className="text-[11px] font-black text-emerald-300">EVENT GUIDE</p>
-                <h2 className="mt-2 text-2xl font-black">{event.title}</h2>
+                {sonova && <p className="mt-3 text-xs font-bold text-white/75">Sonova Consumer Hearing Korea</p>}
+                <h2 className="mt-2 text-2xl font-black">{sonova ? "Family Day" : event.title}</h2>
                 {(event.guide?.intro || event.subtitle) && <p className="mt-3 text-sm font-bold leading-6 text-slate-300">{event.guide?.intro || event.subtitle}</p>}
               </section>
 
@@ -95,6 +97,7 @@ export function EventGuide() {
             </>
           )}
         </div>
+        {event && eventId && teamToken && (event.preset === "family-photo-contest" || event.modules?.photoContest) && <ParticipantNav eventId={eventId} teamToken={teamToken} active="guide" sonova={sonova} />}
       </section>
     </main>
   );

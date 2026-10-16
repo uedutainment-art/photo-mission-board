@@ -1,5 +1,7 @@
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { CalendarDays, Camera, ChevronRight, Clock3, Gamepad2, Home, Images, Loader2, MapPin, Menu, Music2, Share2, Target, Trophy, Users } from "lucide-react";
+import { useEffect } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { CalendarDays, Camera, ChevronRight, Clock3, Gamepad2, Images, Loader2, MapPin, Music2, Share2, Target, Trophy, Users } from "lucide-react";
+import { ParticipantNav } from "../components/ParticipantNav";
 import { EventBrandMark } from "../components/EventBrandMark";
 import { useTeamSession, type TeamSessionContext } from "../hooks/useTeamSession";
 import { getEventSchedule, isSonovaFamilyDay } from "../lib/eventBrand";
@@ -44,9 +46,9 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
             <div className="px-5 py-5">
               <div className="flex items-center justify-between gap-4">
                 <p className="text-xs font-black text-[#385444]">{getParticipantName(context.team)} · 환영합니다</p>
-                <span className="rounded-full border border-[#9eb4a5] px-3 py-1 text-[9px] font-black uppercase text-[#385444]">Family Day</span>
               </div>
-              <h1 className="mt-2 text-2xl font-black leading-8 text-[#173c2c]">{context.event.title}</h1>
+              <p className="mt-4 text-xs font-bold text-[#385444]">Sonova Consumer Hearing Korea</p>
+              <h1 className="mt-1 text-2xl font-black leading-8 text-[#173c2c]">Family Day</h1>
               {(eventDate || venue) && (
                 <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-[#d9dfd2] pt-4 text-xs font-black text-[#385444]">
                   {eventDate && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" aria-hidden="true" />{eventDate}</span>}
@@ -146,6 +148,12 @@ export function TeamEntry() {
   const eventDateText = context ? formatKoreanDate(context.event.scheduledAt) || context.event.subtitle : "";
   const participantLabels = getParticipantLabels(context?.event);
   const sonova = isSonovaFamilyDay(context?.event);
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!loading && context && hash === "#event-menu") {
+      document.getElementById("event-menu")?.scrollIntoView({ block: "start" });
+    }
+  }, [hash, loading, context]);
 
   function handleStart() {
     if (!context || !teamToken) {
@@ -288,12 +296,7 @@ export function TeamEntry() {
         </div>
 
         {!loading && !error && context && teamToken && (context.event.preset === "family-photo-contest" || context.event.modules?.photoContest) && (
-          <nav className={`fixed inset-x-0 bottom-0 z-30 mx-auto grid w-full max-w-[430px] grid-cols-4 border-t px-2 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_30px_rgba(31,65,47,0.08)] ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/95" : "border-app-border bg-white/95"}`} aria-label="참가자 메뉴">
-            <Link to={`/t/${teamToken}`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[#173c2c]"><Home className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-black">홈</span></Link>
-            <Link to={`/e/${context.eventId}/guide?team=${encodeURIComponent(teamToken)}`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[#617466]"><CalendarDays className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-black">일정</span></Link>
-            <Link to={`/t/${teamToken}/contest`} className="flex min-h-12 flex-col items-center justify-center gap-1 text-[#617466]"><Camera className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-black">사진</span></Link>
-            <a href="#event-menu" className="flex min-h-12 flex-col items-center justify-center gap-1 text-[#617466]"><Menu className="h-5 w-5" aria-hidden="true" /><span className="text-[10px] font-black">더보기</span></a>
-          </nav>
+          <ParticipantNav eventId={context.eventId} teamToken={teamToken} active="home" sonova={sonova} />
         )}
       </section>
     </main>
