@@ -4,13 +4,13 @@ import { Link } from "react-router-dom";
 export function ParticipantNav({ eventId, teamToken, active, sonova }: {
   eventId: string;
   teamToken: string;
-  active: "home" | "guide";
+  active: "home" | "guide" | "photos" | "more";
   sonova: boolean;
 }) {
   const items = [
     { id: "home", label: "홈", icon: Home, to: `/t/${teamToken}` },
     { id: "guide", label: "일정", icon: CalendarDays, to: `/e/${eventId}/guide?team=${encodeURIComponent(teamToken)}` },
-    { id: "photos", label: "사진", icon: Camera, to: `/t/${teamToken}/contest` },
+    { id: "photos", label: "사진 콘테스트", icon: Camera, to: `/t/${teamToken}/contest` },
     { id: "more", label: "더보기", icon: Menu, to: `/t/${teamToken}#event-menu` },
   ];
   return (

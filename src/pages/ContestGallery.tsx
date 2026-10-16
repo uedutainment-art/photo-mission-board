@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Loader2, Vote, X } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
+import { ParticipantNav } from "../components/ParticipantNav";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventTeams } from "../hooks/useEventTeams";
 import { useContestVote } from "../hooks/useContestVote";
@@ -118,9 +119,9 @@ export function ContestGallery() {
         {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-55" />}
         <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white"}`}>
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
-          <div className="flex items-center justify-between"><Link to={`/t/${teamToken}/contest`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><ArrowLeft className="h-5 w-5" /></Link><div className="text-center"><h1 className="text-base font-black">가족 포토 보드</h1><p className="text-[11px] font-bold text-app-muted">사진 {visibleSubmissions.length}장</p></div><div className="flex h-10 w-24 items-center justify-end">{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></div>
+          <div className="flex items-center justify-between"><Link to={`/t/${teamToken}/contest`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><ArrowLeft className="h-5 w-5" /></Link><div className="text-center"><h1 className="text-base font-black">사진 콘테스트</h1><p className="text-[11px] font-bold text-app-muted">사진 {visibleSubmissions.length}장</p></div><div className="flex h-10 w-24 items-center justify-end">{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></div>
         </header>
-        <div className={`relative z-10 flex-1 p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
+        <div className={`relative z-10 flex-1 p-4 pb-28 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 사진 불러오는 중</div>}
           {(sessionError || submissionError || error) && <div className="mb-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{sessionError || submissionError || error}</div>}
           {notice && <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-700">{notice}</div>}
@@ -161,6 +162,7 @@ export function ContestGallery() {
           </dialog>
         )}
       </section>
+      {context && teamToken && <ParticipantNav eventId={context.eventId} teamToken={teamToken} active="photos" sonova={sonova} />}
     </main>
   );
 }

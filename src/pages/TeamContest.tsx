@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Camera, Gamepad2, Images, Loader2, Pencil, Plus, RotateCw, Trash2, Trophy, X } from "lucide-react";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { EventBrandMark } from "../components/EventBrandMark";
+import { ParticipantNav } from "../components/ParticipantNav";
 import { useContestSubmissions, type FamilySubmissionWithId } from "../hooks/useContestSubmissions";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { deleteContestSubmission, saveContestSubmission } from "../lib/contest";
@@ -166,8 +167,8 @@ export function TeamContest() {
     <main data-upload-busy={busy} className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
       <section className={`phone-surface relative overflow-hidden rounded-[28px] border shadow-phone ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]" : "border-app-border"}`}>
         {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-55" />}
-        <header className={`relative z-10 px-5 pb-5 pt-5 ${sonova ? "border-b border-[#d9dfd2] bg-[#f8f5e9]/90 text-[#173c2c]" : "bg-app-ink text-white"}`}><div className="flex items-center gap-3"><Link to={`/t/${teamToken}`} className={`grid h-10 w-10 flex-none place-items-center rounded-xl ${sonova ? "bg-white/80" : "bg-white/10"}`} aria-label="가족 행사 메뉴로 돌아가기"><ArrowLeft className="h-5 w-5" /></Link><div className="min-w-0 flex-1"><p className={`text-[11px] font-black ${sonova ? "text-[#617466]" : "text-slate-400"}`}>PHOTO CONTEST</p><h1 className="mt-1 truncate text-xl font-black">{context ? getParticipantName(context.team) : "사진 콘테스트"}</h1></div>{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></header>
-        <div className={`relative z-10 flex-1 space-y-4 p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
+        <header className={`relative z-10 px-5 pb-5 pt-5 ${sonova ? "border-b border-[#d9dfd2] bg-[#f8f5e9]/90 text-[#173c2c]" : "bg-app-ink text-white"}`}><div className="flex items-center gap-3"><Link to={`/t/${teamToken}`} className={`grid h-10 w-10 flex-none place-items-center rounded-xl ${sonova ? "bg-white/80" : "bg-white/10"}`} aria-label="가족 행사 메뉴로 돌아가기"><ArrowLeft className="h-5 w-5" /></Link><div className="min-w-0 flex-1"><p className={`text-[11px] font-black ${sonova ? "text-[#617466]" : "text-slate-400"}`}>{context ? getParticipantName(context.team) : "우리 가족"}</p><h1 className="mt-1 text-lg font-black">사진 콘테스트</h1></div>{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></header>
+        <div className={`relative z-10 flex-1 space-y-4 p-4 pb-28 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 불러오는 중</div>}
           {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
           {notice && <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-700">{notice}</div>}
@@ -276,6 +277,7 @@ export function TeamContest() {
         )}
       </section>
       <ConfirmActionDialog busy={busy} confirmLabel="사진 삭제" description="이 사진의 원본과 썸네일이 모두 삭제되며 되돌릴 수 없습니다." onCancel={() => setPendingDelete(null)} onConfirm={() => void handleDelete()} open={Boolean(pendingDelete)} title="사진을 삭제할까요?" tone="danger" />
+      {context && teamToken && <ParticipantNav eventId={context.eventId} teamToken={teamToken} active="photos" sonova={sonova} />}
     </main>
   );
 }

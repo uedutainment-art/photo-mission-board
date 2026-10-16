@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Award, Loader2 } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
+import { ParticipantNav } from "../components/ParticipantNav";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventTeams } from "../hooks/useEventTeams";
 import { useTeamSession } from "../hooks/useTeamSession";
@@ -35,8 +36,8 @@ export function ContestResults() {
     <main className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
       <section className={`phone-surface relative overflow-hidden rounded-[28px] border shadow-phone ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]" : "border-app-border"}`}>
         {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-55" />}
-        <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white"}`}><div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" /><div className="flex items-center justify-between"><Link to={`/t/${teamToken}/contest`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><ArrowLeft className="h-5 w-5" /></Link><h1 className="text-base font-black">베스트 포토</h1><div className="flex h-10 w-24 items-center justify-end">{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></div></header>
-        <div className={`relative z-10 flex-1 p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
+        <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white"}`}><div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" /><div className="flex items-center justify-between"><Link to={`/t/${teamToken}/contest`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><ArrowLeft className="h-5 w-5" /></Link><h1 className="text-base font-black">사진 콘테스트 결과</h1><div className="flex h-10 w-24 items-center justify-end">{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></div></header>
+        <div className={`relative z-10 flex-1 p-4 pb-28 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 결과 불러오는 중</div>}
           {error && <div className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
           {!loading && context && !published && <div className="card p-8 text-center"><Award className="mx-auto h-10 w-10 text-amber-500" /><h2 className="mt-4 text-lg font-black">{context.event.results?.ceremonyStarted ? "잠시 후 베스트 포토를 발표합니다" : "투표가 끝났어요. 집계 중입니다"}</h2><p className="mt-2 text-sm font-bold text-app-muted">운영팀이 결과를 공개하면 이곳에서 확인할 수 있어요.</p></div>}
@@ -49,6 +50,7 @@ export function ContestResults() {
           })}{revealedWinners.length < (context?.event.results?.winnerCount ?? 3) && <div className="card p-6 text-center"><Award className="mx-auto h-8 w-8 text-amber-500" /><p className="mt-3 text-sm font-black">다음 순위 발표를 기다려주세요</p><p className="mt-1 text-xs font-bold text-app-muted">운영팀이 순서대로 공개하고 있습니다.</p></div>}</div>}
         </div>
       </section>
+      {context && teamToken && <ParticipantNav eventId={context.eventId} teamToken={teamToken} active="photos" sonova={sonova} />}
     </main>
   );
 }
