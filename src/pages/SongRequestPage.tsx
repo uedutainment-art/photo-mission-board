@@ -25,7 +25,7 @@ async function readRequestingFamily(eventId: string, teamToken: string | null): 
 export function SongRequestPage() {
   const { eventId } = useParams();
   const [searchParams] = useSearchParams();
-  const teamToken = searchParams.get("team");
+  const teamToken = searchParams.get("team") || (eventId ? readLatestTeamSessionForEvent(eventId)?.token : null) || null;
   const { event } = usePublicEvent(eventId);
   const [songTitle, setSongTitle] = useState("");
   const [artist, setArtist] = useState("");

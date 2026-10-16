@@ -4,12 +4,13 @@ import { EventBrandMark } from "../components/EventBrandMark";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { getEventSchedule, isSonovaFamilyDay } from "../lib/eventBrand";
 import { formatKoreanDate } from "../lib/formatDate";
+import { readLatestTeamSessionForEvent } from "../lib/teamSession";
 
 export function EventGuide() {
   const { eventId } = useParams();
   const [searchParams] = useSearchParams();
   const { event, loading, error } = usePublicEvent(eventId);
-  const teamToken = searchParams.get("team");
+  const teamToken = searchParams.get("team") || (eventId ? readLatestTeamSessionForEvent(eventId)?.token : null);
   const sonova = isSonovaFamilyDay(event);
   const schedule = getEventSchedule(event);
 

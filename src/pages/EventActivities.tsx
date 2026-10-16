@@ -19,6 +19,7 @@ import {
 import { EventBrandMark } from "../components/EventBrandMark";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { isSonovaFamilyDay } from "../lib/eventBrand";
+import { readLatestTeamSessionForEvent } from "../lib/teamSession";
 
 const activityIcons: Record<string, LucideIcon> = {
   air: CircleDot,
@@ -39,7 +40,7 @@ const guidePages: Record<string, number> = {
 export function EventActivities() {
   const { eventId } = useParams();
   const [searchParams] = useSearchParams();
-  const teamToken = searchParams.get("team");
+  const teamToken = searchParams.get("team") || (eventId ? readLatestTeamSessionForEvent(eventId)?.token : null);
   const { event, loading, error } = usePublicEvent(eventId);
   const activities = event?.guide?.activities ?? [];
   const sonova = isSonovaFamilyDay(event);
@@ -47,6 +48,7 @@ export function EventActivities() {
   const page = sonova && selected ? guidePages[selected.id] : undefined;
   useEffect(() => { window.scrollTo(0, 0); }, [page]);
   const listParams = new URLSearchParams(searchParams);
+  if (teamToken) listParams.set("team", teamToken);
   listParams.delete("activity");
   const listUrl = `/e/${eventId}/games?${listParams}`;
 
@@ -94,6 +96,7 @@ export function EventActivities() {
                 {activities.map((activity, index) => {
                   const Icon = activityIcons[activity.id] ?? CircleDot;
                   const params = new URLSearchParams(searchParams);
+                  if (teamToken) params.set("team", teamToken);
                   params.set("activity", activity.id);
                   return (
                     <article key={activity.id} className="card relative min-h-[164px] p-4">

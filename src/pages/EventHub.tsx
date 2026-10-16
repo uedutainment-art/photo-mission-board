@@ -1,7 +1,8 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { Album, CalendarDays, Camera, Gamepad2, Loader2, Music2 } from "lucide-react";
 import { usePublicEvent } from "../hooks/usePublicEvent";
 import { readLatestTeamSessionForEvent } from "../lib/teamSession";
+import { isSonovaFamilyDay } from "../lib/eventBrand";
 
 export function EventHub() {
   const { eventId } = useParams();
@@ -9,6 +10,10 @@ export function EventHub() {
 
   const modules = event?.modules;
   const storedTeamSession = eventId ? readLatestTeamSessionForEvent(eventId) : null;
+
+  if (!loading && !error && event && eventId && (isSonovaFamilyDay(event) || event.participantConfig?.accessMethod === "code")) {
+    return <Navigate replace to={storedTeamSession ? `/t/${storedTeamSession.token}` : `/e/${eventId}/join`} />;
+  }
 
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
