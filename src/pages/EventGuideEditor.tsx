@@ -5,6 +5,7 @@ import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { useEventLive } from "../hooks/useEventLive";
 import { db } from "../lib/firebase";
 import { ContestAdminNav } from "../components/ContestAdminNav";
+import { getEventSchedule } from "../lib/eventBrand";
 import type { EventGuideScheduleItem, EventGuideSettings } from "../lib/types";
 
 function newScheduleItem(): EventGuideScheduleItem {
@@ -26,7 +27,7 @@ export function EventGuideEditor() {
     if (!event) return;
     setIntro(event.guide?.intro ?? "");
     setVenue(event.guide?.venue ?? "");
-    setSchedule(event.guide?.schedule ?? []);
+    setSchedule(getEventSchedule(event));
     setNoticesText((event.guide?.notices ?? []).join("\n"));
   }, [event]);
 
@@ -49,6 +50,7 @@ export function EventGuideEditor() {
       ...(venue.trim() ? { venue: venue.trim() } : {}),
       schedule: cleanSchedule,
       notices: noticesText.split("\n").map((item) => item.trim()).filter(Boolean),
+      ...(event?.guide?.activities?.length ? { activities: event.guide.activities } : {}),
     };
 
     setSaving(true);
