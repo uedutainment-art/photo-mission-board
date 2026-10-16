@@ -602,7 +602,7 @@ export function EventContest() {
                             <span className="h-2.5 w-2.5 flex-none rounded-full bg-amber-400" aria-hidden="true" />
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-xs font-black">{getTeamLabel(team)}</p>
-                              <p className="mt-0.5 truncate text-[11px] font-bold text-app-muted">{photoCount}/{minimumPhotos}장 · {phone ? `${team.leader?.name} · ${formatPhone(phone)}` : "가족 대표 연락처 없음"}</p>
+                              <p className="mt-0.5 truncate text-[11px] font-bold text-app-muted">{photoCount}/{minimumPhotos}장 · {phone ? `${team.leader?.name} · ${formatPhone(phone)}` : "대표 번호는 연락처 탭에서 확인"}</p>
                             </div>
                             {phone && (
                               <div className="flex flex-none gap-1">
