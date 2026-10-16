@@ -34,6 +34,7 @@ export function TeamContest() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const submissionOpen = context?.event.submission?.status === "open";
+  const galleryOpen = context?.event.voting?.status === "open" || context?.event.voting?.status === "closed";
   const photoPrompts = context?.event.submission?.prompts ?? [];
   const photoLimit = photoPrompts.length || (context?.event.submission?.limit ?? (context?.event.preset === "family-photo-contest" ? 6 : 1));
   const minimumPhotos = context?.event.preset === "family-photo-contest"
@@ -237,7 +238,7 @@ export function TeamContest() {
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <Link to={`/t/${teamToken}/gallery`} className="card flex flex-col gap-3 p-4"><Images className="h-5 w-5 text-app-primary" /><div><h2 className="text-sm font-black">전체 사진</h2><p className="mt-1 text-xs font-bold text-app-muted">다른 가족 감상·투표</p></div></Link>
+                {galleryOpen ? <Link to={`/t/${teamToken}/gallery`} className="card flex flex-col gap-3 p-4"><Images className="h-5 w-5 text-app-primary" /><div><h2 className="text-sm font-black">전체 사진</h2><p className="mt-1 text-xs font-bold text-app-muted">다른 가족 감상·투표</p></div></Link> : <div className="card flex flex-col gap-3 p-4 text-app-muted" aria-disabled="true"><Images className="h-5 w-5" /><div><h2 className="text-sm font-black">전체 사진</h2><p className="mt-1 text-xs font-bold">투표 시작 후 공개됩니다</p></div></div>}
                 <Link to={`/t/${teamToken}/results`} className="card flex flex-col gap-3 p-4"><Trophy className="h-5 w-5 text-amber-600" /><div><h2 className="text-sm font-black">결과</h2><p className="mt-1 text-xs font-bold text-app-muted">공개 후 확인</p></div></Link>
               </div>
             </>

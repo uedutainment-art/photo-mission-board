@@ -17,6 +17,7 @@ import {
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { StoryDesk } from "../components/StoryDesk";
 import { ParticipantContacts } from "../components/ParticipantContacts";
+import { buildContestResultsCsv } from "../lib/contestExport";
 import { ContestAdminNav } from "../components/ContestAdminNav";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventLive } from "../hooks/useEventLive";
@@ -90,15 +91,20 @@ export function EventContest() {
   const [tieBreakNote, setTieBreakNote] = useState("");
   const [winnerIds, setWinnerIds] = useState<string[]>(["", "", ""]);
   const [privateWinners, setPrivateWinners] = useState<ContestWinner[]>([]);
+  const [savedTieBreakNote, setSavedTieBreakNote] = useState("");
+  const [resultsLoaded, setResultsLoaded] = useState(false);
   const [awardPhotos, setAwardPhotos] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!eventId) return;
+    setResultsLoaded(false);
     return onSnapshot(doc(db, "events", eventId, "private", "results"), (snapshot) => {
       setPrivateWinners((snapshot.data()?.winners as ContestWinner[] | undefined) ?? []);
       setTieBreakNote(snapshot.data()?.tieBreakNote ?? "");
+      setSavedTieBreakNote(snapshot.data()?.tieBreakNote ?? "");
+      setResultsLoaded(true);
       setAwardPhotos(Object.fromEntries(((snapshot.data()?.winners as ContestWinner[] | undefined) ?? []).filter(w => w.photoId).map(w => [w.teamId, w.photoId!])));
-    });
+    }, (error) => { console.error("Failed to load private results", error); setResultsLoaded(false); setLocalError("시상 결과를 불러오지 못했습니다. 새로고침 후 다시 확인해주세요."); });
   }, [eventId]);
   const [photoTeamFilter, setPhotoTeamFilter] = useState("all");
   const [panel, setPanel] = useState("submission-operations");
@@ -181,10 +187,14 @@ export function EventContest() {
     () => teams
       .map((team) => ({
         team,
-        submissions: filteredSubmissions.filter((item) => item.teamId === team.id),
+        submissions: filteredSubmissions.filter((item) => item.teamId === team.id).sort((a, b) => {
+          const prompts = event?.submission?.prompts ?? [];
+          const position = (id?: string) => { const index = prompts.findIndex((prompt) => prompt.id === id); return index < 0 ? prompts.length : index; };
+          return position(a.promptId) - position(b.promptId) || a.id.localeCompare(b.id);
+        }),
       }))
       .filter((group) => group.submissions.length > 0),
-    [filteredSubmissions, teams],
+    [filteredSubmissions, teams, event?.submission?.prompts],
   );
 
   useEffect(() => {
@@ -391,19 +401,17 @@ export function EventContest() {
   }
 
   function downloadResultsCsv() {
-    if (!event) return;
-    const rows = [
-      ["순위", "참가 단위", "사진 제목", "득표수"],
-      ...rankedSubmissions.map((item, index) => [
-        String(index + 1),
-        getTeamLabel(teamById.get(item.submission.teamId) ?? { name: item.submission.teamId }),
-        item.submission.title,
-        String(item.votes),
-      ]),
-    ];
-    const csv = rows
-      .map((row) => row.map((value) => `"${value.split('"').join('""')}"`).join(","))
-      .join("\n");
+    if (!event || !resultsLoaded) return;
+    const awards = resultsVisible ? (privateWinners.length ? privateWinners : event.results?.winners ?? []) : [];
+    const csv = buildContestResultsCsv(rankedSubmissions.map((item) => {
+      const award = awards.find((winner) => winner.teamId === item.submission.teamId);
+      return {
+        teamId: item.submission.teamId,
+        familyName: getTeamLabel(teamById.get(item.submission.teamId) ?? { name: item.submission.teamId }),
+        title: submissions.find((photo) => photo.id === award?.photoId)?.title ?? item.submission.title,
+        votes: item.votes,
+      };
+    }), awards, savedTieBreakNote, revealedRanks);
     downloadBlob(
       new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }),
       `${safeFilename(event.title)}-contest-results.csv`,
@@ -910,7 +918,7 @@ export function EventContest() {
               </section>
 
               <section>
-                <button type="button" style={{ display: panel === "voting-operations" ? undefined : "none" }} onClick={downloadResultsCsv} className="card flex w-full items-center justify-center gap-2 p-4 text-xs font-black">
+                <button type="button" disabled={!resultsLoaded} style={{ display: panel === "voting-operations" ? undefined : "none" }} onClick={downloadResultsCsv} className="card flex w-full items-center justify-center gap-2 p-4 text-xs font-black disabled:opacity-40">
                   <Download className="h-4 w-4" aria-hidden="true" />
                   집계 CSV
                 </button>

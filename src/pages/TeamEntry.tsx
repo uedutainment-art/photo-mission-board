@@ -33,7 +33,7 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
     : votingOpen
       ? { eyebrow: "투표 진행 중", title: "마음에 드는 가족사진 투표하기", description: "우리 가족을 제외한 다른 가족 사진을 선택해주세요.", href: `/t/${teamToken}/gallery` }
       : submissionOpen
-        ? { eyebrow: "사진 접수 중 · 베스트 포토 선물", title: "우리 가족사진 4장 채우기", description: "가족의 즐거운 순간을 남겨주세요. 베스트 포토 가족에게 선물이 있어요.", href: `/t/${teamToken}/contest` }
+        ? { eyebrow: "사진 접수 중", title: "우리 가족사진 4장 채우기", description: "가족의 즐거운 순간을 네 가지 미션으로 남겨주세요.", href: `/t/${teamToken}/contest` }
         : { eyebrow: "사진 콘테스트", title: "가족사진 콘테스트 보기", description: "운영팀 안내에 따라 사진 접수와 투표가 열립니다.", href: `/t/${teamToken}/contest` };
 
   return (
