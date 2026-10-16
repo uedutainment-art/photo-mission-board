@@ -14,6 +14,8 @@ import type { PhotoPrompt } from "../lib/types";
 export function TeamContest() {
   const { teamToken } = useParams();
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
   const { context, error: sessionError, loading: sessionLoading } = useTeamSession(teamToken);
   const { error: submissionError, loading: submissionsLoading, submissions } = useContestSubmissions(context?.eventId);
   const ownSubmissions = useMemo(
@@ -25,6 +27,8 @@ export function TeamContest() {
   const [preview, setPreview] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activePromptId, setActivePromptId] = useState<string | null>(null);
+  const [promptUploadTarget, setPromptUploadTarget] = useState<{ prompt: PhotoPrompt; submission?: FamilySubmissionWithId } | null>(null);
+  const [uploadingPromptId, setUploadingPromptId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<FamilySubmissionWithId | null>(null);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -64,10 +68,9 @@ export function TeamContest() {
     setPreview(URL.createObjectURL(nextFile));
   }
 
-  function chooseNewPhoto(prompt?: PhotoPrompt) {
+  function chooseNewPhoto() {
     clearEditor();
-    setActivePromptId(prompt?.id ?? null);
-    setTitle(prompt?.title ?? `우리 가족의 순간 ${ownSubmissions.length + 1}`);
+    setTitle(`우리 가족의 순간 ${ownSubmissions.length + 1}`);
     fileRef.current?.click();
   }
 
@@ -102,6 +105,37 @@ export function TeamContest() {
       setLocalError(saveError instanceof Error ? saveError.message : "사진을 저장하지 못했습니다.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handlePromptFile(nextFile: File | undefined) {
+    const target = promptUploadTarget;
+    if (!context || !nextFile || !target) return;
+
+    setPromptUploadTarget(null);
+    setUploadingPromptId(target.prompt.id);
+    setBusy(true);
+    setLocalError(null);
+    setNotice(null);
+    try {
+      await saveContestSubmission({
+        eventId: context.eventId,
+        teamId: context.teamId,
+        uploaderId: context.uploaderId,
+        title: target.prompt.title,
+        file: nextFile,
+        submissionId: target.submission?.id,
+        promptId: target.prompt.id,
+        maxSubmissions: photoLimit,
+      });
+      setNotice(target.submission ? `${target.prompt.title} 사진을 교체했습니다.` : `${target.prompt.title} 미션을 채웠습니다.`);
+    } catch (saveError) {
+      setLocalError(saveError instanceof Error ? saveError.message : "사진을 저장하지 못했습니다.");
+    } finally {
+      setBusy(false);
+      setUploadingPromptId(null);
+      if (cameraRef.current) cameraRef.current.value = "";
+      if (libraryRef.current) libraryRef.current.value = "";
     }
   }
 
@@ -143,23 +177,28 @@ export function TeamContest() {
               </section>
 
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(event) => { handleFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+              <input ref={cameraRef} type="file" accept="image/*" capture={promptUploadTarget?.prompt.id.includes("selfie") ? "user" : "environment"} className="hidden" onChange={(event) => void handlePromptFile(event.target.files?.[0])} />
+              <input ref={libraryRef} type="file" accept="image/*" className="hidden" onChange={(event) => void handlePromptFile(event.target.files?.[0])} />
 
               {photoPrompts.length > 0 && (
-                <section className="space-y-3">
+                <section className="grid grid-cols-2 gap-3" aria-label="사진 미션 4칸">
                   {promptSlots.map(({ prompt, submission }, index) => (
-                    <article key={prompt.id} className="overflow-hidden rounded-[8px] border border-app-border bg-white shadow-card">
-                      <div className="flex items-start gap-3 p-4">
-                        <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-[#173c2c] text-xs font-black text-white">{index + 1}</span>
-                        <div className="min-w-0"><h3 className="text-sm font-black">{prompt.title}</h3><p className="mt-1 text-xs font-bold leading-5 text-app-muted">{prompt.description}</p></div>
+                    <article key={prompt.id} className="flex min-h-[250px] flex-col overflow-hidden rounded-[8px] border border-app-border bg-white shadow-card">
+                      <div className="flex items-start gap-2 p-3">
+                        <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-[#173c2c] text-[11px] font-black text-white">{index + 1}</span>
+                        <div className="min-w-0"><h3 className="text-sm font-black leading-5">{prompt.title}</h3><p className="mt-1 line-clamp-2 text-[11px] font-bold leading-4 text-app-muted">{prompt.description}</p></div>
                       </div>
                       {submission ? (
-                        <div className="border-t border-app-border p-3">
-                          <img src={submission.thumbUrl} alt={submission.title} className="aspect-[4/3] w-full rounded-[6px] object-cover" />
-                          <p className="mt-2 truncate text-xs font-black">{submission.title}</p>
-                          {submissionOpen && <div className="mt-2 grid grid-cols-2 gap-2"><button type="button" onClick={() => chooseReplacement(submission, prompt.id)} className="flex items-center justify-center gap-1 rounded-xl bg-slate-100 px-2 py-2 text-[11px] font-black"><Pencil className="h-3 w-3" />교체</button><button type="button" onClick={() => setPendingDelete(submission)} className="flex items-center justify-center gap-1 rounded-xl bg-red-50 px-2 py-2 text-[11px] font-black text-red-700"><Trash2 className="h-3 w-3" />삭제</button></div>}
+                        <div className="mt-auto border-t border-app-border p-2">
+                          <div className="relative"><img src={submission.thumbUrl} alt={submission.title} className="aspect-square w-full rounded-[6px] object-cover" /><span className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-[10px] font-black text-white">완료</span></div>
+                          {submissionOpen && <div className="mt-2 grid grid-cols-2 gap-1"><button type="button" onClick={() => setPromptUploadTarget({ prompt, submission })} disabled={busy} className="flex items-center justify-center gap-1 rounded-lg bg-slate-100 px-2 py-2 text-[11px] font-black"><Pencil className="h-3 w-3" />교체</button><button type="button" onClick={() => setPendingDelete(submission)} disabled={busy} className="flex items-center justify-center gap-1 rounded-lg bg-red-50 px-2 py-2 text-[11px] font-black text-red-700"><Trash2 className="h-3 w-3" />삭제</button></div>}
                         </div>
                       ) : (
-                        <button type="button" onClick={() => chooseNewPhoto(prompt)} disabled={!submissionOpen} className="flex w-full items-center justify-center gap-2 border-t border-dashed border-app-border px-4 py-4 text-sm font-black text-app-primary disabled:text-app-muted"><Camera className="h-5 w-5" />{submissionOpen ? "사진 찍기·선택" : "사진 접수 대기"}</button>
+                        <button type="button" onClick={() => setPromptUploadTarget({ prompt })} disabled={!submissionOpen || busy} className="m-2 mt-auto flex min-h-[132px] flex-col items-center justify-center gap-2 rounded-[6px] border-2 border-dashed border-[#b9c9bd] bg-[#f4f7f2] px-2 text-center text-[#47765c] disabled:border-slate-200 disabled:bg-slate-50 disabled:text-app-muted">
+                          {uploadingPromptId === prompt.id ? <Loader2 className="h-6 w-6 animate-spin" /> : <Camera className="h-6 w-6" />}
+                          <span className="text-xs font-black">{uploadingPromptId === prompt.id ? "업로드 중" : submissionOpen ? "이 칸 채우기" : "접수 대기"}</span>
+                          {submissionOpen && uploadingPromptId !== prompt.id && <span className="text-[10px] font-bold">촬영 또는 앨범</span>}
+                        </button>
                       )}
                     </article>
                   ))}
@@ -183,7 +222,7 @@ export function TeamContest() {
                 <button type="button" onClick={() => chooseNewPhoto()} className="card flex w-full items-center justify-center gap-2 border-dashed p-5 text-sm font-black text-app-primary"><Plus className="h-5 w-5" />사진 추가</button>
               )}
 
-              {submissionOpen && preview && (
+              {photoPrompts.length === 0 && submissionOpen && preview && (
                 <section className="card p-4">
                   <div className="flex items-center justify-between"><div><h2 className="text-sm font-black">{editingSubmission ? "사진 교체" : "새 사진 추가"}</h2>{activePrompt && <p className="mt-1 text-xs font-bold text-app-primary">미션 · {activePrompt.title}</p>}</div><button type="button" onClick={clearEditor} className="grid h-8 w-8 place-items-center rounded-xl bg-slate-100" aria-label="취소"><X className="h-4 w-4" /></button></div>
                   <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="mt-3 grid aspect-[4/3] w-full place-items-center overflow-hidden rounded-2xl bg-slate-100 disabled:opacity-60"><img src={preview} alt="선택한 사진 미리보기" className="h-full w-full object-cover" /></button>
@@ -199,6 +238,19 @@ export function TeamContest() {
             </>
           )}
         </div>
+        {promptUploadTarget && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-3" role="dialog" aria-modal="true" aria-label={`${promptUploadTarget.prompt.title} 사진 선택`}>
+            <div className="w-full max-w-[406px] rounded-[12px] bg-white p-3 shadow-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <div><p className="text-[11px] font-black text-[#617466]">사진 미션</p><h2 className="mt-1 text-lg font-black text-[#173c2c]">{promptUploadTarget.prompt.title}</h2></div>
+                <button type="button" onClick={() => setPromptUploadTarget(null)} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100" aria-label="사진 선택 닫기"><X className="h-4 w-4" /></button>
+              </div>
+              <p className="mt-1 text-xs font-bold leading-5 text-app-muted">사진을 고르면 이 미션 칸에 바로 저장됩니다.</p>
+              <button type="button" onClick={() => cameraRef.current?.click()} className="mt-3 flex w-full items-center justify-center gap-2 rounded-[8px] bg-[#173c2c] px-4 py-3 text-sm font-black text-white"><Camera className="h-5 w-5" />카메라로 촬영</button>
+              <button type="button" onClick={() => libraryRef.current?.click()} className="mt-2 flex w-full items-center justify-center gap-2 rounded-[8px] border border-[#ccd6ca] bg-white px-4 py-3 text-sm font-black text-[#173c2c]"><Images className="h-5 w-5" />앨범에서 선택</button>
+            </div>
+          </div>
+        )}
       </section>
       <ConfirmActionDialog busy={busy} confirmLabel="사진 삭제" description="이 사진의 원본과 썸네일이 모두 삭제되며 되돌릴 수 없습니다." onCancel={() => setPendingDelete(null)} onConfirm={() => void handleDelete()} open={Boolean(pendingDelete)} title="사진을 삭제할까요?" tone="danger" />
     </main>
