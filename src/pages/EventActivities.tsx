@@ -12,6 +12,7 @@ import {
   Layers3,
   Loader2,
   Target,
+  ZoomIn,
   type LucideIcon,
 } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
@@ -29,6 +30,11 @@ const activityIcons: Record<string, LucideIcon> = {
   dalgona: Cookie,
 };
 
+const guidePages: Record<string, number> = {
+  air: 1, jegi: 2, yut: 3, ddakji: 4,
+  tuho: 5, hopscotch: 6, biseok: 7, dalgona: 8,
+};
+
 export function EventActivities() {
   const { eventId } = useParams();
   const [searchParams] = useSearchParams();
@@ -36,6 +42,11 @@ export function EventActivities() {
   const { event, loading, error } = usePublicEvent(eventId);
   const activities = event?.guide?.activities ?? [];
   const sonova = isSonovaFamilyDay(event);
+  const selected = activities.find((activity) => activity.id === searchParams.get("activity"));
+  const page = sonova && selected ? guidePages[selected.id] : undefined;
+  const listParams = new URLSearchParams(searchParams);
+  listParams.delete("activity");
+  const listUrl = `/e/${eventId}/games?${listParams}`;
 
   return (
     <main className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
@@ -44,18 +55,27 @@ export function EventActivities() {
         <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white"}`}>
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between">
-            <Link to={teamToken ? `/t/${teamToken}` : `/e/${eventId}`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label="행사 메뉴로 돌아가기">
+            <Link to={page ? listUrl : teamToken ? `/t/${teamToken}` : `/e/${eventId}`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label={page ? "놀이 목록으로 돌아가기" : "행사 메뉴로 돌아가기"}>
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
-            <h1 className="text-base font-black">전통놀이 자유 체험</h1>
+            <h1 className="text-base font-black">{page ? selected?.title : "전통놀이 자유 체험"}</h1>
             <div className="flex h-10 w-20 items-center justify-end">{event && sonova ? <EventBrandMark event={event} compact /> : null}</div>
           </div>
         </header>
 
-        <div className={`relative z-10 flex-1 space-y-4 overflow-y-auto p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
+        <div key={page ?? "list"} className={`relative z-10 flex-1 space-y-4 overflow-y-auto p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <section className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 안내 불러오는 중</section>}
           {error && <section className="rounded-xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</section>}
-          {!loading && !error && event && (
+          {!loading && !error && page && selected && (
+            <section className="space-y-3">
+              <a href={`/assets/traditional-guides/guide-${page}.jpg`} target="_blank" rel="noreferrer" className="flex items-center justify-end gap-2 text-sm font-bold text-[#173c2c]"><ZoomIn size={18} />확대 보기</a>
+              <img src={`/assets/traditional-guides/guide-${page}.jpg`} alt={`${selected.title} 안내판: 놀이 방법, 어린이용 방법과 안전 수칙`} width={990} height={1400} className="h-auto w-full bg-white" />
+              <p className="text-sm leading-6">{selected.instruction}</p>
+              {selected.notice && <p className="text-sm leading-6 text-amber-800">{selected.notice}</p>}
+              <Link to={listUrl} className="flex items-center justify-center gap-2 py-3 font-bold"><ArrowLeft size={18} />놀이 목록</Link>
+            </section>
+          )}
+          {!loading && !error && event && !page && (
             <>
               <section className={sonova ? "rounded-[8px] border border-white/80 bg-[#173c2c]/95 p-5 text-white shadow-[0_18px_45px_rgba(31,65,47,0.14)]" : "rounded-panel bg-app-ink p-5 text-white"}>
                 <p className="text-[11px] font-black text-emerald-300">{sonova ? "SONOVA FAMILY DAY · TRADITIONAL PLAY" : "TRADITIONAL PLAY"}</p>
@@ -71,8 +91,10 @@ export function EventActivities() {
               <section className="grid grid-cols-2 gap-3">
                 {activities.map((activity, index) => {
                   const Icon = activityIcons[activity.id] ?? CircleDot;
+                  const params = new URLSearchParams(searchParams);
+                  params.set("activity", activity.id);
                   return (
-                    <article key={activity.id} className="card min-h-[164px] p-4">
+                    <article key={activity.id} className="card relative min-h-[164px] p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Icon className="h-5 w-5" aria-hidden="true" /></div>
                         <span className="text-[11px] font-black text-slate-300">{String(index + 1).padStart(2, "0")}</span>
@@ -80,6 +102,7 @@ export function EventActivities() {
                       <h3 className="mt-3 text-sm font-black">{activity.title}</h3>
                       <p className="mt-2 text-xs font-bold leading-5 text-app-muted">{activity.instruction}</p>
                       {activity.notice && <p className="mt-2 text-[11px] font-black leading-4 text-amber-700">{activity.notice}</p>}
+                      {sonova && guidePages[activity.id] && <Link to={`/e/${eventId}/games?${params}`} aria-label={`${activity.title} 안내판 보기`} className="mt-3 flex items-center gap-1 text-xs font-black text-emerald-800 after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-emerald-700">안내판 보기<ChevronRight size={16} /></Link>}
                     </article>
                   );
                 })}
