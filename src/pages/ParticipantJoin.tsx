@@ -13,6 +13,8 @@ export function ParticipantJoin() {
   const { error: eventError, event, loading } = usePublicEvent(eventId);
   const [code, setCode] = useState("");
   const [familyName, setFamilyName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [contactConsent, setContactConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sonovaFamilyDay = isSonovaFamilyDay(event);
@@ -22,11 +24,11 @@ export function ParticipantJoin() {
   const eventVenue = event?.guide?.venue || "";
 
   async function handleJoin() {
-    if (!eventId || !code.trim() || !familyName.trim()) return;
+    if (!eventId || !code.trim() || !familyName.trim() || (phone.trim() && !contactConsent)) return;
     setBusy(true);
     setError(null);
     try {
-      const result = await joinParticipantGroup(eventId, code, familyName);
+      const result = await joinParticipantGroup(eventId, code, familyName, phone, contactConsent);
       navigate(`/t/${result.teamToken}`, { replace: true });
     } catch (joinError) {
       setError(joinError instanceof Error ? joinError.message : "참가 코드를 확인하지 못했습니다.");
@@ -79,8 +81,17 @@ export function ParticipantJoin() {
                   <input value={familyName} onChange={(event) => setFamilyName(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void handleJoin(); }} maxLength={30} placeholder="예: 행복한 김가족" autoComplete="organization" className="w-full rounded-[6px] border border-[#ccd6ca] bg-white px-4 py-3.5 text-sm font-black text-[#173c2c] outline-none focus:border-[#47765c]" />
                   <span className="mt-2 block text-[11px] font-bold leading-5 text-[#78877c]">처음 입력한 이름으로 사진 보드에 표시됩니다.</span>
                 </label>
+                <label className="mt-4 block text-xs font-bold">
+                  대표 연락처 (선택)
+                  <input type="tel" autoComplete="tel" maxLength={24} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="010-1234-5678" className="mt-2 w-full rounded-md border border-[#ccd6ca] bg-white px-4 py-3 text-sm" />
+                </label>
+                <p className="mt-2 text-xs leading-5 text-[#617466]">행사 운영자가 일정 변경·집합 공지에만 사용하며 다른 참가자에게 공개하지 않습니다. 가족당 첫 등록 번호를 보관하며, 수정·삭제는 운영팀에 요청해주세요. 입력하지 않아도 입장할 수 있습니다.</p>
+                <label className="mt-2 flex items-start gap-2 text-xs leading-5">
+                  <input type="checkbox" checked={contactConsent} onChange={(e) => setContactConsent(e.target.checked)} className="mt-1" />
+                  연락처 수집·이용에 동의합니다 (선택). 수집 항목: 전화번호. 보관: 등록 후 7일, 이후 1시간 이내 자동 삭제.
+                </label>
                 {error && <p className="mt-3 rounded-[6px] bg-red-50 px-3 py-2 text-xs font-black text-red-700">{error}</p>}
-                <button type="button" onClick={() => void handleJoin()} disabled={busy || !code.trim() || !familyName.trim()} className="mt-4 flex w-full items-center justify-center gap-2 rounded-[6px] bg-[#173c2c] px-4 py-4 text-sm font-black text-white disabled:bg-[#cbd3ca] disabled:text-white/80">
+                <button type="button" onClick={() => void handleJoin()} disabled={busy || !code.trim() || !familyName.trim() || Boolean(phone.trim() && !contactConsent)} className="mt-4 flex w-full items-center justify-center gap-2 rounded-[6px] bg-[#173c2c] px-4 py-4 text-sm font-black text-white disabled:bg-[#cbd3ca] disabled:text-white/80">
                   {busy && <Loader2 className="h-4 w-4 animate-spin" />} 바로 입장하기
                 </button>
               </>

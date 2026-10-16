@@ -9,13 +9,13 @@ export interface ParticipantJoinResult {
   teamName: string;
 }
 
-export async function joinParticipantGroup(eventId: string, accessCode: string, familyName: string): Promise<ParticipantJoinResult> {
+export async function joinParticipantGroup(eventId: string, accessCode: string, familyName: string, phone = "", contactConsent = false): Promise<ParticipantJoinResult> {
   const user = await ensureUploaderUser();
-  const callable = httpsCallable<{ eventId: string; accessCode: string; familyName: string }, ParticipantJoinResult>(
+  const callable = httpsCallable<{ eventId: string; accessCode: string; familyName: string; phone: string; contactConsent: boolean }, ParticipantJoinResult>(
     functions,
     "joinParticipantGroup",
   );
-  const result = await callable({ eventId, accessCode, familyName });
+  const result = await callable({ eventId, accessCode, familyName, phone, contactConsent });
   saveTeamSession({
     eventId: result.data.eventId,
     teamId: result.data.teamId,

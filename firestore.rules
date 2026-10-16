@@ -79,6 +79,10 @@ service cloud.firestore {
       match /private/{documentId} {
         allow read, write: if isEventOwner(eventId);
       }
+      match /participantContacts/{teamId} {
+        allow read, delete: if isEventOwner(eventId);
+        allow create, update: if false;
+      }
 
       match /accessCodes/{codeId} {
         allow read, update, delete: if isEventOwner(eventId);

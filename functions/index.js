@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const { initializeApp } = require("firebase-admin/app");
 const { FieldValue, getFirestore } = require("firebase-admin/firestore");
 const { HttpsError, onCall } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 
 initializeApp();
 
@@ -46,6 +47,11 @@ exports.joinParticipantGroup = onCall({ region }, async (request) => {
   const eventId = requiredString(request.data?.eventId, "이벤트");
   const accessCode = requiredString(request.data?.accessCode, "참가 코드");
   const familyName = requiredString(request.data?.familyName, "가족 이름");
+  const rawPhone = typeof request.data?.phone === "string" ? request.data.phone.trim() : "";
+  const phone = (rawPhone.startsWith("+") ? "+" : "") + rawPhone.replace(/\D/g, "");
+  if (rawPhone && (!/^\+?\d{10,15}$/.test(phone) || request.data?.contactConsent !== true)) {
+    throw new HttpsError("invalid-argument", "전화번호와 연락처 수집 동의를 확인해주세요.");
+  }
 
   if (familyName.length > 30) {
     throw new HttpsError("invalid-argument", "가족 이름은 30자 이하로 입력해주세요.");
@@ -73,6 +79,8 @@ exports.joinParticipantGroup = onCall({ region }, async (request) => {
   const teamRef = eventRef.collection("teams").doc(teamId);
   const team = await db.runTransaction(async (transaction) => {
     const teamSnapshot = await transaction.get(teamRef);
+    const contactRef = eventRef.collection("participantContacts").doc(teamId);
+    const contactSnapshot = await transaction.get(contactRef);
 
     if (!teamSnapshot.exists) {
       throw new HttpsError("not-found", "참가 단위를 찾을 수 없습니다.");
@@ -82,6 +90,14 @@ exports.joinParticipantGroup = onCall({ region }, async (request) => {
     const currentDisplayName = teamSnapshot.get("displayName");
     const canClaimName = !currentDisplayName || currentDisplayName === defaultName;
     const displayName = canClaimName ? familyName : currentDisplayName;
+    // Another family login must not replace the consenting representative.
+    if (phone && !contactSnapshot.exists) {
+      transaction.set(contactRef, {
+        teamId, familyName: displayName, phone,
+        consentVersion: "event-notices-v1", consentedAt: FieldValue.serverTimestamp(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      });
+    }
 
     if (canClaimName) {
       transaction.update(teamRef, { displayName });
@@ -101,6 +117,18 @@ exports.joinParticipantGroup = onCall({ region }, async (request) => {
     teamToken: team.token,
     teamName: team.displayName,
   };
+});
+
+exports.deleteExpiredParticipantContacts = onSchedule({ region, schedule: "every 1 hours" }, async () => {
+  const events = await db.collection("events").get();
+  for (const event of events.docs) {
+    const contacts = await event.ref.collection("participantContacts").where("expiresAt", "<=", new Date()).get();
+    for (let offset = 0; offset < contacts.size; offset += 400) {
+      const batch = db.batch();
+      contacts.docs.slice(offset, offset + 400).forEach((contact) => batch.delete(contact.ref));
+      await batch.commit();
+    }
+  }
 });
 
 exports.joinParticipantGroupByToken = onCall({ region }, async (request) => {

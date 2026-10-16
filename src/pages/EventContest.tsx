@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { StoryDesk } from "../components/StoryDesk";
+import { ParticipantContacts } from "../components/ParticipantContacts";
 import { ContestAdminNav } from "../components/ContestAdminNav";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventLive } from "../hooks/useEventLive";
@@ -548,12 +549,13 @@ export function EventContest() {
                 </button>
               </section>
 
-              <nav className="sticky top-0 z-20 grid grid-cols-4 gap-1 rounded-lg border border-app-border bg-white p-1.5" aria-label="운영 화면" role="tablist">
+              <nav className="sticky top-0 z-20 grid grid-cols-5 gap-1 rounded-lg border border-app-border bg-white p-1.5" aria-label="운영 화면" role="tablist">
                 {[
                   ["접수", "submission-operations"],
                   ["투표·시상", "voting-operations"],
                   ["사진·출력", "photo-review"],
                   [`사연 ${songRequests.length}`, "song-requests"],
+                  ["연락처", "contacts"],
                 ].map(([label, targetId]) => (
                   <button key={targetId} type="button" role="tab" aria-selected={panel === targetId} onClick={() => setPanel(targetId)} className={`min-w-0 rounded-lg px-1 py-3 text-[11px] font-black ${panel === targetId ? "bg-app-ink text-white" : "text-app-muted hover:bg-slate-100"}`}>
                     {label}
@@ -915,6 +917,7 @@ export function EventContest() {
               </section>
 
               {event.modules?.songRequest && panel === "song-requests" && <StoryDesk eventId={eventId} votingClosed={event.voting?.status === "closed"} />}
+              {panel === "contacts" && <ParticipantContacts eventId={eventId} />}
             </>
           )}
         </div>
