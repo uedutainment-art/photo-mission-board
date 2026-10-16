@@ -45,10 +45,12 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
           <>
             <div className="px-5 py-5">
               <div className="flex items-center justify-between gap-4">
-                <p className="text-xs font-black text-[#385444]">{getParticipantName(context.team)} · 환영합니다</p>
+                <p className="text-sm font-bold leading-6 text-[#385444]">{getParticipantName(context.team).replace(/^Daniel 가족$/i, "다니엘 가족")}, 환영합니다</p>
               </div>
-              <p className="mt-4 text-xs font-bold text-[#385444]">Sonova Consumer Hearing Korea</p>
-              <h1 className="mt-1 text-2xl font-black leading-8 text-[#173c2c]">Family Day</h1>
+              <h1 className="mt-5 text-[#173c2c]">
+                <span className="block text-xl font-bold leading-7">Sonova Consumer<br />Hearing Korea</span>
+                <span className="mt-2 block text-3xl font-black leading-10">Family Day</span>
+              </h1>
               {(eventDate || venue) && (
                 <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 border-t border-[#d9dfd2] pt-4 text-xs font-black text-[#385444]">
                   {eventDate && <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" aria-hidden="true" />{eventDate}</span>}

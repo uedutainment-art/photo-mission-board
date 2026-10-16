@@ -37,8 +37,7 @@ export function EventGuide() {
             <>
               <section className={sonova ? "rounded-[8px] border border-white/80 bg-[#173c2c]/95 p-5 text-white shadow-[0_18px_45px_rgba(31,65,47,0.14)]" : "rounded-panel bg-app-ink p-5 text-white"}>
                 <p className="text-[11px] font-black text-emerald-300">EVENT GUIDE</p>
-                {sonova && <p className="mt-3 text-xs font-bold text-white/75">Sonova Consumer Hearing Korea</p>}
-                <h2 className="mt-2 text-2xl font-black">{sonova ? "Family Day" : event.title}</h2>
+                {sonova ? <h2 className="mt-3"><span className="block text-xl font-bold leading-7 text-white/90">Sonova Consumer<br />Hearing Korea</span><span className="mt-2 block text-3xl font-black leading-10">Family Day</span></h2> : <h2 className="mt-2 text-2xl font-black">{event.title}</h2>}
                 {(event.guide?.intro || event.subtitle) && <p className="mt-3 text-sm font-bold leading-6 text-slate-300">{event.guide?.intro || event.subtitle}</p>}
               </section>
 
