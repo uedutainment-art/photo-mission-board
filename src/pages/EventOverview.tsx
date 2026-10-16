@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { ArrowLeft, CalendarDays, ExternalLink, Image, Loader2, MessageCircle, Phone, QrCode, Trophy, Users } from "lucide-react";
 import { OperatorTabNav } from "../components/OperatorTabNav";
 import { useEventLive, type EventLivePhoto, type EventLiveSlot, type EventLiveTeam } from "../hooks/useEventLive";
@@ -47,6 +47,10 @@ export function EventOverview() {
     const teamSlots = slots.filter((slot) => slot.teamId === team.id);
     const teamFilled = teamSlots.filter((slot) => Boolean(slot.representativePhotoId)).length;
     return getPercent(teamFilled, teamSlots.length);
+  }
+
+  if (event && eventId && (event.modules?.photoContest || event.preset === "family-photo-contest")) {
+    return <Navigate to={`/events/${eventId}/contest`} replace />;
   }
 
   return (

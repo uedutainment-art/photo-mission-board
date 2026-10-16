@@ -33,7 +33,7 @@ function EventCard({ event }: { event: EventRecord }) {
   const participantLabels = getParticipantLabels(event);
 
   return (
-    <Link to={`/events/${event.id}`} className="card block overflow-hidden">
+    <Link to={`/events/${event.id}${event.modules?.photoContest || event.preset === "family-photo-contest" ? "/contest" : ""}`} className="card block overflow-hidden">
       <div className="relative h-28 bg-gradient-to-br from-sky-200 via-emerald-100 to-violet-200">
         {event.status === "live" && (
           <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-app-ink px-2.5 py-1 text-[10px] font-black text-white">

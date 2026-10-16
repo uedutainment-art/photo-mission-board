@@ -491,7 +491,7 @@ export function EventContest() {
         <header className="border-b border-app-border bg-white px-4 pb-4 pt-3">
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between">
-            <Link to={eventId ? `/events/${eventId}` : "/events"} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label="이벤트로 돌아가기">
+            <Link to="/events" className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100" aria-label="행사 목록으로 돌아가기">
               <ArrowLeft className="h-5 w-5" aria-hidden="true" />
             </Link>
             <div className="text-center">
