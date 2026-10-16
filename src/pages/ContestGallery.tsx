@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Check, Loader2, Vote, X } from "lucide-react";
 import { EventBrandMark } from "../components/EventBrandMark";
@@ -51,6 +51,21 @@ export function ContestGallery() {
       .sort((a, b) => stableOrder(`${context?.eventId}:${a.teamId}`) - stableOrder(`${context?.eventId}:${b.teamId}`));
   }, [context?.eventId, context?.event.submission?.prompts, visibleSubmissions]);
   const selected = visibleSubmissions.find((item) => item.id === selectedId) ?? null;
+  const photoDialog = useRef<HTMLDialogElement>(null);
+  const expandedPhotoId = selected?.id;
+  useEffect(() => {
+    const dialog = photoDialog.current;
+    if (!expandedPhotoId || !dialog) return;
+    const trigger = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      if (trigger instanceof HTMLElement) trigger.focus({ preventScroll: true });
+    };
+  }, [expandedPhotoId]);
   const votingOpen = context?.event.submission?.status === "closed"
     && context.event.voting?.status === "open"
     && context.event.results?.status !== "published";
@@ -138,10 +153,12 @@ export function ContestGallery() {
           )}
         </div>
         {selected && context && (
-          <div className="absolute inset-0 z-10 flex flex-col bg-white">
-            <div className="relative flex-1 bg-slate-950"><img src={selected.originalUrl} alt={selected.title} className="h-full w-full object-contain" /><button type="button" onClick={() => setSelectedId(null)} className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-slate-950/70 text-white" aria-label="닫기"><X className="h-5 w-5" /></button></div>
-            <div className="p-4"><p className="text-xs font-black text-app-muted">{teamById.get(selected.teamId) ? getParticipantName(teamById.get(selected.teamId)!) : "참가 가족"}{selected.teamId === context.teamId ? " · 우리 가족" : ""}</p><h2 className="mt-1 text-lg font-black">{selected.title}</h2><button type="button" onClick={() => setSelectedId(null)} className="mt-4 w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black">목록으로 돌아가기</button></div>
-          </div>
+          <dialog ref={photoDialog} aria-label="가족 사진 크게 보기" onCancel={() => setSelectedId(null)} className="fixed inset-0 m-auto h-dvh max-h-none w-full max-w-3xl border-0 bg-white p-0 text-app-ink backdrop:bg-black/80">
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="relative min-h-0 flex-1 bg-slate-950"><img src={selected.originalUrl} alt={selected.title} className="absolute inset-0 h-full w-full object-contain" /><button type="button" onClick={() => setSelectedId(null)} className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-slate-950/70 text-white" aria-label="닫기"><X className="h-5 w-5" /></button></div>
+              <div className="max-h-[40dvh] flex-none overflow-y-auto p-4"><p className="text-xs font-black text-app-muted">{teamById.get(selected.teamId) ? getParticipantName(teamById.get(selected.teamId)!) : "참가 가족"}{selected.teamId === context.teamId ? " · 우리 가족" : ""}</p><h2 className="mt-1 break-words text-lg font-black">{selected.title}</h2><button type="button" onClick={() => setSelectedId(null)} className="mt-4 w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black">목록으로 돌아가기</button></div>
+            </div>
+          </dialog>
         )}
       </section>
     </main>
