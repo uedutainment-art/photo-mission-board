@@ -173,7 +173,7 @@ function TeamListCard({ accessCode, contestSubmissionCount, eventId, eventTitle,
           </div>
           <p className="mt-1 truncate text-xs font-bold text-app-muted">
             {isPhotoContest
-              ? `가족 사진 ${contestSubmissionCount}/6장 등록`
+              ? `가족 사진 ${contestSubmissionCount}장 등록`
               : `${membersText} · ${team.uploadedCount}/${perTeamCount} 업로드`}
           </p>
           {team.leader ? (
@@ -557,7 +557,7 @@ export function EventTeams() {
                   </p>
                 )}
                 <p className="mt-3 text-xs font-bold text-slate-300">
-                  {event.teamCount}{participantLabels.singular} · {participantLabels.singular}당 {event.modules?.photoContest ? `${event.submission?.minimum ?? 1}~${event.submission?.limit ?? 1}` : event.perTeamCount}장 · QR 자동 발급
+                  {event.teamCount}{participantLabels.singular} · {participantLabels.singular}당 {event.modules?.photoContest ? (event.submission?.minimum === event.submission?.limit ? `${event.submission?.limit ?? 1}` : `${event.submission?.minimum ?? 1}~${event.submission?.limit ?? 1}`) : event.perTeamCount}장 · QR 자동 발급
                 </p>
                 <button
                   type="button"

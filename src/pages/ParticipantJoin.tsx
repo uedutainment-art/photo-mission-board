@@ -52,6 +52,7 @@ export function ParticipantJoin() {
             <h1 className="mt-5 text-3xl font-black leading-[1.25] tracking-normal text-[#173c2c]">우리 가족의 오늘을<br />남겨주세요</h1>
             <p className="mt-3 text-sm font-black text-[#385444]">QR 하나로 함께해요</p>
             <p className="mt-2 text-[11px] font-bold text-[#617466]">가족 사진 미션 · 베스트 포토 투표 · 신청곡 신청</p>
+            <p className="mt-3 text-xs font-bold text-[#385444]">가족의 즐거운 순간을 남겨주세요.<br />베스트 포토 가족에게 선물이 있어요.</p>
           </header>
 
           <div className="mt-6 rounded-[8px] border border-white/80 bg-white/90 p-5 shadow-[0_18px_45px_rgba(31,65,47,0.14)] backdrop-blur-sm">

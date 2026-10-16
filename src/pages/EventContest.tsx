@@ -830,7 +830,7 @@ export function EventContest() {
                           </option>
                         ))}
                       </select>
-                      <span className="w-16 text-right text-xs font-black text-app-primary">{prizeAmounts[index].toLocaleString()}원</span>
+                      <span className="w-16 text-right text-xs font-black text-app-primary">선물</span>
                     </label>
                   ))}
                 </div>

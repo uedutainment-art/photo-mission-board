@@ -5,7 +5,7 @@ import { useTeamSession, type TeamSessionContext } from "../hooks/useTeamSession
 import { getEventSchedule, isSonovaFamilyDay } from "../lib/eventBrand";
 import { formatKoreanDate } from "../lib/formatDate";
 import { getParticipantLabels } from "../lib/participantTerms";
-import { getTeamLabel } from "../lib/teamLabel";
+import { getTeamLabel, getParticipantName } from "../lib/teamLabel";
 
 function getStartLabel(selfieMode: string): string {
   if (selfieMode === "none") {
@@ -33,7 +33,7 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
     : votingOpen
       ? { eyebrow: "투표 진행 중", title: "마음에 드는 가족사진 투표하기", description: "우리 가족을 제외한 다른 가족 사진을 선택해주세요.", href: `/t/${teamToken}/gallery` }
       : submissionOpen
-        ? { eyebrow: "사진 접수 중 · 베스트 포토 선물", title: "우리 가족사진 4장 채우기", description: "네 가지 순간을 잘 담아 1·2·3등 선물에 도전하세요.", href: `/t/${teamToken}/contest` }
+        ? { eyebrow: "사진 접수 중 · 베스트 포토 선물", title: "우리 가족사진 4장 채우기", description: "가족의 즐거운 순간을 남겨주세요. 베스트 포토 가족에게 선물이 있어요.", href: `/t/${teamToken}/contest` }
         : { eyebrow: "사진 콘테스트", title: "가족사진 콘테스트 보기", description: "운영팀 안내에 따라 사진 접수와 투표가 열립니다.", href: `/t/${teamToken}/contest` };
 
   return (
@@ -43,7 +43,7 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
           <>
             <div className="px-5 py-5">
               <div className="flex items-center justify-between gap-4">
-                <p className="text-[10px] font-black uppercase text-[#78877c]">Welcome to</p>
+                <p className="text-xs font-black text-[#385444]">{getParticipantName(context.team)} · 환영합니다</p>
                 <span className="rounded-full border border-[#9eb4a5] px-3 py-1 text-[9px] font-black uppercase text-[#385444]">Family Day</span>
               </div>
               <h1 className="mt-2 text-2xl font-black leading-8 text-[#173c2c]">{context.event.title}</h1>
@@ -105,7 +105,7 @@ function FamilyEventMenu({ context, teamToken }: { context: TeamSessionContext; 
           {submissionOpen && (
             <div className="mt-4 flex items-center gap-2 border-t border-white/15 pt-3 text-xs font-black text-amber-200">
               <Trophy className="h-4 w-4 flex-none" aria-hidden="true" />
-              <span>행사 마지막에 베스트 포토 1·2·3등을 발표합니다.</span>
+              <span>베스트 포토 가족에게 선물이 있어요.</span>
             </div>
           )}
         </Link>

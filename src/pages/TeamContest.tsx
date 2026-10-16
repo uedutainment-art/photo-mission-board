@@ -8,7 +8,7 @@ import { useTeamSession } from "../hooks/useTeamSession";
 import { deleteContestSubmission, saveContestSubmission } from "../lib/contest";
 import { isSonovaFamilyDay } from "../lib/eventBrand";
 import { getParticipantLabels } from "../lib/participantTerms";
-import { getTeamLabel } from "../lib/teamLabel";
+import { getParticipantName } from "../lib/teamLabel";
 import type { PhotoPrompt } from "../lib/types";
 
 export function TeamContest() {
@@ -165,7 +165,7 @@ export function TeamContest() {
     <main className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
       <section className={`phone-surface relative overflow-hidden rounded-[28px] border shadow-phone ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]" : "border-app-border"}`}>
         {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-55" />}
-        <header className={`relative z-10 px-5 pb-5 pt-5 ${sonova ? "border-b border-[#d9dfd2] bg-[#f8f5e9]/90 text-[#173c2c]" : "bg-app-ink text-white"}`}><div className="flex items-center gap-3"><Link to={`/t/${teamToken}`} className={`grid h-10 w-10 flex-none place-items-center rounded-xl ${sonova ? "bg-white/80" : "bg-white/10"}`} aria-label="가족 행사 메뉴로 돌아가기"><ArrowLeft className="h-5 w-5" /></Link><div className="min-w-0 flex-1"><p className={`text-[11px] font-black ${sonova ? "text-[#617466]" : "text-slate-400"}`}>PHOTO CONTEST</p><h1 className="mt-1 truncate text-xl font-black">{context ? getTeamLabel(context.team) : "사진 콘테스트"}</h1></div>{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></header>
+        <header className={`relative z-10 px-5 pb-5 pt-5 ${sonova ? "border-b border-[#d9dfd2] bg-[#f8f5e9]/90 text-[#173c2c]" : "bg-app-ink text-white"}`}><div className="flex items-center gap-3"><Link to={`/t/${teamToken}`} className={`grid h-10 w-10 flex-none place-items-center rounded-xl ${sonova ? "bg-white/80" : "bg-white/10"}`} aria-label="가족 행사 메뉴로 돌아가기"><ArrowLeft className="h-5 w-5" /></Link><div className="min-w-0 flex-1"><p className={`text-[11px] font-black ${sonova ? "text-[#617466]" : "text-slate-400"}`}>PHOTO CONTEST</p><h1 className="mt-1 truncate text-xl font-black">{context ? getParticipantName(context.team) : "사진 콘테스트"}</h1></div>{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></header>
         <div className={`relative z-10 flex-1 space-y-4 p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 불러오는 중</div>}
           {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
@@ -174,7 +174,7 @@ export function TeamContest() {
             <>
               <section className="card p-4">
                 <div className="flex items-start justify-between gap-3"><div><h2 className="text-base font-black">우리 가족 사진 미션</h2><p className="mt-2 text-sm font-bold leading-6 text-app-muted">{photoPrompts.length > 0 ? `${photoPrompts.length}개 미션에 사진을 한 장씩 등록해주세요.` : `${participantLabels.singular}의 사진을 ${minimumPhotos}~${photoLimit}장 등록해주세요.`}</p></div><strong className={enoughPhotos ? "text-emerald-700" : "text-app-primary"}>{filledCount}/{photoLimit}</strong></div>
-                {submissionOpen && context.event.results?.winnerCount ? <p className="mt-3 flex items-center gap-2 rounded-[8px] bg-amber-50 px-3 py-2 text-xs font-black leading-5 text-amber-900"><Trophy className="h-4 w-4 flex-none text-amber-600" aria-hidden="true" /><span>{photoLimit}장을 모두 채우고 베스트 포토 {context.event.results.winnerCount}가족 선물에 도전하세요.</span></p> : null}
+                {submissionOpen && context.event.results?.winnerCount ? <p className="mt-3 flex items-center gap-2 rounded-[8px] bg-amber-50 px-3 py-2 text-xs font-black leading-5 text-amber-900"><Trophy className="h-4 w-4 flex-none text-amber-600" aria-hidden="true" /><span>가족의 즐거운 순간을 남겨주세요. 베스트 포토 가족에게 선물이 있어요.</span></p> : null}
                 {submissionOpen && photoPrompts.length > 0 ? <p className="mt-2 rounded-[8px] bg-slate-50 px-3 py-2 text-[11px] font-bold leading-5 text-app-muted"><strong className="text-app-ink">잘 찍는 팁</strong> · 렌즈를 닦고 · 빛을 마주 보고 · 촬영 후 얼굴이 선명한지 확인하세요.</p> : null}
                 {context.event.guide?.activities?.length && photoPrompts.length === 0 ? <Link to={`/e/${context.eventId}/games?team=${encodeURIComponent(teamToken ?? "")}`} className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black leading-5 text-emerald-800"><Gamepad2 className="h-4 w-4 flex-none" aria-hidden="true" /><span>전통놀이를 즐기는 장면도 한 장 정도 남겨보세요.</span></Link> : null}
                 <span className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-black ${submissionOpen ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-app-muted"}`}>{submissionOpen ? "사진 접수 중" : context.event.submission?.status === "closed" ? "사진 접수 마감" : "접수 대기"}</span>

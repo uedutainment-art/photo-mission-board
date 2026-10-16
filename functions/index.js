@@ -182,7 +182,7 @@ exports.castContestVote = onCall({ region }, async (request) => {
     if (submissionSnapshots.some((snapshot) => (
       snapshot.empty || snapshot.docs.every((document) => document.get("hidden") === true)
     ))) {
-      throw new HttpsError("not-found", "투표할 수 있는 사진이 포함되어 있습니다.");
+      throw new HttpsError("not-found", "투표할 수 없는 가족이 포함되어 있습니다.");
     }
 
     transaction.delete(eventRef.collection("votes").doc(`team_${voterTeamId}`));

@@ -5,7 +5,7 @@ import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventTeams } from "../hooks/useEventTeams";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { isSonovaFamilyDay } from "../lib/eventBrand";
-import { getTeamLabel } from "../lib/teamLabel";
+import { getParticipantName } from "../lib/teamLabel";
 
 export function ContestResults() {
   const { teamToken } = useParams();
@@ -39,7 +39,7 @@ export function ContestResults() {
           {published && <div className="space-y-3">{revealedWinners.map((winner) => {
             const team = teamById.get(winner.teamId);
             const familyPhotos = submissionsByTeam.get(winner.teamId) ?? [];
-            return <section key={winner.rank} className="card overflow-hidden"><div className={`relative grid gap-0.5 bg-slate-200 ${familyPhotos.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{familyPhotos.slice(0, 4).map((photo) => <img key={photo.id} src={photo.thumbUrl} alt={photo.title} className="aspect-square w-full object-cover" />)}<span className="absolute left-3 top-3 rounded-full bg-app-ink px-3 py-1 text-sm font-black text-white">{winner.rank}등</span></div><div className="p-4"><h2 className="text-base font-black">{team ? getTeamLabel(team) : "참가 가족"}</h2><p className="mt-1 text-sm font-bold text-app-muted">가족 사진 {familyPhotos.length}장</p><p className="mt-3 text-sm font-black text-app-primary">{winner.prizeAmount.toLocaleString("ko-KR")}원 상당</p></div></section>;
+            return <section key={winner.rank} className="card overflow-hidden"><div className={`relative grid gap-0.5 bg-slate-200 ${familyPhotos.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>{familyPhotos.slice(0, 4).map((photo) => <img key={photo.id} src={photo.thumbUrl} alt={photo.title} className="aspect-square w-full object-cover" />)}<span className="absolute left-3 top-3 rounded-full bg-app-ink px-3 py-1 text-sm font-black text-white">{winner.rank}등</span></div><div className="p-4"><h2 className="text-base font-black">{team ? getParticipantName(team) : "참가 가족"}</h2><p className="mt-1 text-sm font-bold text-app-muted">가족 사진 {familyPhotos.length}장</p><p className="mt-3 text-sm font-black text-app-primary">베스트 포토 수상을 축하합니다!</p></div></section>;
           })}{revealedWinners.length < winners.length && <div className="card p-6 text-center"><Award className="mx-auto h-8 w-8 text-amber-500" /><p className="mt-3 text-sm font-black">다음 순위 발표를 기다려주세요</p><p className="mt-1 text-xs font-bold text-app-muted">운영팀이 순서대로 공개하고 있습니다.</p></div>}</div>}
         </div>
       </section>

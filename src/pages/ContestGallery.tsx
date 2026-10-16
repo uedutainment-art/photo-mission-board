@@ -8,7 +8,7 @@ import { useContestVote } from "../hooks/useContestVote";
 import { useTeamSession } from "../hooks/useTeamSession";
 import { castContestVotes } from "../lib/contest";
 import { isSonovaFamilyDay } from "../lib/eventBrand";
-import { getTeamLabel } from "../lib/teamLabel";
+import { getParticipantName } from "../lib/teamLabel";
 
 function stableOrder(value: string): number {
   let hash = 2166136261;
@@ -100,7 +100,7 @@ export function ContestGallery() {
         {sonova && <img src="/assets/sonova-family-day-watercolor.png" alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center opacity-55" />}
         <header className={`relative z-10 border-b px-4 pb-4 pt-3 ${sonova ? "border-[#d9dfd2] bg-[#f8f5e9]/90" : "border-app-border bg-white"}`}>
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
-          <div className="flex items-center justify-between"><Link to={`/t/${teamToken}/contest`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><ArrowLeft className="h-5 w-5" /></Link><div className="text-center"><h1 className="text-base font-black">가족 포토 보드</h1><p className="text-[11px] font-bold text-app-muted">{familyGroups.length}가족 · 사진 {visibleSubmissions.length}장</p></div><div className="flex h-10 w-24 items-center justify-end">{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></div>
+          <div className="flex items-center justify-between"><Link to={`/t/${teamToken}/contest`} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100"><ArrowLeft className="h-5 w-5" /></Link><div className="text-center"><h1 className="text-base font-black">가족 포토 보드</h1><p className="text-[11px] font-bold text-app-muted">사진 {visibleSubmissions.length}장</p></div><div className="flex h-10 w-24 items-center justify-end">{context && sonova ? <EventBrandMark event={context.event} compact /> : null}</div></div>
         </header>
         <div className={`relative z-10 flex-1 p-4 ${sonova ? "bg-white/25" : "bg-slate-50"}`}>
           {loading && <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted"><Loader2 className="h-5 w-5 animate-spin" /> 사진 불러오는 중</div>}
@@ -117,7 +117,7 @@ export function ContestGallery() {
                   const isSelected = selectedTeamIds.includes(teamId);
                   return (
                     <section key={teamId} className={`overflow-hidden rounded-2xl border bg-white ${isSelected ? "border-app-primary ring-2 ring-blue-100" : "border-app-border"}`}>
-                      <div className="flex items-center justify-between gap-3 px-3 py-3"><div className="min-w-0"><h2 className="truncate text-sm font-black">{team ? getTeamLabel(team) : "참가 가족"}</h2><p className="mt-0.5 text-[11px] font-bold text-app-muted">{photos.length}장{isOwnFamily ? " · 우리 가족" : ""}</p></div>{isOwnFamily && <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-app-muted">우리 가족</span>}{!isOwnFamily && votingOpen && <button type="button" onClick={() => toggleSelection(teamId)} disabled={!isSelected && selectedTeamIds.length >= selectionLimit} className={`flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-black disabled:opacity-40 ${isSelected ? "bg-app-primary text-white" : "bg-slate-100 text-app-ink"}`}>{isSelected && <Check className="h-3.5 w-3.5" />}{isSelected ? "선택됨" : "투표 선택"}</button>}</div>
+                      <div className="flex items-center justify-between gap-3 px-3 py-3"><div className="min-w-0"><h2 className="truncate text-sm font-black">{team ? getParticipantName(team) : "참가 가족"}</h2><p className="mt-0.5 text-[11px] font-bold text-app-muted">{photos.length}장{isOwnFamily ? " · 우리 가족" : ""}</p></div>{isOwnFamily && <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-app-muted">우리 가족</span>}{!isOwnFamily && votingOpen && <button type="button" onClick={() => toggleSelection(teamId)} disabled={!isSelected && selectedTeamIds.length >= selectionLimit} className={`flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-black disabled:opacity-40 ${isSelected ? "bg-app-primary text-white" : "bg-slate-100 text-app-ink"}`}>{isSelected && <Check className="h-3.5 w-3.5" />}{isSelected ? "선택됨" : "투표 선택"}</button>}</div>
                       <div className={`grid gap-1 bg-slate-100 p-1 ${photos.length === 1 ? "grid-cols-1" : photos.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>{photos.map((photo) => <button key={photo.id} type="button" onClick={() => setSelectedId(photo.id)} className="relative aspect-square overflow-hidden bg-slate-200"><img src={photo.thumbUrl} alt={photo.title} className="h-full w-full object-cover" /><span className="absolute bottom-0 left-0 right-0 truncate bg-slate-950/65 px-1.5 py-1 text-left text-[9px] font-bold text-white">{photo.title}</span></button>)}</div>
                     </section>
                   );
@@ -137,7 +137,7 @@ export function ContestGallery() {
         {selected && context && (
           <div className="absolute inset-0 z-10 flex flex-col bg-white">
             <div className="relative flex-1 bg-slate-950"><img src={selected.originalUrl} alt={selected.title} className="h-full w-full object-contain" /><button type="button" onClick={() => setSelectedId(null)} className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-slate-950/70 text-white" aria-label="닫기"><X className="h-5 w-5" /></button></div>
-            <div className="p-4"><p className="text-xs font-black text-app-muted">{teamById.get(selected.teamId) ? getTeamLabel(teamById.get(selected.teamId)!) : "참가 가족"}{selected.teamId === context.teamId ? " · 우리 가족" : ""}</p><h2 className="mt-1 text-lg font-black">{selected.title}</h2><button type="button" onClick={() => setSelectedId(null)} className="mt-4 w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black">목록으로 돌아가기</button></div>
+            <div className="p-4"><p className="text-xs font-black text-app-muted">{teamById.get(selected.teamId) ? getParticipantName(teamById.get(selected.teamId)!) : "참가 가족"}{selected.teamId === context.teamId ? " · 우리 가족" : ""}</p><h2 className="mt-1 text-lg font-black">{selected.title}</h2><button type="button" onClick={() => setSelectedId(null)} className="mt-4 w-full rounded-2xl bg-slate-100 px-4 py-3 text-sm font-black">목록으로 돌아가기</button></div>
           </div>
         )}
       </section>
