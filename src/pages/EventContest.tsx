@@ -61,13 +61,6 @@ function getOperationStage(event: MissionEvent): number {
   return 1;
 }
 
-function getStageAction(stage: number): { label: string; targetId: string } {
-  if (stage === 1) return { label: "사진 접수 준비", targetId: "submission-operations" };
-  if (stage === 2) return { label: "접수 현황 확인", targetId: "submission-operations" };
-  if (stage === 3) return { label: "투표 현황 확인", targetId: "voting-operations" };
-  return { label: "수상 가족 확정", targetId: "result-operations" };
-}
-
 function getSubmissionStatusLabel(status: ModuleStatus | undefined): string {
   if (status === "open") return "접수 중";
   if (status === "closed") return "마감";
@@ -175,7 +168,30 @@ export function EventContest() {
   const revealedRanks = event?.results?.revealedRanks
     ?? (event?.results?.status === "published" ? [3, 2, 1] : []);
   const operationStage = event ? getOperationStage(event) : 1;
-  const stageAction = getStageAction(operationStage);
+  const stagePanel = operationStage === 4 ? "result-operations" : operationStage === 3 ? "voting-operations" : "submission-operations";
+  useEffect(() => {
+    if (event) setPanel(stagePanel);
+  }, [event?.id, stagePanel]);
+  const stageLabel = event?.voting?.status === "closed" ? "시상 · 결과 발표"
+    : event?.voting?.status === "open" ? "투표 진행 중"
+      : event?.submission?.status === "closed" ? "접수 마감 · 투표 시작 전"
+        : event?.submission?.status === "open" ? "사진 접수 중" : "접수 시작 전";
+  const nextActionLabel = operationStage === 4 ? "시상 화면으로 이동"
+    : event?.voting?.status === "open" ? "투표 마감하기"
+      : event?.submission?.status === "closed" ? "투표 시작하기"
+        : event?.submission?.status === "open" ? "사진 접수 마감하기" : "사진 접수 시작하기";
+
+  function showPanel(target: string) {
+    setPanel(target);
+    requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }
+
+  function advanceStage() {
+    if (operationStage === 4) { showPanel("result-operations"); return; }
+    if (event?.voting?.status === "open") { requestPhaseChange("voting.status", "closed"); return; }
+    if (event?.submission?.status === "closed") { requestPhaseChange("voting.status", "open"); return; }
+    requestPhaseChange("submission.status", event?.submission?.status === "open" ? "closed" : "open");
+  }
   const filteredSubmissions = useMemo(
     () => submissions.filter((item) => (
       (photoTeamFilter === "all" || item.teamId === photoTeamFilter)
@@ -294,13 +310,13 @@ export function EventContest() {
           draft: ["사진 접수를 준비할까요?", "참가자는 아직 사진을 등록할 수 없습니다.", "준비로 변경"],
           waiting: ["사진 접수를 대기로 바꿀까요?", "참가자에게 접수 대기 상태가 표시됩니다.", "대기로 변경"],
           open: ["사진 접수를 시작할까요?", "참가자가 가족 사진을 추가·교체·삭제할 수 있게 됩니다.", "접수 시작"],
-          closed: ["사진 접수를 마감할까요?", "마감 후 참가자는 사진을 추가·교체·삭제할 수 없습니다.", "접수 마감"],
+          closed: ["사진 접수를 마감할까요?", `사진 미충족 ${unregisteredTeams.length}팀입니다. 마감 후 사진을 추가·교체·삭제할 수 없습니다. 투표는 별도로 시작해야 합니다.`, "접수 마감"],
         }
       : {
           draft: ["투표를 준비 상태로 바꿀까요?", "참가자는 아직 투표할 수 없습니다.", "준비로 변경"],
           waiting: ["투표를 대기 상태로 바꿀까요?", "참가자는 아직 투표할 수 없습니다.", "대기로 변경"],
           open: ["투표를 시작할까요?", `가족당 서로 다른 ${selectionLimit}곳에 투표할 수 있게 됩니다.`, "투표 시작"],
-          closed: ["투표를 마감할까요?", "마감 후 참가자는 투표를 제출하거나 변경할 수 없습니다.", "투표 마감"],
+          closed: ["투표를 마감할까요?", `투표 완료 ${teams.length - unvotedTeams.length}/${teams.length}팀, 미완료 ${unvotedTeams.length}팀입니다. 마감 후 투표를 제출하거나 변경할 수 없습니다. 결과는 아직 공개되지 않습니다.`, "투표 마감"],
         };
     const [title, description, confirmLabel] = labels[status];
     const resetsLaterPhases = isSubmission
@@ -502,7 +518,7 @@ export function EventContest() {
           </div>
         </header>
 
-        <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4">
+        <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4 pb-36 sm:pb-4">
           {pageLoading && (
             <div className="card flex items-center justify-center gap-2 p-5 text-sm font-black text-app-muted">
               <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
@@ -528,7 +544,8 @@ export function EventContest() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-[11px] font-black text-app-muted">현장 운영 순서</p>
-                    <h2 className="mt-1 text-base font-black">지금은 {operationStages[operationStage - 1].label} 단계입니다</h2>
+                    <h2 className="mt-1 text-base font-black">{stageLabel}</h2>
+                    <p className="mt-2 text-sm font-bold text-app-muted">사진 완료 {completedSubmissionTeams.length}/{teams.length}팀 · 투표 완료 {teams.length - unvotedTeams.length}/{teams.length}팀</p>
                   </div>
                   <span className="rounded-full bg-app-ink px-3 py-1 text-[11px] font-black text-white">{operationStage}/4</span>
                 </div>
@@ -550,19 +567,21 @@ export function EventContest() {
                 </ol>
                 <button
                   type="button"
-                  onClick={() => { setPanel(stageAction.targetId === "result-operations" ? "voting-operations" : stageAction.targetId); requestAnimationFrame(() => document.getElementById(stageAction.targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })); }}
+                  onClick={advanceStage}
+                  disabled={Boolean(busy) || confirmBusy}
                   className="mt-4 flex w-full items-center justify-center rounded-2xl bg-app-ink px-4 py-3 text-sm font-black text-white"
                 >
-                  {stageAction.label}
+                  {nextActionLabel}
                 </button>
               </section>
 
-              <nav className="sticky top-0 z-20 grid grid-cols-5 gap-1 rounded-lg border border-app-border bg-white p-1.5" aria-label="운영 화면" role="tablist">
+              <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-1 border-t border-app-border bg-white p-1.5 pb-[max(8px,env(safe-area-inset-bottom))] shadow-lg sm:sticky sm:inset-x-auto sm:bottom-auto sm:top-0 sm:grid-cols-6 sm:rounded-lg sm:border sm:shadow-none" aria-label="운영 화면" role="tablist">
                 {[
                   ["접수", "submission-operations"],
-                  ["투표·시상", "voting-operations"],
+                  ["투표", "voting-operations"],
+                  ["시상", "result-operations"],
                   ["사진·출력", "photo-review"],
-                  [`사연 ${songRequests.length}`, "song-requests"],
+                  [`신청곡·사연 ${songRequests.length}`, "song-requests"],
                   ["연락처", "contacts"],
                 ].map(([label, targetId]) => (
                   <button key={targetId} type="button" role="tab" aria-selected={panel === targetId} onClick={() => setPanel(targetId)} className={`min-w-0 rounded-lg px-1 py-3 text-[11px] font-black ${panel === targetId ? "bg-app-ink text-white" : "text-app-muted hover:bg-slate-100"}`}>
@@ -807,7 +826,7 @@ export function EventContest() {
                 </div>
               </section>
 
-              <section hidden={panel !== "voting-operations"} id="result-operations" className="card scroll-mt-4 p-4">
+              <section hidden={panel !== "result-operations"} id="result-operations" className="card scroll-mt-28 p-4">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-sm font-black">집계 및 결과 공개</h2>
