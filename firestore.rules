@@ -35,14 +35,6 @@ service cloud.firestore {
         && eventData.modules.photoContest == true;
     }
 
-    function resultsPublished(eventId) {
-      let eventData = get(/databases/$(database)/documents/events/$(eventId)).data;
-      return 'results' in eventData
-        && eventData.results.status == 'published'
-        && 'voting' in eventData
-        && eventData.voting.status == 'closed';
-    }
-
     function isOwnTeamVote(eventId, voteId) {
       let ownVotePrefix = 'team_' + get(/databases/$(database)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)).data.teamId;
       return signedIn() && (
@@ -56,7 +48,7 @@ service cloud.firestore {
     // 으로 팀을 찾기 위해 필요한 collectionGroup matcher.
     // 일반 nested matcher 는 collectionGroup query 를 인식하지 못함.
     match /{path=**}/teams/{teamId} {
-      allow read: if signedIn();
+      allow read: if false;
     }
 
     match /users/{uid} {
@@ -77,11 +69,15 @@ service cloud.firestore {
       allow update, delete: if isEventOwner(eventId);
 
       match /teams/{teamId} {
-        allow read: if signedIn();
+        allow read: if isEventOwner(eventId) || (signedIn() && exists(/databases/$(database)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)));
         allow create: if isEventOwnerAfter(eventId);
         allow delete: if isEventOwner(eventId);
         allow update: if isEventOwner(eventId)
-          || (signedIn() && changedOnly(['joinedMembers', 'status']));
+          || (hasParticipantSession(eventId, teamId) && changedOnly(['joinedMembers', 'status']));
+      }
+
+      match /private/{documentId} {
+        allow read, write: if isEventOwner(eventId);
       }
 
       match /accessCodes/{codeId} {
@@ -96,8 +92,14 @@ service cloud.firestore {
       }
 
       match /familySubmissions/{submissionId} {
-        allow read: if signedIn()
-          || isCompletedEvent(eventId);
+        allow get: if signedIn() && resource == null
+          && submissionId.matches(get(/databases/$(database)/documents/events/$(eventId)/participantSessions/$(request.auth.uid)).data.teamId + '_.*');
+        allow read: if isEventOwner(eventId)
+          || hasParticipantSession(eventId, resource.data.teamId)
+          || (signedIn()
+            && exists(/databases/$(database)/documents/events/$(eventId)/participantSessions/$(request.auth.uid))
+            && get(/databases/$(database)/documents/events/$(eventId)).data.voting.status in ['open', 'closed']
+            && resource.data.hidden == false);
         allow create: if isEventOwner(eventId)
           || (
             hasParticipantSession(eventId, request.resource.data.teamId)
@@ -171,8 +173,6 @@ service cloud.firestore {
       match /votes/{voteId} {
         allow read: if (!isContestEvent(eventId) && signedIn())
           || isEventOwner(eventId)
-          || isCompletedEvent(eventId)
-          || resultsPublished(eventId)
           || isOwnTeamVote(eventId, voteId);
         allow create: if !isContestEvent(eventId)
           && signedIn()

@@ -119,6 +119,14 @@ exports.joinParticipantGroupByToken = onCall({ region }, async (request) => {
     throw new HttpsError("not-found", "이벤트를 찾을 수 없습니다.");
   }
 
+  const event = await eventRef.get();
+  if (event.get('participantConfig.accessMethod') === 'code' && event.get('ownerId') !== uid) {
+    const session = await eventRef.collection('participantSessions').doc(uid).get();
+    if (session.get('teamId') !== teamDocument.id) {
+      throw new HttpsError('permission-denied', '공통 입장 QR에서 가족 코드로 먼저 입장해주세요.', { eventId: eventRef.id });
+    }
+  }
+
   await saveParticipantSession({ eventId: eventRef.id, teamId: teamDocument.id, uid });
 
   return {

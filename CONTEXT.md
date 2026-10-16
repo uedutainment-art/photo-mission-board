@@ -221,6 +221,11 @@ PWA 산출물:
 
 ## 주의사항 / 함정
 
+- 2026-10-17 현장 리허설: `scripts/rehearsal.mjs`와 SPEC §19.13 참조. 운영 이벤트는 bm0KcgvqcAzjD1EFh3T4. Daniel(1번)은 사용자만 진행하며 대행 도구는 나머지 9팀만 처리한다.
+- `node scripts/rehearsal.mjs photos` / `songs` / `votes`는 사용자가 요청할 때만 실행한다. `reset`은 사용자가 초기화를 요청한 경우에만 실행한다.
+- 코드 행사는 서버 참가 세션을 요구하며 코드 없이 토큰으로 다른 가족에 입장하는 우회와 인증 오류 후 클라이언트 fallback을 제거했다.
+- 운영자 수상 전체 명단은 private/results, 사연 선정은 private/story. 공개 이벤트에는 발표된 수상 정보만 둔다.
+
 - 같은 파일을 두 에이전트가 동시 편집하면 충돌 — 한 명씩 작업
 - `.env` 는 절대 git 커밋 X (`.gitignore` 에 포함되어 있음)
 - service-worker.js 에 Firebase config 가 평문 — Web API 키는 본디 공개 토큰이지만 콘솔에서 HTTP referrer 제한 필수

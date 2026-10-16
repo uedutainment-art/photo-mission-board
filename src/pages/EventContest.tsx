@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { deleteField, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { deleteField, doc, onSnapshot, runTransaction, serverTimestamp, updateDoc } from "firebase/firestore";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -10,12 +10,12 @@ import {
   EyeOff,
   Loader2,
   MessageCircle,
-  Music2,
   Phone,
   RotateCcw,
   Trophy,
 } from "lucide-react";
 import { ConfirmActionDialog } from "../components/ConfirmActionDialog";
+import { StoryDesk } from "../components/StoryDesk";
 import { ContestAdminNav } from "../components/ContestAdminNav";
 import { useContestSubmissions } from "../hooks/useContestSubmissions";
 import { useEventLive } from "../hooks/useEventLive";
@@ -28,7 +28,7 @@ import { createSelphyJpeg } from "../lib/selphy";
 import { getTeamLabel } from "../lib/teamLabel";
 import type { ContestWinner, MissionEvent, ModuleStatus } from "../lib/types";
 
-const prizeAmounts = [50000, 30000, 20000] as const;
+const prizeAmounts = [50000, 30000, 10000] as const;
 
 const operationStages = [
   { id: "prepare", label: "준비", description: "가족·코드 확인" },
@@ -88,7 +88,19 @@ export function EventContest() {
   const [notice, setNotice] = useState<string | null>(null);
   const [tieBreakNote, setTieBreakNote] = useState("");
   const [winnerIds, setWinnerIds] = useState<string[]>(["", "", ""]);
+  const [privateWinners, setPrivateWinners] = useState<ContestWinner[]>([]);
+  const [awardPhotos, setAwardPhotos] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!eventId) return;
+    return onSnapshot(doc(db, "events", eventId, "private", "results"), (snapshot) => {
+      setPrivateWinners((snapshot.data()?.winners as ContestWinner[] | undefined) ?? []);
+      setTieBreakNote(snapshot.data()?.tieBreakNote ?? "");
+      setAwardPhotos(Object.fromEntries(((snapshot.data()?.winners as ContestWinner[] | undefined) ?? []).filter(w => w.photoId).map(w => [w.teamId, w.photoId!])));
+    });
+  }, [eventId]);
   const [photoTeamFilter, setPhotoTeamFilter] = useState("all");
+  const [panel, setPanel] = useState("submission-operations");
   const [photoPromptFilter, setPhotoPromptFilter] = useState("all");
   const printAssetsRef = useRef(new Map<string, PrintAsset>());
   const preparingPrintIdsRef = useRef(new Set<string>());
@@ -173,27 +185,19 @@ export function EventContest() {
       .filter((group) => group.submissions.length > 0),
     [filteredSubmissions, teams],
   );
-  const sortedSongRequests = useMemo(
-    () => [...songRequests].sort((a, b) => Number(Boolean(a.playedAt)) - Number(Boolean(b.playedAt))),
-    [songRequests],
-  );
-  const playedSongCount = songRequests.filter((request) => Boolean(request.playedAt)).length;
 
   useEffect(() => {
-    if (event?.results?.winners?.length) {
+    if (privateWinners.length) {
       setWinnerIds(
-        [...event.results.winners]
+        [...privateWinners]
           .sort((a, b) => a.rank - b.rank)
           .map((winner) => winner.teamId),
       );
       return;
     }
     setWinnerIds(rankedSubmissions.slice(0, 3).map((item) => item.submission.teamId));
-  }, [event?.results?.winners, rankedSubmissions]);
+  }, [privateWinners, rankedSubmissions]);
 
-  useEffect(() => {
-    setTieBreakNote(event?.results?.tieBreak?.note ?? "");
-  }, [event?.results?.tieBreak?.note]);
 
   useEffect(() => () => {
     printAssetsRef.current.forEach((asset) => URL.revokeObjectURL(asset.url));
@@ -233,6 +237,15 @@ export function EventContest() {
           status === "waiting" || status === "draft" ? deleteField() : serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+      if (status === "open" || status === "waiting") {
+        phaseUpdate["results.winners"] = [];
+        phaseUpdate["results.revealedRanks"] = [];
+        phaseUpdate["results.ceremonyStarted"] = false;
+        phaseUpdate["results.storyAward"] = deleteField();
+      }
+      if (path === "voting.status" && status === "open") {
+        phaseUpdate["submission.status"] = "closed";
+      }
 
       // Reopening an earlier phase must not leave live voting or published results behind.
       if (path === "submission.status" && status !== "closed") {
@@ -246,7 +259,14 @@ export function EventContest() {
         phaseUpdate["results.publishedAt"] = deleteField();
       }
 
-      await updateDoc(doc(db, "events", eventId), phaseUpdate);
+      await runTransaction(db, async (transaction) => {
+        const ref = doc(db, "events", eventId);
+        const latest = await transaction.get(ref);
+        const expected = path === "submission.status" ? event?.submission?.status : event?.voting?.status;
+        if (latest.get(path) !== expected) throw new Error("다른 운영 기기에서 단계가 변경되었습니다. 현재 상태를 확인해주세요.");
+        transaction.update(ref, phaseUpdate);
+        if (status === "open" || status === "waiting") transaction.delete(doc(db, "events", eventId, "private", "results"));
+      });
       setNotice("운영 상태를 변경했습니다.");
     } finally {
       setBusy(null);
@@ -318,27 +338,11 @@ export function EventContest() {
     }
   }
 
-  async function toggleSongPlayed(requestId: string, played: boolean) {
-    if (!eventId) return;
-    const busyKey = `song-${requestId}`;
-    setBusy(busyKey);
-    setLocalError(null);
-    try {
-      await updateDoc(doc(db, "events", eventId, "songRequests", requestId), {
-        playedAt: played ? serverTimestamp() : deleteField(),
-      });
-      setNotice(played ? "신청곡을 재생 완료로 표시했습니다." : "신청곡을 미재생으로 되돌렸습니다.");
-    } catch (songError) {
-      setLocalError(songError instanceof Error ? songError.message : "신청곡 상태를 바꾸지 못했습니다.");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function publishResults(published: boolean, revealRank?: 1 | 2 | 3) {
     if (!eventId || !event) return;
     const selected = winnerIds.filter(Boolean);
     const requiredCount = Math.min(3, rankedSubmissions.length);
+    if (published && requiredCount === 0) throw new Error("등록된 사진이 있는 참가자가 없습니다.");
     if (published && (selected.length !== requiredCount || new Set(selected).size !== selected.length)) {
       throw new Error(`서로 다른 수상 가족 ${requiredCount}곳을 선택해주세요.`);
     }
@@ -349,6 +353,7 @@ export function EventContest() {
       rank: (index + 1) as 1 | 2 | 3,
       teamId,
       prizeAmount: prizeAmounts[index],
+      photoId: awardPhotos[teamId] || submissions.find(p => p.teamId === teamId && !p.hidden && p.promptId === event.submission?.prompts?.[0]?.id)?.id || submissions.find(p => p.teamId === teamId && !p.hidden)?.id || "",
     }));
     setBusy(revealRank ? `results-${revealRank}` : "results");
     try {
@@ -357,18 +362,25 @@ export function EventContest() {
         : [];
       const resultUpdate: Record<string, unknown> = {
         "results.status": published ? "published" : "hidden",
-        "results.winners": winners,
+        "results.winners": published ? winners.filter((winner) => nextRevealedRanks.includes(winner.rank)) : [],
         "results.revealedRanks": published ? nextRevealedRanks : [],
         "results.publishedAt": published ? serverTimestamp() : deleteField(),
         updatedAt: serverTimestamp(),
       };
-      if (published && hasAwardTie) {
-        resultUpdate["results.tieBreak"] = {
-          note: tieBreakNote.trim(),
-          resolvedAt: serverTimestamp(),
-        };
+      if (!published) {
+        resultUpdate["results.ceremonyStarted"] = false;
+        resultUpdate["results.storyAward"] = deleteField();
       }
-      await updateDoc(doc(db, "events", eventId), resultUpdate);
+      resultUpdate["results.tieBreak"] = deleteField();
+      await runTransaction(db, async (transaction) => {
+        const ref = doc(db, "events", eventId);
+        const latest = await transaction.get(ref);
+        const ranks = latest.get("results.revealedRanks") ?? [];
+        if (published && (latest.get("results.winners") ?? []).some((previous: ContestWinner) => !winners.some(w => w.rank === previous.rank && w.teamId === previous.teamId && w.photoId === previous.photoId))) throw new Error("이미 발표한 수상자는 변경할 수 없습니다. 발표 초기화 후 다시 선택해주세요.");
+        if (published && (latest.get("voting.status") !== "closed" || (revealRank !== 3 && !ranks.includes((revealRank ?? 0) + 1)) || ranks.includes(revealRank))) throw new Error("현재 발표 단계를 확인해주세요.");
+        transaction.set(doc(db, "events", eventId, "private", "results"), { winners, tieBreakNote: tieBreakNote.trim() });
+        transaction.update(ref, resultUpdate);
+      });
       setNotice(published && revealRank
         ? `${revealRank}등을 참가자 화면에 공개했습니다.`
         : "결과를 비공개로 전환했습니다.");
@@ -466,7 +478,7 @@ export function EventContest() {
 
   return (
     <main className="min-h-dvh bg-app-background px-4 py-6 text-app-ink">
-      <section className="phone-surface relative overflow-hidden rounded-[28px] border border-app-border shadow-phone">
+      <section className="relative mx-auto w-full max-w-5xl overflow-hidden rounded-[8px] border border-app-border shadow-phone">
         <header className="border-b border-app-border bg-white px-4 pb-4 pt-3">
           <div className="mx-auto mb-3 h-1 w-16 rounded-full bg-slate-300" />
           <div className="flex items-center justify-between">
@@ -529,28 +541,27 @@ export function EventContest() {
                 </ol>
                 <button
                   type="button"
-                  onClick={() => document.getElementById(stageAction.targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  onClick={() => { setPanel(stageAction.targetId === "result-operations" ? "voting-operations" : stageAction.targetId); requestAnimationFrame(() => document.getElementById(stageAction.targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })); }}
                   className="mt-4 flex w-full items-center justify-center rounded-2xl bg-app-ink px-4 py-3 text-sm font-black text-white"
                 >
                   {stageAction.label}
                 </button>
               </section>
 
-              <nav className="grid grid-cols-5 gap-1 rounded-2xl border border-app-border bg-white p-1.5" aria-label="운영 화면 바로가기">
+              <nav className="sticky top-0 z-20 grid grid-cols-4 gap-1 rounded-lg border border-app-border bg-white p-1.5" aria-label="운영 화면" role="tablist">
                 {[
                   ["접수", "submission-operations"],
-                  ["투표", "voting-operations"],
-                  ["사진", "photo-review"],
-                  ["결과", "result-operations"],
-                  [`신청곡 ${songRequests.length}`, "song-requests"],
+                  ["투표·시상", "voting-operations"],
+                  ["사진·출력", "photo-review"],
+                  [`사연 ${songRequests.length}`, "song-requests"],
                 ].map(([label, targetId]) => (
-                  <button key={targetId} type="button" onClick={() => document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" })} className="min-w-0 rounded-xl px-1 py-2 text-[11px] font-black text-app-muted hover:bg-slate-100 hover:text-app-ink">
+                  <button key={targetId} type="button" role="tab" aria-selected={panel === targetId} onClick={() => setPanel(targetId)} className={`min-w-0 rounded-lg px-1 py-3 text-[11px] font-black ${panel === targetId ? "bg-app-ink text-white" : "text-app-muted hover:bg-slate-100"}`}>
                     {label}
                   </button>
                 ))}
               </nav>
 
-              <section id="submission-operations" className="card scroll-mt-4 p-4">
+              <section hidden={panel !== "submission-operations"} id="submission-operations" className="card scroll-mt-4 p-4">
                 <h2 className="text-sm font-black">사진 접수</h2>
                 <p className="mt-1 text-xs font-bold text-app-muted">
                   현재 {getSubmissionStatusLabel(event.submission?.status)} · 최소 {minimumPhotos}장 충족 {completedSubmissionTeams.length}/{teams.length}가족 · 총 {submissions.length}장
@@ -605,7 +616,8 @@ export function EventContest() {
                 </div>
               </section>
 
-              <section id="voting-operations" className="card scroll-mt-4 p-4">
+              <section hidden={panel !== "voting-operations"} id="voting-operations" className="card scroll-mt-4 p-4">
+                {event.voting?.status === "open" && teams.length > 0 && unvotedTeams.length === 0 && <p role="status" className="mb-4 rounded-lg bg-emerald-100 p-4 text-lg font-black text-emerald-900">모든 참가자의 투표가 완료됐습니다. 투표를 마감하고 시상을 준비해주세요.</p>}
                 <h2 className="text-sm font-black">투표</h2>
                 <p className="mt-1 text-xs font-bold text-app-muted">
                   2표 완료 {teams.length - unvotedTeams.length}/{teams.length} · 참가자에게 득표수 비공개
@@ -674,7 +686,7 @@ export function EventContest() {
                 </div>
               </section>
 
-              <section id="photo-review" className="card scroll-mt-4 p-4">
+              <section hidden={panel !== "photo-review"} id="photo-review" className="card scroll-mt-4 p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-sm font-black">사진 검수</h2>
@@ -736,7 +748,6 @@ export function EventContest() {
                                     alt={item.title}
                                     draggable={false}
                                     loading="lazy"
-                                    onLoad={() => void preparePrintAsset(item)}
                                     className="aspect-square w-full object-cover"
                                     title={printAsset ? "끌어서 출력용 JPG 저장" : "출력용 JPG 준비 중"}
                                   />
@@ -786,7 +797,7 @@ export function EventContest() {
                 </div>
               </section>
 
-              <section id="result-operations" className="card scroll-mt-4 p-4">
+              <section hidden={panel !== "voting-operations"} id="result-operations" className="card scroll-mt-4 p-4">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-sm font-black">집계 및 결과 공개</h2>
@@ -810,11 +821,13 @@ export function EventContest() {
                     </label>
                   </div>
                 )}
+                <button type="button" disabled={Boolean(busy) || event.voting?.status !== "closed" || event.results?.ceremonyStarted} onClick={() => requestConfirmation({ title: "시상을 시작할까요?", description: "참가자에게 시상 시작 안내가 표시됩니다.", confirmLabel: "시상 시작", action: async () => { await updateDoc(doc(db, "events", eventId), { "results.ceremonyStarted": true }); } })} className="mt-4 w-full rounded-lg bg-app-ink p-3 font-black text-white disabled:opacity-40">시상 시작 · 발표 대기</button>
                 <div className="mt-4 space-y-2">
                   {[0, 1, 2].slice(0, Math.min(3, rankedSubmissions.length)).map((index) => (
-                    <label key={index} className="flex items-center gap-3">
+                    <label key={index} className="flex flex-wrap items-center gap-3">
                       <span className="w-9 text-sm font-black">{index + 1}등</span>
                       <select
+                        disabled={revealedRanks.length > 0}
                         value={winnerIds[index] ?? ""}
                         onChange={(changeEvent) => setWinnerIds((current) => {
                           const next = [...current];
@@ -830,7 +843,11 @@ export function EventContest() {
                           </option>
                         ))}
                       </select>
-                      <span className="w-16 text-right text-xs font-black text-app-primary">선물</span>
+                      <span className="w-16 text-right text-xs font-black text-app-primary">{prizeAmounts[index].toLocaleString()}원</span>
+                      <select aria-label={`${index + 1}등 발표 사진`} value={awardPhotos[winnerIds[index]] ?? ""} onChange={e => setAwardPhotos(current => ({ ...current, [winnerIds[index]]: e.target.value }))} className="w-full rounded-lg border border-app-border bg-white p-2 text-sm">
+                        <option value="">발표 사진: 가족 셀카 자동 선택</option>
+                        {submissions.filter(p => p.teamId === winnerIds[index] && !p.hidden).map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                      </select>
                     </label>
                   ))}
                 </div>
@@ -891,39 +908,13 @@ export function EventContest() {
               </section>
 
               <section>
-                <button type="button" onClick={downloadResultsCsv} className="card flex w-full items-center justify-center gap-2 p-4 text-xs font-black">
+                <button type="button" style={{ display: panel === "voting-operations" ? undefined : "none" }} onClick={downloadResultsCsv} className="card flex w-full items-center justify-center gap-2 p-4 text-xs font-black">
                   <Download className="h-4 w-4" aria-hidden="true" />
                   집계 CSV
                 </button>
               </section>
 
-              {event.modules?.songRequest && (
-                <section id="song-requests" className="card scroll-mt-4 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-sm font-black">신청곡</h2>
-                      <p className="mt-1 text-xs font-bold text-app-muted">재생 완료 {playedSongCount}/{songRequests.length}</p>
-                    </div>
-                    <strong className="text-lg font-black">{songRequests.length}</strong>
-                  </div>
-                  <div className="mt-3 divide-y divide-app-border">
-                    {sortedSongRequests.map((request) => (
-                      <div key={request.id} className={`flex items-start gap-3 py-3 ${request.playedAt ? "opacity-60" : ""}`}>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-black text-app-primary">{request.familyName ?? "가족 미확인"}</p>
-                          <p className={`text-sm font-black ${request.playedAt ? "line-through" : ""}`}>{request.songTitle} · {request.artist}</p>
-                          {request.story && <p className="mt-1 text-xs font-bold text-app-muted">{request.story}</p>}
-                        </div>
-                        <button type="button" onClick={() => void toggleSongPlayed(request.id, !request.playedAt)} disabled={busy === `song-${request.id}`} className={`flex flex-none items-center gap-1 rounded-xl px-2.5 py-2 text-[11px] font-black ${request.playedAt ? "bg-slate-100 text-app-muted" : "bg-app-ink text-white"}`}>
-                          {busy === `song-${request.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Music2 className="h-3.5 w-3.5" aria-hidden="true" />}
-                          {request.playedAt ? "완료 취소" : "재생 완료"}
-                        </button>
-                      </div>
-                    ))}
-                    {songRequests.length === 0 && <p className="py-4 text-center text-xs font-bold text-app-muted">아직 신청곡이 없습니다.</p>}
-                  </div>
-                </section>
-              )}
+              {event.modules?.songRequest && panel === "song-requests" && <StoryDesk eventId={eventId} votingClosed={event.voting?.status === "closed"} />}
             </>
           )}
         </div>

@@ -81,12 +81,15 @@ export interface PhotoPrompt {
 }
 
 export interface ContestWinner {
+  photoId?: string;
   rank: 1 | 2 | 3;
   teamId: string;
   prizeAmount: number;
 }
 
 export interface ResultSettings {
+  ceremonyStarted?: boolean;
+  storyAward?: { familyName: string; story: string; songTitle: string; requestId: string };
   status: ResultStatus;
   winnerCount: number;
   winners?: ContestWinner[];

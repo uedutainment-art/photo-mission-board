@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  collectionGroup,
   doc,
-  getDocs,
-  limit,
   onSnapshot,
-  query,
-  where,
-  type DocumentReference,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import type { MissionEvent, Team } from "../lib/types";
-import { clearStoredTeamSession, ensureUploaderUser, saveTeamSession, type StoredTeamSession } from "../lib/teamSession";
+import { ensureUploaderUser, saveTeamSession, type StoredTeamSession } from "../lib/teamSession";
 import { registerParticipantToken } from "../lib/participantAccess";
 
 export interface TeamSessionEvent extends MissionEvent {
@@ -45,35 +40,8 @@ function getTeamSessionErrorMessage(error: unknown): string {
   return error.message;
 }
 
-async function findTeamByToken(token: string): Promise<{
-  eventId: string;
-  teamId: string;
-  teamRef: DocumentReference;
-  eventRef: DocumentReference;
-}> {
-  const teamsQuery = query(collectionGroup(db, "teams"), where("token", "==", token), limit(1));
-  const snapshot = await getDocs(teamsQuery);
-  const teamDocument = snapshot.docs[0];
-
-  if (!teamDocument) {
-    throw new Error("팀 링크를 찾을 수 없습니다.");
-  }
-
-  const eventRef = teamDocument.ref.parent.parent;
-
-  if (!eventRef) {
-    throw new Error("이벤트 정보를 찾을 수 없습니다.");
-  }
-
-  return {
-    eventId: eventRef.id,
-    teamId: teamDocument.id,
-    teamRef: teamDocument.ref,
-    eventRef,
-  };
-}
-
 export function useTeamSession(teamToken: string | undefined): UseTeamSessionResult {
+  const navigate = useNavigate();
   const [session, setSession] = useState<StoredTeamSession | null>(null);
   const [event, setEvent] = useState<TeamSessionEvent | null>(null);
   const [team, setTeam] = useState<TeamSessionTeam | null>(null);
@@ -101,19 +69,12 @@ export function useTeamSession(teamToken: string | undefined): UseTeamSessionRes
 
       try {
         const uploader = await ensureUploaderUser();
-        let teamMatch: Awaited<ReturnType<typeof findTeamByToken>>;
-        try {
-          const registered = await registerParticipantToken(resolvedToken);
-          teamMatch = {
-            eventId: registered.eventId,
-            teamId: registered.teamId,
-            teamRef: doc(db, "events", registered.eventId, "teams", registered.teamId),
-            eventRef: doc(db, "events", registered.eventId),
-          };
-        } catch {
-          clearStoredTeamSession(resolvedToken);
-          teamMatch = await findTeamByToken(resolvedToken);
-        }
+        const registered = await registerParticipantToken(resolvedToken);
+        const teamMatch = {
+          eventId: registered.eventId,
+          teamId: registered.teamId,
+          teamRef: doc(db, "events", registered.eventId, "teams", registered.teamId),
+        };
         const nextSession: StoredTeamSession = {
           eventId: teamMatch.eventId,
           teamId: teamMatch.teamId,
@@ -173,6 +134,9 @@ export function useTeamSession(teamToken: string | undefined): UseTeamSessionRes
           return;
         }
 
+        const details = (sessionError as { details?: { eventId?: string } })?.details;
+        if (details?.eventId) navigate(`/e/${encodeURIComponent(details.eventId)}/join`, { replace: true });
+
         setError(getTeamSessionErrorMessage(sessionError));
         setLoading(false);
       }
@@ -185,7 +149,7 @@ export function useTeamSession(teamToken: string | undefined): UseTeamSessionRes
       unsubscribeEvent?.();
       unsubscribeTeam?.();
     };
-  }, [teamToken]);
+  }, [teamToken, navigate]);
 
   const context = useMemo<TeamSessionContext | null>(() => {
     if (!session || !event || !team) {

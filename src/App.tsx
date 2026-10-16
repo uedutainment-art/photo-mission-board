@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import { ParticipantStageSync } from "./components/ParticipantStageSync";
 import { RequireAuth } from "./components/RequireAuth";
 import { EventBoard } from "./pages/EventBoard";
 import { EventCreate } from "./pages/EventCreate";
@@ -30,7 +31,7 @@ import { EventActivities } from "./pages/EventActivities";
 
 export default function App() {
   return (
-    <Routes>
+    <><ParticipantStageSync /><Routes>
       <Route path="/" element={<Login />} />
       <Route
         path="/events"
@@ -128,6 +129,6 @@ export default function App() {
       <Route path="/t/:teamToken/results" element={<ContestResults />} />
       <Route path="/share/:eventId" element={<ShareEvent />} />
       <Route path="*" element={<NotFound />} />
-    </Routes>
+    </Routes></>
   );
 }

@@ -23,7 +23,10 @@ service firebase.storage {
     }
 
     match /events/{eventId}/contest/{teamId}/{fileName} {
-      allow read: if true;
+      allow read: if isEventOwner(eventId) || hasParticipantSession(eventId, teamId)
+        || (signedIn()
+          && firestore.exists(/databases/(default)/documents/events/$(eventId)/participantSessions/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/events/$(eventId)).data.voting.status in ['open', 'closed']);
       allow create, update: if validUpload()
         && (
           isEventOwner(eventId)

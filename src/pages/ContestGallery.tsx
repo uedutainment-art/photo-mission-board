@@ -27,7 +27,8 @@ function sameSelection(left: string[], right: string[]): boolean {
 export function ContestGallery() {
   const { teamToken } = useParams();
   const { context, error: sessionError, loading: sessionLoading } = useTeamSession(teamToken);
-  const { submissions, error: submissionError, loading: submissionLoading } = useContestSubmissions(context?.eventId);
+  const galleryOpen = context?.event.voting?.status === "open" || context?.event.voting?.status === "closed";
+  const { submissions, error: submissionError, loading: submissionLoading } = useContestSubmissions(galleryOpen ? context?.eventId : undefined, undefined, true);
   const { teams } = useEventTeams(context?.eventId);
   const myVotes = useContestVote(context?.eventId, context?.teamId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -46,9 +47,9 @@ export function ContestGallery() {
       grouped.set(submission.teamId, [...(grouped.get(submission.teamId) ?? []), submission]);
     }
     return [...grouped.entries()]
-      .map(([teamId, photos]) => ({ teamId, photos: photos.sort((a, b) => a.id.localeCompare(b.id)) }))
+      .map(([teamId, photos]) => ({ teamId, photos: photos.sort((a, b) => (context?.event.submission?.prompts?.findIndex(p => p.id === a.promptId) ?? 0) - (context?.event.submission?.prompts?.findIndex(p => p.id === b.promptId) ?? 0)) }))
       .sort((a, b) => stableOrder(`${context?.eventId}:${a.teamId}`) - stableOrder(`${context?.eventId}:${b.teamId}`));
-  }, [context?.eventId, visibleSubmissions]);
+  }, [context?.eventId, context?.event.submission?.prompts, visibleSubmissions]);
   const selected = visibleSubmissions.find((item) => item.id === selectedId) ?? null;
   const votingOpen = context?.event.submission?.status === "closed"
     && context.event.voting?.status === "open"
@@ -93,6 +94,8 @@ export function ContestGallery() {
   }
 
   const loading = sessionLoading || submissionLoading;
+
+  if (context && !galleryOpen) return <main className="mx-auto max-w-md p-6 text-center"><h1 className="text-xl font-black">투표 시간이 되면 사진이 공개됩니다</h1><p className="mt-3">지금은 우리 가족의 네 가지 순간을 남겨주세요.</p><Link className="mt-6 inline-block underline" to={`/t/${teamToken}/contest`}>우리 가족 사진으로 돌아가기</Link></main>;
 
   return (
     <main className={`min-h-dvh px-4 py-6 text-app-ink ${sonova ? "bg-[#dfe7e2]" : "bg-app-background"}`}>
